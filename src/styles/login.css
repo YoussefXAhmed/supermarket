@@ -1,0 +1,71 @@
+/* ── Login Page ── */
+.login-page {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  position: relative; overflow: hidden; padding: 24px;
+}
+
+.login-bg {
+  position: fixed; inset: 0; z-index: 0;
+}
+.login-bg__grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 40px 40px;
+  opacity: 0.35;
+}
+.login-bg__glow {
+  position: absolute; top: -200px; left: 50%;
+  transform: translateX(-50%);
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(245,166,35,0.12) 0%, transparent 70%);
+}
+
+.login-card {
+  position: relative; z-index: 1;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 40px;
+  width: 100%; max-width: 400px;
+  box-shadow: var(--shadow-lg);
+  animation: slideUp 0.4s ease;
+}
+
+.login-card__header { text-align: center; margin-bottom: 32px; }
+.login-card__logo   {
+  width: 88px;
+  height: 58px;
+  object-fit: contain;
+  margin: 0 auto 12px;
+  display: block;
+}
+.login-card__title  { font-size: 1.5rem; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+.login-card__sub    { font-size: 0.85rem; color: var(--text-2); }
+
+.login-form { display: flex; flex-direction: column; gap: 16px; }
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-label { font-size: 0.78rem; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.04em; }
+.form-input {
+  background: var(--bg-3); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 11px 14px;
+  color: var(--text); font-size: 0.9rem; outline: none;
+  transition: all var(--transition);
+}
+.form-input:focus  { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+.form-input::placeholder { color: var(--text-3); }
+
+.login-error {
+  background: var(--red-bg); color: var(--red);
+  border: 1px solid rgba(239,68,68,0.3);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px; font-size: 0.82rem;
+}
+
+.login-hint {
+  text-align: center; margin-top: 20px;
+  font-size: 0.75rem; color: var(--text-3);
+}
+.login-hint span { color: var(--accent); font-weight: 600; }
