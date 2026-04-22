@@ -2,8 +2,9 @@ import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePOS } from '../../hooks/usePOS';
 import { useAuth } from '../../hooks/useAuth';
-import { getCustomers, getMyPOSInvoices } from '../../services/api';
+import { getCustomers, getMyPOSInvoices, getPOSInvoice } from '../../services/api';
 import { Btn, Spinner, SearchInput, EmptyState } from '../../components/ui';
+import UserSessionActions from '../../components/layout/UserSessionActions';
 import '../../styles/pos.css';
 
 const BASE_URL = 'http://localhost:8000';
@@ -42,80 +43,85 @@ function CartRow({ item, onQty, onRemove }) {
   );
 }
 
-function ReceiptModal({ invoice, onClose }) {
+function InvoiceDetailsPanel({ invoice }) {
+  if (!invoice) {
+    return (
+      <div className="card pos-invoice-panel__empty">
+        <h3>Select an invoice</h3>
+        <p>Pick an invoice from the list to see full details here.</p>
+      </div>
+    );
+  }
+
   const lines = invoice.items || [];
   const total = Number(invoice.grand_total || invoice.total || 0);
   const postingDate = invoice.posting_date || new Date().toISOString().slice(0, 10);
+
   return (
-    <div className="modal-overlay">
-      <div className="modal receipt-modal receipt-modal--invoice">
-        <div className="receipt-modal__header">
-          <div>
-            <h2>Sales Invoice</h2>
-            <p className="receipt-modal__sub">ERPNext-style preview</p>
-          </div>
-          <span className="receipt-modal__status">{invoice.status || 'Paid'}</span>
+    <div className="card pos-invoice-panel">
+      <div className="receipt-modal__header">
+        <div>
+          <h2>POS Invoice</h2>
+          <p className="receipt-modal__sub">In-page ERPNext preview</p>
         </div>
+        <span className="receipt-modal__status">{invoice.status || 'Paid'}</span>
+      </div>
 
-        <div className="receipt-modal__meta">
-          <p><span>Invoice</span><strong className="mono">{invoice.name}</strong></p>
-          <p><span>Date</span><strong>{postingDate}</strong></p>
-          <p><span>Customer</span><strong>{invoice.customer || 'Walk-in Customer'}</strong></p>
-        </div>
+      <div className="receipt-modal__meta">
+        <p><span>Invoice</span><strong className="mono">{invoice.name}</strong></p>
+        <p><span>Date</span><strong>{postingDate}</strong></p>
+        <p><span>Customer</span><strong>{invoice.customer || 'Walk-in Customer'}</strong></p>
+      </div>
 
-        <div className="receipt-modal__table-wrap">
-          <table className="receipt-modal__table">
-            <thead>
-              <tr>
-                <th>Item</th>
-                <th>Qty</th>
-                <th>Rate</th>
-                <th>Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lines.map((line, idx) => {
-                const qty = Number(line.qty || 0);
-                const rate = Number(line.rate || 0);
-                const amount = Number(line.amount ?? qty * rate);
-                return (
-                  <tr key={`${line.item_code || line.item_name}-${idx}`}>
-                    <td>{line.item_name || line.item_code}</td>
-                    <td>{qty}</td>
-                    <td>EGP {rate.toFixed(2)}</td>
-                    <td>EGP {amount.toFixed(2)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+      <div className="receipt-modal__table-wrap">
+        <table className="receipt-modal__table">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Qty</th>
+              <th>Rate</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {lines.map((line, idx) => {
+              const qty = Number(line.qty || 0);
+              const rate = Number(line.rate || 0);
+              const amount = Number(line.amount ?? qty * rate);
+              return (
+                <tr key={`${line.item_code || line.item_name}-${idx}`}>
+                  <td>{line.item_name || line.item_code}</td>
+                  <td>{qty}</td>
+                  <td>EGP {rate.toFixed(2)}</td>
+                  <td>EGP {amount.toFixed(2)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
 
-        <div className="receipt-modal__footer">
-          <div className="receipt-modal__total-row">
-            <span>Grand Total</span>
-            <strong>EGP {total.toFixed(2)}</strong>
-          </div>
-          <a
-            className="btn btn--ghost btn--md"
-            style={{ width: '100%', marginTop: 10, textAlign: 'center' }}
-            href={`http://127.0.0.1:8000/printview?doctype=POS%20Invoice&name=${encodeURIComponent(invoice.name)}&format=Standard&no_letterhead=0&letterhead=No%20Letterhead&_lang=en`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Print Invoice
-          </a>
-          <Btn variant="primary" size="lg" onClick={onClose} style={{ width: '100%', marginTop: 10 }}>
-            New Transaction
-          </Btn>
+      <div className="receipt-modal__footer">
+        <div className="receipt-modal__total-row">
+          <span>Grand Total</span>
+          <strong>EGP {total.toFixed(2)}</strong>
         </div>
+        <a
+          className="btn btn--ghost btn--md"
+          style={{ width: '100%', marginTop: 10, textAlign: 'center' }}
+          href={`http://127.0.0.1:8000/printview?doctype=POS%20Invoice&name=${encodeURIComponent(invoice.name)}&format=Standard&no_letterhead=0&letterhead=No%20Letterhead&_lang=en`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Print Invoice
+        </a>
       </div>
     </div>
   );
 }
 
 export default function POSPage() {
-  const { isAdmin, logout, user } = useAuth();
+  const { isAdmin, isInventory, logout, user } = useAuth();
   const navigate = useNavigate();
   const pos = usePOS();
   const [customer, setCustomer] = useState('Walk-in Customer');
@@ -123,6 +129,9 @@ export default function POSPage() {
   const [checkoutErr, setCheckoutErr] = useState('');
   const [myInvoices, setMyInvoices] = useState([]);
   const [invoicesLoading, setInvoicesLoading] = useState(false);
+  const [invoiceLoadingId, setInvoiceLoadingId] = useState('');
+  const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const [viewMode, setViewMode] = useState('sell');
 
   const loadMyInvoices = useCallback(async () => {
     if (!user?.name) return;
@@ -151,6 +160,13 @@ export default function POSPage() {
     loadMyInvoices();
   }, [loadMyInvoices, pos.lastInvoice]);
 
+  useEffect(() => {
+    if (pos.lastInvoice?.name) {
+      setSelectedInvoice(pos.lastInvoice);
+      setViewMode('invoices');
+    }
+  }, [pos.lastInvoice]);
+
   const handleSearch = useCallback(async (q) => {
     pos.setQuery(q);
     await pos.loadItems(q);
@@ -175,6 +191,23 @@ export default function POSPage() {
     catch (e) { setCheckoutErr(e.message); }
   };
 
+  const handleOpenInvoice = async (invoiceName) => {
+    setViewMode('invoices');
+    setInvoiceLoadingId(invoiceName);
+    try {
+      const res = await getPOSInvoice(invoiceName);
+      const invoiceDoc = res?.data?.data || { name: invoiceName };
+      setSelectedInvoice(invoiceDoc);
+      pos.setLastInvoice(invoiceDoc);
+    } catch {
+      const fallback = { name: invoiceName, items: [], customer: '—', grand_total: 0, status: 'Draft' };
+      setSelectedInvoice(fallback);
+      pos.setLastInvoice(fallback);
+    } finally {
+      setInvoiceLoadingId('');
+    }
+  };
+
   return (
     <div className="pos-page">
       {/* ── Top Bar ── */}
@@ -184,26 +217,49 @@ export default function POSPage() {
           <span className="pos-header__name">Elmahdi POS</span>
         </div>
         <div className="pos-header__center">
-          <SearchInput
-            value={pos.query}
-            onChange={handleSearch}
-            placeholder="Search products… (barcode, name)"
-            inputRef={pos.searchRef}
-            autoFocus
-          />
+          <div className="pos-header__tools">
+            <div className="pos-view-toggle">
+              <button
+                type="button"
+                className={`pos-view-toggle__btn ${viewMode === 'sell' ? 'pos-view-toggle__btn--active' : ''}`}
+                onClick={() => setViewMode('sell')}
+              >
+                Sell
+              </button>
+              <button
+                type="button"
+                className={`pos-view-toggle__btn ${viewMode === 'invoices' ? 'pos-view-toggle__btn--active' : ''}`}
+                onClick={() => setViewMode('invoices')}
+              >
+                My Invoices
+              </button>
+            </div>
+            {viewMode === 'sell' && (
+              <SearchInput
+                value={pos.query}
+                onChange={handleSearch}
+                placeholder="Search products… (barcode, name)"
+                inputRef={pos.searchRef}
+                autoFocus
+              />
+            )}
+          </div>
         </div>
         <div className="pos-header__actions">
-          <span className="pos-header__user">👤 {user?.full_name || 'Cashier'}</span>
-          {isAdmin && (
-            <button className="pos-header__link" onClick={() => navigate('/admin')}>Admin ↗</button>
-          )}
-          <button className="pos-header__link pos-header__link--danger" onClick={async () => { await logout(); navigate('/login'); }}>
-            Sign out
-          </button>
+          <UserSessionActions
+            user={user}
+            compact
+            links={[
+              ...(isAdmin || isInventory ? [{ label: 'Stock', onClick: () => navigate('/inventory') }] : []),
+              ...(isAdmin ? [{ label: 'Admin', onClick: () => navigate('/admin') }] : []),
+            ]}
+            onLogout={async () => { await logout(); navigate('/login'); }}
+          />
         </div>
       </header>
 
-      <div className="pos-body">
+      {viewMode === 'sell' ? (
+        <div className="pos-body">
         {/* ── Product Grid ── */}
         <section className="pos-products">
           {pos.loading ? (
@@ -257,36 +313,6 @@ export default function POSPage() {
             )}
           </div>
 
-          <div className="pos-cart__history">
-            <div className="pos-cart__history-head">
-              <h3>My Invoices</h3>
-              <button className="pos-cart__history-refresh" onClick={loadMyInvoices}>Refresh</button>
-            </div>
-            {invoicesLoading ? (
-              <div className="pos-cart__history-loading"><Spinner size={18} /></div>
-            ) : myInvoices.length === 0 ? (
-              <p className="pos-cart__history-empty">No invoices yet.</p>
-            ) : (
-              <div className="pos-cart__history-list">
-                {myInvoices.map((inv) => (
-                  <a
-                    key={inv.name}
-                    className="pos-cart__history-item"
-                    href={`http://127.0.0.1:8000/printview?doctype=POS%20Invoice&name=${encodeURIComponent(inv.name)}&format=Standard&no_letterhead=0&letterhead=No%20Letterhead&_lang=en`}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    <div>
-                      <p className="pos-cart__history-id mono">{inv.name}</p>
-                      <p className="pos-cart__history-meta">{inv.customer || 'Walk-in Customer'} · {inv.posting_date || '-'}</p>
-                    </div>
-                    <span className="pos-cart__history-total">EGP {Number(inv.grand_total || 0).toFixed(2)}</span>
-                  </a>
-                ))}
-              </div>
-            )}
-          </div>
-
           <div className="pos-cart__footer">
             <div className="pos-cart__subtotal">
               <span>Subtotal</span>
@@ -311,10 +337,42 @@ export default function POSPage() {
           </div>
         </aside>
       </div>
+      ) : (
+        <div className="pos-invoices-page">
+          <section className="card pos-invoices-page__list">
+            <div className="pos-cart__history-head">
+              <h3>My Invoices</h3>
+              <button className="pos-cart__history-refresh" onClick={loadMyInvoices}>Refresh</button>
+            </div>
+            {invoicesLoading ? (
+              <div className="pos-cart__history-loading"><Spinner size={18} /></div>
+            ) : myInvoices.length === 0 ? (
+              <p className="pos-cart__history-empty">No invoices yet.</p>
+            ) : (
+              <div className="pos-cart__history-list pos-cart__history-list--full">
+                {myInvoices.map((inv) => (
+                  <button
+                    key={inv.name}
+                    type="button"
+                    className={`pos-cart__history-item ${selectedInvoice?.name === inv.name ? 'pos-cart__history-item--active' : ''}`}
+                    onClick={() => handleOpenInvoice(inv.name)}
+                    disabled={invoiceLoadingId === inv.name}
+                  >
+                    <div>
+                      <p className="pos-cart__history-id mono">{inv.name}</p>
+                      <p className="pos-cart__history-meta">{inv.customer || 'Walk-in Customer'} · {inv.posting_date || '-'}</p>
+                    </div>
+                    <span className="pos-cart__history-total">
+                      {invoiceLoadingId === inv.name ? 'Loading…' : `EGP ${Number(inv.grand_total || 0).toFixed(2)}`}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
 
-      {/* ── Receipt Modal ── */}
-      {pos.lastInvoice && (
-        <ReceiptModal invoice={pos.lastInvoice} onClose={() => pos.setLastInvoice(null)} />
+          <InvoiceDetailsPanel invoice={selectedInvoice} />
+        </div>
       )}
     </div>
   );

@@ -23,6 +23,7 @@ export default function CustomersPage() {
   const columns = [
     { key: 'customer_name', label: 'Name' },
     { key: 'name',          label: 'ID', render: v => <span className="mono" style={{ fontSize: '0.78rem', color: 'var(--text-2)' }}>{v}</span> },
+    { key: 'customer_type', label: 'Type', render: v => v || '—' },
     { key: 'customer_group', label: 'Group' },
     { key: 'territory',     label: 'Territory' },
     { key: 'mobile_no',     label: 'Mobile', render: v => v || '—' },

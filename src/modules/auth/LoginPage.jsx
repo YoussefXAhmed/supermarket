@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { login } from '../../services/api';
+import { login, logout as apiLogout } from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
 import { Btn } from '../../components/ui';
 import '../../styles/login.css';
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default function LoginPage() {
   const [usr, setUsr]   = useState('');
@@ -18,10 +20,31 @@ export default function LoginPage() {
     setErr('');
     setLoading(true);
     try {
+      // Start from a clean ERP session so users never overlap.
+      try { await apiLogout(); } catch { /* ignore */ }
+      await sleep(120);
+
       await login(usr, pwd);
-      const authState = await loadUser();
-      if (authState.user) navigate('/pos', { replace: true });
-      else setErr('Login failed: could not load user session.');
+      await sleep(220);
+      let authState = await loadUser();
+      // ERPNext may need a brief moment to persist / expose role assignments.
+      if ((!authState?.user || authState?.homePath === '/login') && authState?.reason !== 'guest') {
+        await sleep(380);
+        authState = await loadUser();
+      }
+
+      console.info('[login] redirect decision', JSON.stringify({
+        user: authState?.user?.name || null,
+        roles: authState?.roles || [],
+        homePath: authState?.homePath,
+        reason: authState?.reason,
+      }));
+
+      if (authState.user && authState.homePath && authState.homePath !== '/login') {
+        navigate(authState.homePath, { replace: true });
+      } else {
+        setErr('Login failed: unable to resolve role-based home path.');
+      }
     } catch (e) {
       setErr(e.message || 'Invalid credentials');
     } finally {

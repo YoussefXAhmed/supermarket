@@ -40,8 +40,11 @@ export const getCurrentUser = () =>
 
 export const getUserRoles = (user) =>
   api.get('/api/resource/User/' + encodeURIComponent(user), {
-    params: { fields: JSON.stringify(['name', 'full_name', 'email', 'user_image', 'roles']) },
+    params: { fields: JSON.stringify(['name', 'full_name', 'email', 'user_image', 'role_profile_name', 'roles']) },
   });
+
+export const getSessionBoot = () =>
+  api.get('/api/method/frappe.sessions.get');
 
 /* ══════════════════════════════════════
    ITEMS / PRODUCTS
@@ -148,15 +151,44 @@ export const getCustomers = (params = {}) =>
       fields: JSON.stringify([
         'name',
         'customer_name',
+        'customer_type',
         'customer_group',
         'territory',
         'mobile_no',
         'tax_id',
-        'national_id',
-        'custom_national_id',
       ]),
       limit_page_length: params.limit || 50,
       limit_start: params.start || 0,
+    },
+  });
+
+/* ══════════════════════════════════════
+   COMPANY
+══════════════════════════════════════ */
+export const getCompanies = (params = {}) =>
+  api.get('/api/resource/Company', {
+    params: {
+      fields: JSON.stringify(['name', 'company_name', 'default_currency', 'country']),
+      limit_page_length: params.limit || 20,
+      limit_start: params.start || 0,
+    },
+  });
+
+export const getCompany = (name) =>
+  api.get(`/api/resource/Company/${encodeURIComponent(name)}`, {
+    params: {
+      fields: JSON.stringify([
+        'name',
+        'company_name',
+        'abbr',
+        'country',
+        'default_currency',
+        'default_holiday_list',
+        'tax_id',
+        'phone_no',
+        'email',
+        'website',
+      ]),
     },
   });
 

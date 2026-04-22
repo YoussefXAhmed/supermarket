@@ -90,7 +90,7 @@ export default function UsersPage() {
     {
       key: 'name',
       label: 'Username',
-      render: (v) => <span className="mono" style={{ fontSize: '0.78rem' }}>{v}</span>,
+      render: (v) => <span className="mono mono-subtle">{v}</span>,
     },
     {
       key: 'enabled',
@@ -98,10 +98,20 @@ export default function UsersPage() {
       render: (v) => toStatusBadge(Number(v) === 1),
     },
     {
+      key: 'user_type',
+      label: 'Type',
+      render: (v) => v || '—',
+    },
+    {
+      key: 'last_login',
+      label: 'Last Login',
+      render: (v) => v ? new Date(v).toLocaleString() : '—',
+    },
+    {
       key: 'actions',
       label: 'Actions',
       render: (_, row) => (
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="row-actions">
           <Btn variant="ghost" size="sm" onClick={() => handleToggle(row)}>
             {Number(row.enabled) === 1 ? 'Disable' : 'Enable'}
           </Btn>
@@ -120,9 +130,9 @@ export default function UsersPage() {
         subtitle={`${totals.total} total · ${totals.enabled} enabled · ${totals.disabled} disabled`}
       />
 
-      <div className="card" style={{ marginBottom: 16 }}>
-        <h3 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: 12 }}>Add User</h3>
-        <form onSubmit={handleCreate} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 10 }}>
+      <div className="card panel">
+        <h3 className="section-title">Add User</h3>
+        <form onSubmit={handleCreate} className="user-form">
           <input
             className="input"
             type="text"
@@ -144,13 +154,13 @@ export default function UsersPage() {
       </div>
 
       {error && (
-        <div className="card" style={{ marginBottom: 12, borderColor: 'rgba(239,68,68,0.35)', color: 'var(--red)' }}>
+        <div className="card content-error" style={{ marginBottom: 12 }}>
           {error}
         </div>
       )}
 
       {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}><Spinner size={26} /></div>
+        <div className="content-loading"><Spinner size={26} /></div>
       ) : users.length === 0 ? (
         <EmptyState icon="👤" title="No users found" desc="Create your first user from the form above." />
       ) : (

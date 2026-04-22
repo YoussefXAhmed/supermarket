@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import UserSessionActions from './UserSessionActions';
 
 const NAV = [
   { to: '/admin',           label: 'Dashboard',  icon: '◈',  exact: true },
@@ -47,17 +48,22 @@ export default function AdminLayout() {
         </nav>
 
         <div className="sidebar__footer">
-          <div className="sidebar__user">
-            <div className="sidebar__avatar">
-              {user?.full_name?.[0]?.toUpperCase() || 'U'}
-            </div>
-            {!collapsed && (
-              <div className="sidebar__user-info">
-                <p className="sidebar__user-name truncate">{user?.full_name || user?.name}</p>
-                <button onClick={handleLogout} className="sidebar__logout">Sign out</button>
+          {collapsed ? (
+            <div className="sidebar__user">
+              <div className="sidebar__avatar">
+                {user?.full_name?.[0]?.toUpperCase() || 'U'}
               </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <UserSessionActions
+              user={user}
+              compact
+              links={[
+                { label: 'Profile', onClick: () => navigate('/admin/settings') },
+              ]}
+              onLogout={handleLogout}
+            />
+          )}
         </div>
       </aside>
 

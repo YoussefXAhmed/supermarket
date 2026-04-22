@@ -14,6 +14,14 @@ import CustomersPage  from './modules/admin/CustomersPage';
 import UsersPage      from './modules/admin/UsersPage';
 import ReportsPage    from './modules/admin/ReportsPage';
 import SettingsPage   from './modules/admin/SettingsPage';
+import InventoryLayout from './components/layout/InventoryLayout';
+import InventoryDashboardPage from './modules/inventory/InventoryPage';
+import WarehousesPage from './modules/inventory/pages/WarehousesPage';
+import StockEntryPage from './modules/inventory/pages/StockEntryPage';
+import StockLedgerPage from './modules/inventory/pages/StockLedgerPage';
+import ItemDetailsPage from './modules/inventory/pages/ItemDetailsPage';
+import InventoryAlertsPage from './modules/inventory/pages/AlertsPage';
+import InventoryReportsPage from './modules/inventory/pages/ReportsPage';
 
 export default function App() {
   return (
@@ -29,6 +37,21 @@ export default function App() {
               <POSPage />
             </ProtectedRoute>
           } />
+
+          {/* Inventory module */}
+          <Route path="/inventory" element={
+            <ProtectedRoute require="inventory">
+              <InventoryLayout />
+            </ProtectedRoute>
+          }>
+            <Route index element={<InventoryDashboardPage />} />
+            <Route path="warehouses" element={<WarehousesPage />} />
+            <Route path="stock-entry" element={<StockEntryPage />} />
+            <Route path="ledger" element={<StockLedgerPage />} />
+            <Route path="items" element={<ItemDetailsPage />} />
+            <Route path="alerts" element={<InventoryAlertsPage />} />
+            <Route path="reports" element={<InventoryReportsPage />} />
+          </Route>
 
           {/* Admin — requires System Manager */}
           <Route path="/admin" element={
