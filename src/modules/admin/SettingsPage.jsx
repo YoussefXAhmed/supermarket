@@ -1,7 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { getCompanies, getCompany } from '../../services/api';
-import { PageHeader, Badge, Spinner } from '../../components/ui';
+import { PageHeader, Badge, Spinner, ApiErrorCard } from '../../components/ui';
+import { ERP_BASE_URL } from '../../config/erp';
+import { getERPDeskUrl } from '../../utils/erpLinks';
+import { getUserFriendlyMessage } from '../../utils/errorHandling';
 
 export default function SettingsPage() {
   const { user, roles } = useAuth();
@@ -9,28 +12,29 @@ export default function SettingsPage() {
   const [companyLoading, setCompanyLoading] = useState(true);
   const [companyError, setCompanyError] = useState('');
 
-  useEffect(() => {
-    const loadCompany = async () => {
-      setCompanyLoading(true);
-      setCompanyError('');
-      try {
-        const listRes = await getCompanies({ limit: 1 });
-        const first = listRes?.data?.data?.[0];
-        if (!first?.name) {
-          setCompany(null);
-          return;
-        }
-        const detailRes = await getCompany(first.name);
-        setCompany(detailRes?.data?.data || null);
-      } catch (e) {
+  const loadCompany = useCallback(async () => {
+    setCompanyLoading(true);
+    setCompanyError('');
+    try {
+      const listRes = await getCompanies({ limit: 1 });
+      const first = listRes?.data?.data?.[0];
+      if (!first?.name) {
         setCompany(null);
-        setCompanyError(e.message || 'Failed to load company details');
-      } finally {
-        setCompanyLoading(false);
+        return;
       }
-    };
-    loadCompany();
+      const detailRes = await getCompany(first.name);
+      setCompany(detailRes?.data?.data || null);
+    } catch (e) {
+      setCompany(null);
+      setCompanyError(getUserFriendlyMessage(e, 'Failed to load company details'));
+    } finally {
+      setCompanyLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadCompany();
+  }, [loadCompany]);
 
   return (
     <div>
@@ -58,13 +62,13 @@ export default function SettingsPage() {
         <div className="card">
           <h3 className="section-title">ERPNext Connection</h3>
           <div className="kv-stack">
-            <Row label="Base URL"  value="http://localhost:8000" />
+            <Row label="Base URL"  value={ERP_BASE_URL} />
             <Row label="Auth"      value="Cookie-based (withCredentials)" />
             <Row label="Protocol"  value="Frappe REST API v2" />
           </div>
           <div className="panel" style={{ marginTop: 16, marginBottom: 0 }}>
             <a
-              href="http://localhost:8000/app"
+              href={getERPDeskUrl()}
               target="_blank" rel="noreferrer"
               className="btn btn--ghost btn--sm"
             >Open ERPNext ↗</a>
@@ -84,7 +88,7 @@ export default function SettingsPage() {
           ].map(([label, path]) => (
             <a
               key={path}
-              href={`http://localhost:8000${path}`}
+              href={getERPDeskUrl(path.replace(/^\/app/, ''))}
               target="_blank" rel="noreferrer"
               className="quick-link-row"
             >
@@ -103,7 +107,7 @@ export default function SettingsPage() {
               <Spinner size={20} />
             </div>
           ) : companyError ? (
-            <p className="inv-error">{companyError}</p>
+            <ApiErrorCard title="Company details unavailable" message={companyError} onRetry={loadCompany} />
           ) : !company ? (
             <p className="page-header__sub">No company found.</p>
           ) : (

@@ -1,0 +1,252 @@
+/* ══════════════════════════════════════
+   Enterprise layout system — width, density, rhythm
+   Shopify / Stripe / Odoo / Linear density
+══════════════════════════════════════ */
+
+:root {
+  /* Content max widths */
+  --layout-max-dashboard: 1600px;
+  --layout-max-form: 1100px;
+  --layout-max-table: 1800px;
+  --layout-max-analytics: 1600px;
+  --layout-max-admin: 1400px;
+
+  /* Horizontal padding (responsive) */
+  --layout-pad-x: clamp(12px, 1.5vw, 24px);
+  --layout-pad-y: clamp(0px, 0.5vw, 8px);
+
+  /* Section rhythm by density */
+  --layout-gap-compact: 10px;
+  --layout-gap-comfortable: 14px;
+  --layout-gap-spacious: 20px;
+
+  /* Grid gaps */
+  --layout-grid-gap-compact: 10px;
+  --layout-grid-gap-comfortable: 14px;
+  --layout-grid-gap-spacious: 18px;
+
+  /* KPI / card grid min track */
+  --layout-kpi-min: 160px;
+  --layout-card-min: 260px;
+
+  /* Sparse table cap */
+  --layout-table-fit-max: 52rem;
+}
+
+/* ── Page shells (centered, width-capped) ── */
+.page-shell {
+  width: 100%;
+  margin-inline: auto;
+  padding-inline: var(--layout-pad-x);
+  box-sizing: border-box;
+}
+
+.page-shell--dashboard { max-width: var(--layout-max-dashboard); }
+.page-shell--form { max-width: var(--layout-max-form); }
+.page-shell--table { max-width: var(--layout-max-table); }
+.page-shell--analytics { max-width: var(--layout-max-analytics); }
+.page-shell--admin { max-width: var(--layout-max-admin); }
+.page-shell--full { max-width: none; }
+
+/* ── Page layout stack (flex column + gap) ── */
+.page-layout {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+  margin-inline: auto;
+  padding-inline: var(--layout-pad-x);
+  box-sizing: border-box;
+}
+
+.page-layout--dashboard { max-width: var(--layout-max-dashboard); }
+.page-layout--form { max-width: var(--layout-max-form); }
+.page-layout--table { max-width: var(--layout-max-table); }
+.page-layout--analytics { max-width: var(--layout-max-analytics); }
+.page-layout--admin { max-width: var(--layout-max-admin); }
+
+/* Sparse tables: section shrinks to content */
+.page-layout--table-fit .layout-section--fit,
+.page-layout--table-fit .table-region--fit {
+  width: fit-content;
+  max-width: min(100%, var(--layout-table-fit-max));
+}
+
+/* Density utilities */
+.density--compact {
+  --section-gap: var(--layout-gap-compact);
+  --grid-gap: var(--layout-grid-gap-compact);
+}
+.density--comfortable {
+  --section-gap: var(--layout-gap-comfortable);
+  --grid-gap: var(--layout-grid-gap-comfortable);
+}
+.density--spacious {
+  --section-gap: var(--layout-gap-spacious);
+  --grid-gap: var(--layout-grid-gap-spacious);
+}
+
+.page-layout.density--compact,
+.page-layout.density--comfortable,
+.page-layout.density--spacious {
+  gap: var(--section-gap);
+}
+
+/* Legacy aliases → layout system */
+.dense-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--layout-gap-compact, 12px);
+  width: 100%;
+  max-width: var(--layout-max-dashboard);
+  margin-inline: auto;
+  padding-inline: var(--layout-pad-x);
+  box-sizing: border-box;
+}
+
+.page-shell.dense-page,
+.page-layout.dense-page {
+  max-width: var(--layout-max-dashboard);
+}
+
+/* ── Responsive auto-fit grids ── */
+.layout-grid,
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(var(--layout-kpi-min), 1fr));
+  gap: var(--grid-gap, var(--layout-grid-gap-compact));
+  width: 100%;
+}
+
+.layout-grid--cards {
+  grid-template-columns: repeat(auto-fit, minmax(var(--layout-card-min), 1fr));
+}
+
+.stats-grid--compact,
+.layout-grid--kpi {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+/* ── Sections (elevated cards, no fixed height) ── */
+.layout-section,
+.dash-section {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  width: 100%;
+  min-height: 0;
+}
+
+.layout-section--flat,
+.dash-section--flat {
+  background: var(--bg);
+}
+
+.layout-section--raised,
+.dash-section--raised {
+  border-color: var(--border-light);
+  box-shadow: var(--shadow);
+}
+
+.layout-section--fit,
+.dash-section.layout-section--fit {
+  width: fit-content;
+  max-width: min(100%, var(--layout-table-fit-max));
+}
+
+.layout-section__head,
+.dash-section__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.layout-section__head--flush,
+.dash-section__head--flush {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.layout-section__title,
+.dash-section__title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.layout-section__subtitle,
+.dash-section__subtitle {
+  font-size: 0.68rem;
+  color: var(--text-3);
+  margin: 2px 0 0;
+}
+
+/* Table regions */
+.table-region {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table-region--fit {
+  width: fit-content;
+  max-width: min(100%, var(--layout-table-fit-max));
+}
+
+/* Analytics split */
+.analytics-layout__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--grid-gap, var(--layout-grid-gap-compact));
+  width: 100%;
+}
+
+.analytics-layout__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--section-gap, var(--layout-gap-compact));
+}
+
+/* Form width constraint */
+.form-region {
+  max-width: 36rem;
+  width: 100%;
+}
+
+.form-region--wide {
+  max-width: 100%;
+}
+
+/* Admin main: full bleed workspace, pages constrain themselves */
+.admin-content--workspace {
+  max-width: none;
+  width: 100%;
+  padding-inline: clamp(12px, 1.2vw, 20px);
+}
+
+/* Legacy card.panel inside layouts */
+.page-layout .card.panel,
+.page-layout .panel {
+  margin-bottom: 0;
+  padding: 12px 14px;
+}
+
+.page-layout .page-header {
+  margin-bottom: 0;
+}
+
+@media (max-width: 900px) {
+  .stats-grid--compact,
+  .layout-grid--kpi {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  }
+  .analytics-layout__grid {
+    grid-template-columns: 1fr;
+  }
+}

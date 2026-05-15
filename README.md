@@ -1,6 +1,6 @@
 # Elmahdi ERP Frontend
 
-A clean, scalable React + Vite frontend for a supermarket ERP system, fully integrated with ERPNext (Frappe REST API).
+A React + Vite frontend for a supermarket ERP system, integrated with ERPNext (Frappe REST API).
 
 ---
 
@@ -20,22 +20,26 @@ A clean, scalable React + Vite frontend for a supermarket ERP system, fully inte
 
 ```
 src/
+├── config/
+│   └── erp.js           Central ERPNext URL configuration
 ├── modules/
-│   ├── auth/        LoginPage
-│   ├── pos/         POSPage (cashier fullscreen mode)
-│   └── admin/       Dashboard, Products, Inventory,
-│                    Invoices, Customers, Reports, Settings
+│   ├── auth/            LoginPage
+│   ├── pos/             POSPage (cashier fullscreen)
+│   ├── admin/           Dashboard, products, invoices, …
+│   └── inventory/       Stock workspace (dashboard, ledger, reports)
 ├── services/
-│   └── api.js       All ERPNext API calls (Axios)
+│   ├── api.js           Core ERPNext API (axios)
+│   ├── inventoryApi.js  Stock / warehouse operations
+│   └── inventoryService.js  Retail aggregations
+├── utils/
+│   ├── erpLinks.js      Desk / printview / image URL helpers
+│   └── errorHandling.js ERP error normalization
 ├── components/
-│   ├── ui/          Button, Badge, Spinner, Table, StatCard, …
-│   └── layout/      AdminLayout (sidebar), ProtectedRoute
-├── context/
-│   └── AuthContext  user, roles, isAdmin, isPOS
-├── hooks/
-│   ├── useAuth.js   Re-export of AuthContext hook
-│   └── usePOS.js    Cart, search, checkout logic
-└── styles/          globals, components, layout, login, pos, admin
+│   ├── ui/              Shared primitives (PageLoading, ApiErrorCard, …)
+│   ├── common/          ErrorBoundary
+│   └── layout/          AdminLayout, InventoryLayout, ProtectedRoute
+├── context/             AuthContext
+└── hooks/               useAuth, usePOS
 ```
 
 ---
@@ -43,10 +47,25 @@ src/
 ## Getting Started
 
 ### Prerequisites
-- Node.js 18+
-- ERPNext running at `http://localhost:8000`
 
-### Install & Run
+- Node.js 18+
+- ERPNext running (default `http://127.0.0.1:8000`)
+
+### Environment
+
+Copy the example env file and adjust if your ERPNext host differs:
+
+```bash
+cp .env.example .env
+```
+
+| Variable | Description |
+|----------|-------------|
+| `VITE_ERPNEXT_URL` | ERPNext site origin (desk, images, print links). Default: `http://127.0.0.1:8000` |
+| `VITE_ERP_API_BASE` | Optional REST API base. Dev uses same-origin `/api` proxy when unset. |
+| `VITE_ERP_PRINT_BASE` | Optional printview origin. Defaults to `VITE_ERPNEXT_URL`. |
+
+### Install & Run (development)
 
 ```bash
 npm install
@@ -55,62 +74,83 @@ npm run dev
 
 The app runs at `http://localhost:5173`.
 
+**Dev proxy:** Vite proxies `/api` to `VITE_ERPNEXT_URL` (see `vite.config.js`). The axios client uses an empty API base in dev so session cookies work through the proxy.
+
 ### ERPNext Setup
 
-1. **CORS** — In ERPNext, go to `System Settings` → add `http://localhost:5173` to **Allow Cors**.
-2. **Session cookies** — Make sure `Allow Guest to View` is off; the app uses cookie-based login.
-3. **POS Profile** — Create a POS Profile linked to a warehouse and price list.
-4. **Roles**:
-   - `System Manager` → full Admin + POS access
-   - `POS User` → POS only
+1. **CORS** — Add your frontend origin (e.g. `http://localhost:5173`) to **Allow CORS** in System Settings when not using a reverse proxy.
+2. **Session cookies** — The app uses cookie-based login (`withCredentials: true`).
+3. **POS Profile** — Link a POS Profile to warehouse and price list.
+4. **Roles** — Examples: `System Manager`, `POS User`, `Stock User`.
+
+---
+
+## Production
+
+### Build
+
+```bash
+npm run build
+```
+
+Output is in `/dist`. Serve as static files (nginx, S3 + CDN, etc.).
+
+### Deployment patterns
+
+**Recommended: reverse proxy (same origin)**
+
+Serve the SPA and proxy `/api` to ERPNext on one host. Set:
+
+```env
+VITE_ERPNEXT_URL=https://erp.yourdomain.com
+```
+
+Build with the public ERP URL so desk links, images, and printview resolve correctly. Configure nginx (or similar):
+
+- `/` → `dist/`
+- `/api` → ERPNext backend
+
+**Cross-origin SPA**
+
+If the UI and ERP are on different hosts, set `VITE_ERP_API_BASE` to the ERP origin and configure CORS + cookies on ERPNext. Prefer same-site deployment when possible.
+
+### Configuration reference
+
+All ERP URLs are centralized in `src/config/erp.js` and `src/utils/erpLinks.js`:
+
+- `getERPDeskUrl(path)` — Frappe desk links
+- `getERPPrintviewUrl({ doctype, name, … })` — Print URLs
+- `getERPImageUrl(path)` — Item images
+- `openERPDesk` / `openERPPrintview` — Open in new tab
+
+Do not hardcode `localhost:8000` in components.
 
 ---
 
 ## Role-Based Access
 
-| Role           | POS `/pos` | Admin `/admin/*` |
-|----------------|:----------:|:----------------:|
-| System Manager | ✅         | ✅               |
-| POS User       | ✅         | ❌ → redirected  |
-| Guest / Other  | ❌         | ❌ → /login      |
+| Role / capability | POS `/pos` | Admin `/admin/*` | Inventory `/inventory/*` |
+|-------------------|:----------:|:----------------:|:------------------------:|
+| System Manager    | Redirected to admin* | ✅ | ✅ |
+| POS User          | ✅ | ❌ | ❌ |
+| Stock / warehouse roles | ❌ | ❌ | ✅ |
+
+\* Admins are redirected away from POS by default; use a POS-role user for cashier testing.
 
 ---
 
-## API Reference
+## API & Errors
 
-All calls are in `src/services/api.js`:
-
-| Function              | Endpoint                                  |
-|-----------------------|-------------------------------------------|
-| `login(usr, pwd)`     | POST `/api/method/login`                  |
-| `logout()`            | GET  `/api/method/logout`                 |
-| `getCurrentUser()`    | GET  `/api/method/frappe.auth.get_logged_user` |
-| `getUserRoles(user)`  | GET  `/api/resource/User/:name`           |
-| `getItems()`          | GET  `/api/resource/Item`                 |
-| `searchItems(q)`      | GET  `/api/resource/Item?filters=…`       |
-| `getStockLedger()`    | GET  `/api/resource/Bin`                  |
-| `getSalesInvoices()`  | GET  `/api/resource/Sales Invoice`        |
-| `createSalesInvoice()`| POST `/api/resource/Sales Invoice`        |
-| `submitSalesInvoice()`| PUT  `/api/resource/Sales Invoice/:name`  |
-| `getCustomers()`      | GET  `/api/resource/Customer`             |
-| `getDashboardStats()` | Parallel fetches for dashboard KPIs       |
-
----
-
-## Build for Production
-
-```bash
-npm run build
-# Output in /dist — serve with nginx or any static host
-```
+- HTTP client: `src/services/api.js` (30s timeout, normalized errors)
+- `extractERPError(error)` — Parse Frappe `_server_messages` and HTTP status
+- UI: `ApiErrorCard`, `PageLoading`, `ErrorBoundary` on protected layouts
 
 ---
 
 ## Design System
 
-Dark theme with amber accent. CSS custom properties in `src/styles/globals.css`:
+Dark theme with amber accent. Tokens in `src/styles/globals.css`:
 
-- `--bg`, `--bg-2`, `--bg-3`, `--bg-4` — surface layers
-- `--accent` `#f5a623` — amber CTA color
-- `--green`, `--red`, `--blue` — semantic status colors
-- Font: **DM Sans** (UI) + **DM Mono** (prices/codes)
+- `--accent` `#f5a623`
+- `--green`, `--red`, `--blue` — status colors
+- Fonts: **DM Sans** + **DM Mono**

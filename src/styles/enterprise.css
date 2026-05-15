@@ -1,0 +1,373 @@
+/* Enterprise retail — spacing, responsive, role shells */
+
+:root {
+  --amber: #f59e0b;
+  --amber-bg: rgba(245, 158, 11, 0.14);
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --content-max: 1400px;
+  --touch-min: 44px;
+}
+
+.page-shell {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  width: 100%;
+}
+
+.stack { display: flex; flex-direction: column; gap: var(--space-4); }
+.stack--sm { gap: var(--space-2); }
+
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+}
+.role-badge--admin { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
+.role-badge--pos { border-color: var(--green); color: var(--green); background: var(--green-bg); }
+.role-badge--inventory { border-color: var(--blue); color: var(--blue); background: var(--blue-bg); }
+.role-badge--manager { border-color: var(--amber); color: var(--amber); background: var(--amber-bg); }
+
+.toast-stack {
+  position: fixed;
+  bottom: var(--space-5);
+  right: var(--space-4);
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-width: min(420px, calc(100vw - 32px));
+  pointer-events: none;
+}
+.toast-stack .toast { pointer-events: auto; }
+
+.toast--critical {
+  border-color: var(--red);
+  background: var(--red-bg);
+}
+.toast--warning {
+  border-color: var(--amber);
+  background: var(--amber-bg);
+}
+
+.stat-card--amber .stat-card__value { color: var(--amber); }
+
+.trend-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 120px;
+  padding: var(--space-3) 0;
+}
+.trend-chart__bar-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  height: 100%;
+  justify-content: flex-end;
+}
+.trend-chart__bar {
+  width: 100%;
+  max-width: 36px;
+  background: linear-gradient(180deg, var(--accent), var(--accent-dark));
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  min-height: 4px;
+  transition: height var(--transition);
+}
+.trend-chart__label {
+  font-size: 0.65rem;
+  color: var(--text-3);
+  margin-top: 6px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  font-size: 0.8rem;
+  color: var(--text-2);
+}
+.pagination__controls {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.export-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+}
+
+/* ══════════════════════════════════════
+   Dense dashboard layout (Shopify / Odoo density)
+══════════════════════════════════════ */
+.dense-module {
+  --dash-gap: 10px;
+  --dash-section-gap: 12px;
+}
+
+/* dense-page → see layout-system.css (dashboard width) */
+
+.dense-page > .page-header,
+.dense-page .page-header--dense {
+  margin-bottom: 0;
+}
+
+.page-header--dense {
+  margin-bottom: var(--space-2) !important;
+  gap: var(--space-2);
+}
+.page-header--dense .page-header__title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.page-header--dense .page-header__sub {
+  font-size: 0.72rem;
+  margin-top: 1px;
+}
+
+/* Compact module tabs — width hugs content */
+.module-nav {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  width: fit-content;
+  max-width: 100%;
+  margin-bottom: var(--dash-section-gap);
+  box-shadow: none;
+}
+.module-nav__link {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 11px;
+  border-radius: calc(var(--radius-sm) + 1px);
+  font-size: 0.74rem;
+  font-weight: 500;
+  color: var(--text-2);
+  border: 1px solid transparent;
+  white-space: nowrap;
+  transition: background var(--transition), color var(--transition);
+}
+.module-nav__link:hover {
+  color: var(--text);
+  background: var(--bg-3);
+}
+.module-nav__link--active {
+  color: var(--accent);
+  background: var(--accent-glow);
+  border-color: rgba(245, 166, 35, 0.25);
+}
+
+/* stats-grid--compact → layout-system.css auto-fit */
+
+.dash-section {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+}
+.dash-section--flat {
+  background: var(--bg);
+  border-color: var(--border);
+}
+.dash-section--raised {
+  box-shadow: var(--shadow);
+  border-color: var(--border-light);
+}
+.dash-section__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.dash-section__head--flush {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+.dash-section__title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+.dash-section__subtitle {
+  font-size: 0.68rem;
+  color: var(--text-3);
+  margin: 2px 0 0;
+  font-weight: 400;
+}
+
+.workflow-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.workflow-bar__desc {
+  font-size: 0.74rem;
+  color: var(--text-2);
+  margin: 0;
+  line-height: 1.4;
+  max-width: 36rem;
+}
+.workflow-bar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.table-panel {
+  max-width: 42rem;
+}
+.table-panel--wide {
+  max-width: none;
+}
+
+.table-wrap--compact {
+  border-radius: var(--radius);
+}
+.table--compact th {
+  padding: 6px 10px;
+  font-size: 0.68rem;
+}
+.table--compact td {
+  padding: 7px 10px;
+  font-size: 0.78rem;
+}
+
+.empty-inline {
+  padding: 14px 12px;
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--text-3);
+  background: var(--bg-3);
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--border);
+}
+
+.dense-page .partial-data-banner {
+  margin-bottom: 0 !important;
+  padding: 10px 12px;
+}
+
+.dense-page .trend-chart {
+  height: 88px;
+  padding: 4px 0;
+}
+
+.dense-page .value-trend {
+  min-height: 72px;
+}
+
+.inventory-module-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--dash-section-gap);
+}
+.inventory-module-header .module-nav {
+  margin-bottom: 0;
+  flex: 1 1 auto;
+}
+.inventory-module-header .session-actions {
+  margin-left: auto;
+}
+
+.dense-module .admin-content {
+  padding-top: 20px;
+}
+
+
+.activity-log__row {
+  display: grid;
+  grid-template-columns: 140px 90px 1fr 100px;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.82rem;
+  align-items: start;
+}
+@media (max-width: 768px) {
+  .activity-log__row {
+    grid-template-columns: 1fr;
+    gap: var(--space-1);
+  }
+}
+
+/* Tablet POS */
+@media (max-width: 1024px) {
+  .pos-layout { grid-template-columns: 1fr !important; }
+  .pos-cart-panel { max-height: 40vh; }
+}
+
+@media (max-width: 900px) {
+  .admin-layout .sidebar {
+    position: fixed;
+    z-index: 100;
+    transform: translateX(-100%);
+    transition: transform var(--transition);
+  }
+  .admin-layout:not(.admin-layout--collapsed) .sidebar--open,
+  .admin-layout--mobile-nav .sidebar {
+    transform: translateX(0);
+  }
+  .admin-main { margin-left: 0 !important; }
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: var(--space-3);
+  }
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 520px) {
+  .stats-grid { grid-template-columns: 1fr; }
+  html { font-size: 14px; }
+}

@@ -1,21 +1,25 @@
 import { useEffect, useState, useCallback } from 'react';
 import { getItems, searchItems } from '../../services/api';
-import { PageHeader, SearchInput, Spinner, EmptyState, Badge } from '../../components/ui';
-
-const BASE_URL = 'http://localhost:8000';
+import { PageHeader, SearchInput, PageLoading, ApiErrorCard, EmptyState, Badge } from '../../components/ui';
+import { getERPImageUrl } from '../../utils/erpLinks';
+import { getUserFriendlyMessage } from '../../utils/errorHandling';
 
 export default function ProductsPage() {
   const [items, setItems]     = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState('');
   const [query, setQuery]     = useState('');
 
   const load = useCallback(async (q = '') => {
     setLoading(true);
+    setError('');
     try {
       const res = q ? await searchItems(q) : await getItems({ limit: 100 });
       setItems(res.data.data || []);
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+    } catch (e) {
+      setItems([]);
+      setError(getUserFriendlyMessage(e));
+    } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -31,7 +35,9 @@ export default function ProductsPage() {
       </div>
 
       {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}><Spinner size={26} /></div>
+        <PageLoading size={26} />
+      ) : error ? (
+        <ApiErrorCard message={error} onRetry={() => load(query)} />
       ) : items.length === 0 ? (
         <EmptyState icon="📦" title="No products found" />
       ) : (
@@ -40,7 +46,7 @@ export default function ProductsPage() {
             <div key={item.item_code} className="product-card">
               <div className="product-card__img">
                 {item.image
-                  ? <img src={`${BASE_URL}${item.image}`} alt={item.item_name} />
+                  ? <img src={getERPImageUrl(item.image)} alt={item.item_name} />
                   : <span>🛒</span>}
               </div>
               <div className="product-card__body">

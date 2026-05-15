@@ -1,4 +1,5 @@
 import { Badge, Table } from '../ui';
+import { getERPDeskUrl } from '../../utils/erpLinks';
 
 export default function InventoryProductsTable({ rows }) {
   const columns = [
@@ -52,7 +53,7 @@ export default function InventoryProductsTable({ rows }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <a
             className="btn btn--ghost btn--sm"
-            href={`http://localhost:8000/app/item/${encodeURIComponent(row.item_code)}`}
+            href={getERPDeskUrl(`item/${encodeURIComponent(row.item_code)}`)}
             target="_blank"
             rel="noreferrer"
           >
@@ -60,7 +61,7 @@ export default function InventoryProductsTable({ rows }) {
           </a>
           <a
             className="btn btn--ghost btn--sm"
-            href="http://localhost:8000/app/stock-entry"
+            href={getERPDeskUrl('stock-entry')}
             target="_blank"
             rel="noreferrer"
           >
@@ -71,6 +72,6 @@ export default function InventoryProductsTable({ rows }) {
     },
   ];
 
-  return <Table columns={columns} data={rows} emptyMsg="No inventory products found" />;
+  return <Table columns={columns} data={rows} emptyMsg="No inventory products found" compact />;
 }
 

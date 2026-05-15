@@ -1,4 +1,5 @@
 import { PageHeader } from '../../components/ui';
+import { getERPQueryReportUrl } from '../../utils/erpLinks';
 
 const REPORTS = [
   { name: 'Sales Register',       desc: 'Detailed sales transactions with item-level breakdowns.',   icon: '📊' },
@@ -22,7 +23,7 @@ export default function ReportsPage() {
               <p className="report-card__desc">{r.desc}</p>
             </div>
             <a
-              href={`http://localhost:8000/app/query-report/${encodeURIComponent(r.name)}`}
+              href={getERPQueryReportUrl(r.name)}
               target="_blank" rel="noreferrer"
               className="btn btn--ghost btn--sm"
               style={{ marginTop: 12, alignSelf: 'flex-start' }}

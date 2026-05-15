@@ -33,12 +33,9 @@ export default function LoginPage() {
         authState = await loadUser();
       }
 
-      console.info('[login] redirect decision', JSON.stringify({
-        user: authState?.user?.name || null,
-        roles: authState?.roles || [],
-        homePath: authState?.homePath,
-        reason: authState?.reason,
-      }));
+      if (import.meta.env.DEV) {
+        console.info('[login] redirect', authState?.homePath, authState?.user?.name);
+      }
 
       if (authState.user && authState.homePath && authState.homePath !== '/login') {
         navigate(authState.homePath, { replace: true });

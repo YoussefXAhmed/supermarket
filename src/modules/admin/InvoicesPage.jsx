@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { getSalesInvoices } from '../../services/api';
-import { PageHeader, Spinner, EmptyState, Badge, Table } from '../../components/ui';
+import { PageHeader, PageLoading, ApiErrorCard, EmptyState, Badge, Table } from '../../components/ui';
+import { TablePageLayout, LayoutSection, TableRegion } from '../../components/layout/page-layouts';
+import { getUserFriendlyMessage } from '../../utils/errorHandling';
 
 const fmt = (n) =>
   new Intl.NumberFormat('en-EG', { style: 'currency', currency: 'EGP' }).format(n || 0);
@@ -13,14 +15,19 @@ const STATUS_COLOR = {
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState('');
   const [page, setPage]         = useState(0);
   const PAGE_SIZE = 50;
 
   const load = (p = 0) => {
     setLoading(true);
+    setError('');
     getSalesInvoices({ limit: PAGE_SIZE, start: p * PAGE_SIZE })
       .then(r => setInvoices(r.data.data || []))
-      .catch(console.error)
+      .catch((e) => {
+        setInvoices([]);
+        setError(getUserFriendlyMessage(e, 'Failed to load invoices'));
+      })
       .finally(() => setLoading(false));
   };
 
@@ -50,17 +57,25 @@ export default function InvoicesPage() {
     },
   ];
 
+  const sparse = invoices.length <= 8;
+
   return (
-    <div>
-      <PageHeader title="Sales Invoices" subtitle="All invoices from ERPNext" />
+    <TablePageLayout tableConstrain={sparse}>
+      <PageHeader title="Sales Invoices" subtitle="All invoices from ERPNext" dense />
 
       {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}><Spinner size={26} /></div>
+        <PageLoading size={26} />
+      ) : error ? (
+        <ApiErrorCard message={error} onRetry={() => load(page)} />
       ) : invoices.length === 0 ? (
         <EmptyState icon="🧾" title="No invoices found" />
       ) : (
         <>
-          <Table columns={columns} data={invoices} />
+          <LayoutSection variant="raised" flushHead fit={sparse}>
+            <TableRegion fit={sparse}>
+              <Table columns={columns} data={invoices} compact />
+            </TableRegion>
+          </LayoutSection>
           <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>
             <button
               className="btn btn--ghost btn--sm"
@@ -78,6 +93,6 @@ export default function InvoicesPage() {
           </div>
         </>
       )}
-    </div>
+    </TablePageLayout>
   );
 }

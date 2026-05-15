@@ -1,75 +1,116 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/layout/ProtectedRoute';
-import AdminLayout    from './components/layout/AdminLayout';
-
-// Pages
-import LoginPage      from './modules/auth/LoginPage';
-import POSPage        from './modules/pos/POSPage';
-import DashboardPage  from './modules/admin/DashboardPage';
-import ProductsPage   from './modules/admin/ProductsPage';
-import InventoryPage  from './modules/admin/InventoryPage';
-import InvoicesPage   from './modules/admin/InvoicesPage';
-import CustomersPage  from './modules/admin/CustomersPage';
-import UsersPage      from './modules/admin/UsersPage';
-import ReportsPage    from './modules/admin/ReportsPage';
-import SettingsPage   from './modules/admin/SettingsPage';
+import ErrorBoundary from './components/common/ErrorBoundary';
+import AdminLayout from './components/layout/AdminLayout';
 import InventoryLayout from './components/layout/InventoryLayout';
-import InventoryDashboardPage from './modules/inventory/InventoryPage';
-import WarehousesPage from './modules/inventory/pages/WarehousesPage';
-import StockEntryPage from './modules/inventory/pages/StockEntryPage';
-import StockLedgerPage from './modules/inventory/pages/StockLedgerPage';
-import ItemDetailsPage from './modules/inventory/pages/ItemDetailsPage';
-import InventoryAlertsPage from './modules/inventory/pages/AlertsPage';
-import InventoryReportsPage from './modules/inventory/pages/ReportsPage';
+import PurchasingLayout from './components/layout/PurchasingLayout';
+import { PageLoading } from './components/ui';
+
+const LoginPage = lazy(() => import('./modules/auth/LoginPage'));
+const POSPage = lazy(() => import('./modules/pos/POSPage'));
+const DashboardPage = lazy(() => import('./modules/admin/DashboardPage'));
+const ProductsPage = lazy(() => import('./modules/admin/ProductsPage'));
+const InventoryPage = lazy(() => import('./modules/admin/InventoryPage'));
+const InvoicesPage = lazy(() => import('./modules/admin/InvoicesPage'));
+const CustomersPage = lazy(() => import('./modules/admin/CustomersPage'));
+const UsersPage = lazy(() => import('./modules/admin/UsersPage'));
+const ReportsPage = lazy(() => import('./modules/admin/ReportsPage'));
+const SettingsPage = lazy(() => import('./modules/admin/SettingsPage'));
+const ActivityLogPage = lazy(() => import('./modules/admin/ActivityLogPage'));
+const InventoryDashboardPage = lazy(() => import('./modules/inventory/InventoryPage'));
+const WarehousesPage = lazy(() => import('./modules/inventory/pages/WarehousesPage'));
+const StockEntryPage = lazy(() => import('./modules/inventory/pages/StockEntryPage'));
+const StockLedgerPage = lazy(() => import('./modules/inventory/pages/StockLedgerPage'));
+const ItemDetailsPage = lazy(() => import('./modules/inventory/pages/ItemDetailsPage'));
+const InventoryAlertsPage = lazy(() => import('./modules/inventory/pages/AlertsPage'));
+const InventoryReportsPage = lazy(() => import('./modules/inventory/pages/ReportsPage'));
+const StockTransferPage = lazy(() => import('./modules/inventory/pages/StockTransferPage'));
+const ReconciliationPage = lazy(() => import('./modules/inventory/pages/ReconciliationPage'));
+const ReorderPage = lazy(() => import('./modules/inventory/pages/ReorderPage'));
+const BatchesPage = lazy(() => import('./modules/inventory/pages/BatchesPage'));
+const AnalyticsPage = lazy(() => import('./modules/inventory/pages/AnalyticsPage'));
+const PurchasingDashboardPage = lazy(() => import('./modules/purchasing/PurchasingDashboardPage'));
+const SuppliersPage = lazy(() => import('./modules/purchasing/SuppliersPage'));
+const SupplierDetailPage = lazy(() => import('./modules/purchasing/SupplierDetailPage'));
+const ReceiveStockPage = lazy(() => import('./modules/purchasing/ReceiveStockPage'));
+const PurchaseInvoicesPage = lazy(() => import('./modules/purchasing/PurchaseInvoicesPage'));
+const InvoiceMatchingPage = lazy(() => import('./modules/purchasing/InvoiceMatchingPage'));
+const PurchaseReportsPage = lazy(() => import('./modules/purchasing/PurchaseReportsPage'));
+
+function LazyPage({ children }) {
+  return <Suspense fallback={<PageLoading size={28} />}>{children}</Suspense>;
+}
 
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          {/* Public */}
-          <Route path="/login" element={<LoginPage />} />
+          <Route path="/login" element={<LazyPage><LoginPage /></LazyPage>} />
 
-          {/* POS — requires POS User or Admin */}
-          <Route path="/pos" element={
-            <ProtectedRoute require="pos">
-              <POSPage />
-            </ProtectedRoute>
-          } />
+          <Route
+            path="/pos"
+            element={
+              <ProtectedRoute require="pos">
+                <ErrorBoundary>
+                  <LazyPage><POSPage /></LazyPage>
+                </ErrorBoundary>
+              </ProtectedRoute>
+            }
+          />
 
-          {/* Inventory module */}
-          <Route path="/inventory" element={
-            <ProtectedRoute require="inventory">
-              <InventoryLayout />
-            </ProtectedRoute>
-          }>
-            <Route index element={<InventoryDashboardPage />} />
-            <Route path="warehouses" element={<WarehousesPage />} />
-            <Route path="stock-entry" element={<StockEntryPage />} />
-            <Route path="ledger" element={<StockLedgerPage />} />
-            <Route path="items" element={<ItemDetailsPage />} />
-            <Route path="alerts" element={<InventoryAlertsPage />} />
-            <Route path="reports" element={<InventoryReportsPage />} />
+          <Route
+            path="/inventory"
+            element={
+              <ProtectedRoute require="inventory">
+                <InventoryLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<LazyPage><InventoryDashboardPage /></LazyPage>} />
+            <Route path="warehouses" element={<LazyPage><WarehousesPage /></LazyPage>} />
+            <Route path="stock-entry" element={<LazyPage><StockEntryPage /></LazyPage>} />
+            <Route path="transfer" element={<LazyPage><StockTransferPage /></LazyPage>} />
+            <Route path="reconciliation" element={<LazyPage><ReconciliationPage /></LazyPage>} />
+            <Route path="ledger" element={<LazyPage><StockLedgerPage /></LazyPage>} />
+            <Route path="items" element={<LazyPage><ItemDetailsPage /></LazyPage>} />
+            <Route path="alerts" element={<LazyPage><InventoryAlertsPage /></LazyPage>} />
+            <Route path="reorder" element={<LazyPage><ReorderPage /></LazyPage>} />
+            <Route path="batches" element={<LazyPage><BatchesPage /></LazyPage>} />
+            <Route path="analytics" element={<LazyPage><AnalyticsPage /></LazyPage>} />
+            <Route path="reports" element={<LazyPage><InventoryReportsPage /></LazyPage>} />
           </Route>
 
-          {/* Admin — requires System Manager */}
-          <Route path="/admin" element={
-            <ProtectedRoute require="admin">
-              <AdminLayout />
-            </ProtectedRoute>
-          }>
-            <Route index            element={<DashboardPage />} />
-            <Route path="products"  element={<ProductsPage />} />
-            <Route path="inventory" element={<InventoryPage />} />
-            <Route path="invoices"  element={<InvoicesPage />} />
-            <Route path="customers" element={<CustomersPage />} />
-            <Route path="users"     element={<UsersPage />} />
-            <Route path="reports"   element={<ReportsPage />} />
-            <Route path="settings"  element={<SettingsPage />} />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute require="admin">
+                <AdminLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<LazyPage><DashboardPage /></LazyPage>} />
+            <Route path="products" element={<LazyPage><ProductsPage /></LazyPage>} />
+            <Route path="inventory" element={<LazyPage><InventoryPage /></LazyPage>} />
+            <Route path="purchasing" element={<PurchasingLayout />}>
+              <Route index element={<LazyPage><PurchasingDashboardPage /></LazyPage>} />
+              <Route path="suppliers" element={<LazyPage><SuppliersPage /></LazyPage>} />
+              <Route path="suppliers/:id" element={<LazyPage><SupplierDetailPage /></LazyPage>} />
+              <Route path="receive" element={<LazyPage><ReceiveStockPage /></LazyPage>} />
+              <Route path="invoices" element={<LazyPage><PurchaseInvoicesPage /></LazyPage>} />
+              <Route path="matching" element={<LazyPage><InvoiceMatchingPage /></LazyPage>} />
+              <Route path="reports" element={<LazyPage><PurchaseReportsPage /></LazyPage>} />
+            </Route>
+            <Route path="invoices" element={<LazyPage><InvoicesPage /></LazyPage>} />
+            <Route path="customers" element={<LazyPage><CustomersPage /></LazyPage>} />
+            <Route path="users" element={<LazyPage><UsersPage /></LazyPage>} />
+            <Route path="reports" element={<LazyPage><ReportsPage /></LazyPage>} />
+            <Route path="activity" element={<LazyPage><ActivityLogPage /></LazyPage>} />
+            <Route path="settings" element={<LazyPage><SettingsPage /></LazyPage>} />
           </Route>
 
-          {/* Default redirect */}
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </BrowserRouter>

@@ -10,7 +10,7 @@ export default function InventoryPage() {
   useEffect(() => {
     getStockLedger({ limit: 200 })
       .then(r => setBins(r.data.data || []))
-      .catch(console.error)
+      .catch(() => setBins([]))
       .finally(() => setLoading(false));
   }, []);
 

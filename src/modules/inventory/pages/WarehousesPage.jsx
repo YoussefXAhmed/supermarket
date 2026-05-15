@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { EmptyState, PageHeader, Spinner, Table } from '../../../components/ui';
+import { EmptyState, PageHeader, PageLoading, ApiErrorCard, Table } from '../../../components/ui';
+import { getUserFriendlyMessage } from '../../../utils/errorHandling';
 import { listWarehouses } from '../../../services/inventoryApi';
 
 export default function WarehousesPage() {
@@ -15,7 +16,7 @@ export default function WarehousesPage() {
       setRows(res?.data?.data || []);
     } catch (e) {
       setRows([]);
-      setError(e.message || 'Failed to load warehouses');
+      setError(getUserFriendlyMessage(e, 'Failed to load warehouses'));
     } finally {
       setLoading(false);
     }
@@ -36,9 +37,9 @@ export default function WarehousesPage() {
       <PageHeader title="Warehouses" subtitle="ERPNext warehouse list (read-only)" />
 
       {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}><Spinner size={26} /></div>
+        <PageLoading size={26} />
       ) : error ? (
-        <div className="card" style={{ borderColor: 'rgba(239,68,68,0.35)', color: 'var(--red)' }}>{error}</div>
+        <ApiErrorCard message={error} onRetry={load} />
       ) : rows.length === 0 ? (
         <EmptyState icon="🏬" title="No warehouses found" />
       ) : (

@@ -59,11 +59,43 @@
 .stat-card--green  .stat-card__icon { background: var(--green-bg); }
 .stat-card--blue   .stat-card__icon { background: var(--blue-bg); }
 .stat-card--red    .stat-card__icon { background: var(--red-bg); }
+.stat-card--amber  .stat-card__icon { background: var(--amber-bg); }
+.stat-card--amber  .stat-card__value { color: var(--amber); }
 .stat-card__label { font-size: 0.78rem; color: var(--text-2); font-weight: 500; margin-bottom: 4px; }
 .stat-card__value { font-size: 1.5rem; font-weight: 700; color: var(--text); }
 .stat-card__trend { font-size: 0.72rem; margin-top: 4px; }
 .stat-card__trend.up   { color: var(--green); }
 .stat-card__trend.down { color: var(--red); }
+
+/* Compact KPI (dense dashboards) */
+.stat-card--compact {
+  padding: 11px 13px;
+  gap: 10px;
+  align-items: center;
+  border-radius: var(--radius);
+}
+.stat-card--compact .stat-card__icon {
+  width: 34px;
+  height: 34px;
+  font-size: 1rem;
+  border-radius: var(--radius-sm);
+}
+.stat-card--compact .stat-card__label {
+  font-size: 0.68rem;
+  margin-bottom: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.stat-card--compact .stat-card__value {
+  font-size: 1.28rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+.stat-card--compact .stat-card__trend {
+  font-size: 0.65rem;
+  margin-top: 2px;
+}
 
 /* ── Page Header ── */
 .page-header {
@@ -108,6 +140,8 @@
 .toast--info    { background: var(--blue-bg);  color: var(--blue); }
 .toast--success { background: var(--green-bg); color: var(--green); }
 .toast--error   { background: var(--red-bg);   color: var(--red); }
+.toast--warning { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber); }
+.toast--critical { background: var(--red-bg); color: var(--red); border: 2px solid var(--red); font-weight: 600; }
 .toast__close   { margin-left: auto; opacity: 0.6; font-size: 0.75rem; padding: 2px; cursor: pointer; color: inherit; background: none; border: none; }
 
 /* ── Search Input ── */
@@ -145,4 +179,48 @@
 .input:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+/* ── API error & error boundary ── */
+.api-error-card {
+  border-color: rgba(239, 68, 68, 0.35);
+  margin-bottom: 16px;
+}
+.api-error-card__title {
+  font-weight: 600;
+  font-size: 0.92rem;
+  margin-bottom: 6px;
+}
+.api-error-card__message {
+  color: var(--red);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.error-boundary {
+  max-width: 480px;
+  margin: 48px auto;
+  text-align: center;
+  padding: 32px 24px;
+}
+.error-boundary__icon {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 12px;
+}
+.error-boundary__title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.error-boundary__desc {
+  color: var(--text-2);
+  font-size: 0.88rem;
+  margin-bottom: 20px;
+}
+.error-boundary__actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
 }

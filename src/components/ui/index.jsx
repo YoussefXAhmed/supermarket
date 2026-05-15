@@ -32,6 +32,36 @@ export function Card({ children, className = '', ...props }) {
   return <div className={`card ${className}`} {...props}>{children}</div>;
 }
 
+/* ── PageLoading ── */
+export function PageLoading({ size = 28, className = '' }) {
+  return (
+    <div className={`content-loading ${className}`.trim()}>
+      <Spinner size={size} />
+    </div>
+  );
+}
+
+/* ── ApiErrorCard ── */
+export function ApiErrorCard({
+  title = 'Could not load data',
+  message,
+  onRetry,
+  retryLabel = 'Try again',
+}) {
+  if (!message) return null;
+  return (
+    <div className="card api-error-card" role="alert">
+      <p className="api-error-card__title">{title}</p>
+      <p className="api-error-card__message">{message}</p>
+      {onRetry && (
+        <Btn variant="ghost" size="sm" onClick={onRetry} style={{ marginTop: 12 }}>
+          {retryLabel}
+        </Btn>
+      )}
+    </div>
+  );
+}
+
 /* ── EmptyState ── */
 export function EmptyState({ icon = '📭', title = 'Nothing here', desc = '' }) {
   return (
@@ -54,9 +84,9 @@ export function Toast({ message, type = 'info', onClose }) {
 }
 
 /* ── PageHeader ── */
-export function PageHeader({ title, subtitle, actions }) {
+export function PageHeader({ title, subtitle, actions, dense = false }) {
   return (
-    <div className="page-header">
+    <div className={`page-header ${dense ? 'page-header--dense' : ''}`}>
       <div>
         <h1 className="page-header__title">{title}</h1>
         {subtitle && <p className="page-header__sub">{subtitle}</p>}
@@ -67,9 +97,9 @@ export function PageHeader({ title, subtitle, actions }) {
 }
 
 /* ── StatCard ── */
-export function StatCard({ label, value, icon, color = 'accent', trend }) {
+export function StatCard({ label, value, icon, color = 'accent', trend, compact = false }) {
   return (
-    <div className={`stat-card stat-card--${color}`}>
+    <div className={`stat-card stat-card--${color} ${compact ? 'stat-card--compact' : ''}`}>
       <div className="stat-card__icon">{icon}</div>
       <div className="stat-card__body">
         <p className="stat-card__label">{label}</p>
@@ -85,11 +115,11 @@ export function StatCard({ label, value, icon, color = 'accent', trend }) {
 }
 
 /* ── Table ── */
-export function Table({ columns, data, emptyMsg = 'No data' }) {
+export function Table({ columns, data, emptyMsg = 'No data', compact = false, className = '' }) {
   if (!data?.length) return <EmptyState title={emptyMsg} />;
   return (
-    <div className="table-wrap">
-      <table className="table">
+    <div className={`table-wrap ${compact ? 'table-wrap--compact' : ''} ${className}`.trim()}>
+      <table className={`table ${compact ? 'table--compact' : ''}`}>
         <thead>
           <tr>{columns.map(c => <th key={c.key}>{c.label}</th>)}</tr>
         </thead>
@@ -108,6 +138,26 @@ export function Table({ columns, data, emptyMsg = 'No data' }) {
 }
 
 /* ── SearchInput ── */
+/* ── Partial data warning (degraded ERP queries) ── */
+export function PartialDataBanner({ warnings }) {
+  if (!warnings?.length) return null;
+  return (
+    <div className="card panel partial-data-banner" role="status" style={{ marginBottom: 16, borderColor: 'var(--amber)' }}>
+      <p className="inv-warn" style={{ margin: 0 }}>Some data could not be loaded. Showing partial results.</p>
+      <ul className="partial-data-banner__list">
+        {warnings.map((w) => (
+          <li key={w}>{w}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export { default as TrendChart } from './TrendChart';
+export { default as PaginatedTable } from './PaginatedTable';
+export { default as ExportToolbar } from './ExportToolbar';
+export { default as RoleBadge } from './RoleBadge';
+
 export function SearchInput({ value, onChange, placeholder, inputRef, autoFocus }) {
   return (
     <div className="search-input-wrap">

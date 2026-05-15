@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { Btn, EmptyState, PageHeader, Spinner, Table } from '../../../components/ui';
+import { Btn, EmptyState, PageHeader, PageLoading, ApiErrorCard, Table } from '../../../components/ui';
+import { TablePageLayout, LayoutSection, TableRegion } from '../../../components/layout/page-layouts';
+import { getUserFriendlyMessage } from '../../../utils/errorHandling';
 import { listStockLedger } from '../../../services/inventoryApi';
 
 export default function StockLedgerPage() {
@@ -17,7 +19,7 @@ export default function StockLedgerPage() {
       setRows(res?.data?.data || []);
     } catch (e) {
       setRows([]);
-      setError(e.message || 'Failed to load stock ledger');
+      setError(getUserFriendlyMessage(e, 'Failed to load stock ledger'));
     } finally {
       setLoading(false);
     }
@@ -34,25 +36,31 @@ export default function StockLedgerPage() {
     { key: 'voucher_no', label: 'No.' },
   ];
 
+  const sparse = rows.length <= 8;
+
   return (
-    <div>
-      <PageHeader title="Stock Ledger" subtitle="Movement history from Stock Ledger Entry" />
-      <div className="card panel">
+    <TablePageLayout tableConstrain={sparse}>
+      <PageHeader title="Stock Ledger" subtitle="Movement history from Stock Ledger Entry" dense />
+      <LayoutSection variant="flat" flushHead>
         <div className="toolbar__group">
           <input className="input toolbar__input-sm" placeholder="Filter by item code" value={itemCode} onChange={(e) => setItemCode(e.target.value)} />
           <Btn variant="ghost" size="sm" onClick={load}>Load Movements</Btn>
         </div>
-      </div>
+      </LayoutSection>
 
       {loading ? (
-        <div className="content-loading"><Spinner size={26} /></div>
+        <PageLoading size={26} />
       ) : error ? (
-        <div className="card content-error">{error}</div>
+        <ApiErrorCard message={error} onRetry={load} />
       ) : rows.length === 0 ? (
         <EmptyState icon="📒" title="No ledger entries loaded" desc="Use filter and click Load Movements." />
       ) : (
-        <Table columns={columns} data={rows} />
+        <LayoutSection variant="raised" flushHead fit={sparse}>
+          <TableRegion fit={sparse}>
+            <Table columns={columns} data={rows} compact />
+          </TableRegion>
+        </LayoutSection>
       )}
-    </div>
+    </TablePageLayout>
   );
 }

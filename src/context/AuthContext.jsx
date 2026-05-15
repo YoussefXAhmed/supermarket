@@ -14,6 +14,14 @@ const POS_ROLES = new Set([
   'website manager',
 ]);
 const INVENTORY_ROLES = new Set(['stock user', 'stock manager', 'item manager', 'warehouse user', 'warehouse manager']);
+const MANAGER_ROLES = new Set(['pos manager', 'sales manager', 'stock manager', 'warehouse manager', 'purchase manager']);
+
+function devAuthLog(...args) {
+  if (import.meta.env.DEV) console.info(...args);
+}
+function devAuthWarn(...args) {
+  if (import.meta.env.DEV) console.warn(...args);
+}
 
 function normalizeRole(value) {
   return String(value || '').trim().toLowerCase();
@@ -33,7 +41,14 @@ function deriveCapabilities(roleList = [], roleProfileName = '') {
     profile.includes('stock') ||
     profile.includes('inventory') ||
     profile.includes('warehouse');
-  return { isAdmin, isPOS, isInventory };
+  const isManager =
+    normalized.some((r) => MANAGER_ROLES.has(r) || r.includes('manager')) ||
+    profile.includes('manager');
+  const roleLabel = roleList.find((r) => ADMIN_ROLES.has(r) || POS_ROLES.has(normalizeRole(r)) || INVENTORY_ROLES.has(normalizeRole(r)))
+    || roleProfileName
+    || roleList[0]
+    || '';
+  return { isAdmin, isPOS, isInventory, isManager, roleLabel };
 }
 
 function homePathFromRoles(roleList = [], roleProfileName = '') {
@@ -57,7 +72,9 @@ export function AuthProvider({ children }) {
   const [user, setUser]     = useState(null);
   const [roles, setRoles]   = useState([]);
   const [loading, setLoading] = useState(true);
-  const [capabilities, setCapabilities] = useState({ isAdmin: false, isPOS: false, isInventory: false });
+  const [capabilities, setCapabilities] = useState({
+    isAdmin: false, isPOS: false, isInventory: false, isManager: false, roleLabel: '',
+  });
 
   const loadUser = useCallback(async () => {
     try {
@@ -66,8 +83,8 @@ export function AuthProvider({ children }) {
       if (!name || name === 'Guest') {
         setUser(null);
         setRoles([]);
-        setCapabilities({ isAdmin: false, isPOS: false, isInventory: false });
-        return { user: null, roles: [], isAdmin: false, isPOS: false, isInventory: false, homePath: '/login', reason: 'guest' };
+        setCapabilities({ isAdmin: false, isPOS: false, isInventory: false, isManager: false, roleLabel: '' });
+        return { user: null, roles: [], isAdmin: false, isPOS: false, isInventory: false, isManager: false, roleLabel: '', homePath: '/login', reason: 'guest' };
       }
 
       try {
@@ -84,15 +101,15 @@ export function AuthProvider({ children }) {
           throw new Error('roles-empty-from-user-doctype');
         }
 
-        const { isAdmin, isPOS, isInventory } = deriveCapabilities(roleList, roleProfileName);
+        const caps = deriveCapabilities(roleList, roleProfileName);
         const homePath = homePathFromRoles(roleList, roleProfileName);
-        console.info('[auth] roles resolved', JSON.stringify({ user: name, roles: roleList, roleProfileName, homePath }));
+        devAuthLog('[auth] roles resolved', { user: name, roles: roleList, homePath });
         setUser(userData);
         setRoles(roleList);
-        setCapabilities({ isAdmin, isPOS, isInventory });
-        return { user: userData, roles: roleList, isAdmin, isPOS, isInventory, homePath, reason: null };
+        setCapabilities(caps);
+        return { user: userData, roles: roleList, ...caps, homePath, reason: null };
       } catch (e) {
-        console.warn('[auth] failed to fetch roles', JSON.stringify({ user: name, error: e?.message }));
+        devAuthWarn('[auth] failed to fetch roles', { user: name, error: e?.message });
 
         // Final fallback when role APIs are restricted: infer landing path from user identifier.
         const inferredPath = homePathFromIdentifier(name);
@@ -100,12 +117,14 @@ export function AuthProvider({ children }) {
           isAdmin: inferredPath === '/admin',
           isPOS: inferredPath === '/pos',
           isInventory: inferredPath === '/inventory',
+          isManager: false,
+          roleLabel: name,
         };
         const fallbackUser = { name, full_name: name, email: name };
         setUser(fallbackUser);
         setRoles([]);
         setCapabilities(inferredCaps);
-        console.info('[auth] inferred fallback', JSON.stringify({ user: name, inferredPath }));
+        devAuthLog('[auth] inferred fallback', { user: name, inferredPath });
         return {
           user: fallbackUser,
           roles: [],
@@ -117,8 +136,8 @@ export function AuthProvider({ children }) {
     } catch (e) {
       setUser(null);
       setRoles([]);
-      setCapabilities({ isAdmin: false, isPOS: false, isInventory: false });
-      return { user: null, roles: [], isAdmin: false, isPOS: false, isInventory: false, homePath: '/login', reason: e?.message || 'load-user-failed' };
+      setCapabilities({ isAdmin: false, isPOS: false, isInventory: false, isManager: false, roleLabel: '' });
+      return { user: null, roles: [], isAdmin: false, isPOS: false, isInventory: false, isManager: false, roleLabel: '', homePath: '/login', reason: e?.message || 'load-user-failed' };
     } finally {
       setLoading(false);
     }
@@ -130,16 +149,14 @@ export function AuthProvider({ children }) {
     try { await apiLogout(); } catch { /* ignore */ }
     setUser(null);
     setRoles([]);
-    setCapabilities({ isAdmin: false, isPOS: false, isInventory: false });
+    setCapabilities({ isAdmin: false, isPOS: false, isInventory: false, isManager: false, roleLabel: '' });
   };
 
-  const isAdmin = capabilities.isAdmin;
-  const isPOS = capabilities.isPOS;
-  const isInventory = capabilities.isInventory;
+  const { isAdmin, isPOS, isInventory, isManager, roleLabel } = capabilities;
   const homePath = homePathFromRoles(roles, user?.role_profile_name || '');
 
   return (
-    <AuthContext.Provider value={{ user, roles, loading, loadUser, logout, isAdmin, isPOS, isInventory, homePath }}>
+    <AuthContext.Provider value={{ user, roles, loading, loadUser, logout, isAdmin, isPOS, isInventory, isManager, roleLabel, homePath }}>
       {children}
     </AuthContext.Provider>
   );

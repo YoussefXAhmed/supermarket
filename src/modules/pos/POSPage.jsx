@@ -1,121 +1,80 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePOS } from '../../hooks/usePOS';
 import { useAuth } from '../../hooks/useAuth';
+import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
 import { getCustomers, getMyPOSInvoices, getPOSInvoice } from '../../services/api';
-import { Btn, Spinner, SearchInput, EmptyState } from '../../components/ui';
+import {
+  Btn,
+  Spinner,
+  SearchInput,
+  EmptyState,
+  PageLoading,
+  ApiErrorCard,
+} from '../../components/ui';
 import UserSessionActions from '../../components/layout/UserSessionActions';
+import POSThermalReceipt from '../../components/pos/POSThermalReceipt';
+import POSShiftBar from '../../components/pos/POSShiftBar';
+import POSPaymentPanel from '../../components/pos/POSPaymentPanel';
+import POSMetricsBar from '../../components/pos/POSMetricsBar';
+import { getERPImageUrl } from '../../utils/erpLinks';
+import { getUserFriendlyMessage } from '../../utils/errorHandling';
+import { useNotify } from '../../context/NotificationContext';
+import { availableQty } from '../../utils/posStock';
 import '../../styles/pos.css';
 
-const BASE_URL = 'http://localhost:8000';
+const DEFAULT_PAYMENT = { mode: 'cash', singleMode: 'Cash', cashAmount: '', cardAmount: '', cashMode: 'Cash', cardMode: 'Card' };
 
-function ItemCard({ item, onAdd }) {
-  const img = item.image ? `${BASE_URL}${item.image}` : null;
+function stockLabel(item) {
+  const avail = availableQty(item);
+  if (avail === null) return null;
+  if (avail <= 0) return { text: 'Out of stock', className: 'item-card__stock--out' };
+  if (avail < 5) return { text: `${avail} left`, className: 'item-card__stock--low' };
+  return { text: `In stock: ${avail}`, className: 'item-card__stock--ok' };
+}
+
+function ItemCard({ item, onAdd, disabled }) {
+  const img = getERPImageUrl(item.image);
+  const stock = stockLabel(item);
+  const out = stock?.className === 'item-card__stock--out';
   return (
-    <button className="item-card" onClick={() => onAdd(item)}>
+    <button type="button" className="item-card" onClick={() => onAdd(item)} disabled={disabled || out}>
       <div className="item-card__img">
         {img ? <img src={img} alt={item.item_name} /> : <span className="item-card__placeholder">🛒</span>}
       </div>
       <div className="item-card__body">
         <p className="item-card__name">{item.item_name}</p>
-        <p className="item-card__code">{item.item_code}</p>
+        <p className="item-card__code mono">{item.item_code}</p>
+        {stock && <p className={`item-card__stock ${stock.className}`}>{stock.text}</p>}
         <p className="item-card__price">EGP {(item.standard_rate || 0).toFixed(2)}</p>
       </div>
     </button>
   );
 }
 
-function CartRow({ item, onQty, onRemove }) {
+function CartRow({ item, onQty, onRemove, maxQty }) {
+  const avail = availableQty(item);
   return (
     <div className="cart-row">
       <div className="cart-row__info">
         <p className="cart-row__name">{item.item_name}</p>
         <p className="cart-row__rate">EGP {item.rate.toFixed(2)} each</p>
+        {avail !== null && <p className="cart-row__stock">Available: {avail}</p>}
       </div>
       <div className="cart-row__qty">
-        <button className="cart-row__qty-btn" onClick={() => onQty(item.item_code, item.qty - 1)}>−</button>
-        <span>{item.qty}</span>
-        <button className="cart-row__qty-btn" onClick={() => onQty(item.item_code, item.qty + 1)}>+</button>
+        <button type="button" className="cart-row__qty-btn" aria-label="Decrease" onClick={() => onQty(item.item_code, item.qty - 1)}>−</button>
+        <input
+          className="cart-row__qty-input"
+          type="number"
+          min="1"
+          max={maxQty ?? undefined}
+          value={item.qty}
+          onChange={(e) => onQty(item.item_code, Number(e.target.value))}
+        />
+        <button type="button" className="cart-row__qty-btn" aria-label="Increase" onClick={() => onQty(item.item_code, item.qty + 1)}>+</button>
       </div>
       <p className="cart-row__total">EGP {(item.qty * item.rate).toFixed(2)}</p>
-      <button className="cart-row__remove" onClick={() => onRemove(item.item_code)}>✕</button>
-    </div>
-  );
-}
-
-function InvoiceDetailsPanel({ invoice }) {
-  if (!invoice) {
-    return (
-      <div className="card pos-invoice-panel__empty">
-        <h3>Select an invoice</h3>
-        <p>Pick an invoice from the list to see full details here.</p>
-      </div>
-    );
-  }
-
-  const lines = invoice.items || [];
-  const total = Number(invoice.grand_total || invoice.total || 0);
-  const postingDate = invoice.posting_date || new Date().toISOString().slice(0, 10);
-
-  return (
-    <div className="card pos-invoice-panel">
-      <div className="receipt-modal__header">
-        <div>
-          <h2>POS Invoice</h2>
-          <p className="receipt-modal__sub">In-page ERPNext preview</p>
-        </div>
-        <span className="receipt-modal__status">{invoice.status || 'Paid'}</span>
-      </div>
-
-      <div className="receipt-modal__meta">
-        <p><span>Invoice</span><strong className="mono">{invoice.name}</strong></p>
-        <p><span>Date</span><strong>{postingDate}</strong></p>
-        <p><span>Customer</span><strong>{invoice.customer || 'Walk-in Customer'}</strong></p>
-      </div>
-
-      <div className="receipt-modal__table-wrap">
-        <table className="receipt-modal__table">
-          <thead>
-            <tr>
-              <th>Item</th>
-              <th>Qty</th>
-              <th>Rate</th>
-              <th>Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            {lines.map((line, idx) => {
-              const qty = Number(line.qty || 0);
-              const rate = Number(line.rate || 0);
-              const amount = Number(line.amount ?? qty * rate);
-              return (
-                <tr key={`${line.item_code || line.item_name}-${idx}`}>
-                  <td>{line.item_name || line.item_code}</td>
-                  <td>{qty}</td>
-                  <td>EGP {rate.toFixed(2)}</td>
-                  <td>EGP {amount.toFixed(2)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="receipt-modal__footer">
-        <div className="receipt-modal__total-row">
-          <span>Grand Total</span>
-          <strong>EGP {total.toFixed(2)}</strong>
-        </div>
-        <a
-          className="btn btn--ghost btn--md"
-          style={{ width: '100%', marginTop: 10, textAlign: 'center' }}
-          href={`http://127.0.0.1:8000/printview?doctype=POS%20Invoice&name=${encodeURIComponent(invoice.name)}&format=Standard&no_letterhead=0&letterhead=No%20Letterhead&_lang=en`}
-          target="_blank"
-          rel="noreferrer"
-        >
-          Print Invoice
-        </a>
-      </div>
+      <button type="button" className="cart-row__remove" aria-label="Remove" onClick={() => onRemove(item.item_code)}>✕</button>
     </div>
   );
 }
@@ -123,15 +82,59 @@ function InvoiceDetailsPanel({ invoice }) {
 export default function POSPage() {
   const { isAdmin, isInventory, logout, user } = useAuth();
   const navigate = useNavigate();
-  const pos = usePOS();
+  const notify = useNotify();
+  const pos = usePOS(user);
   const [customer, setCustomer] = useState('Walk-in Customer');
   const [customers, setCustomers] = useState([]);
   const [checkoutErr, setCheckoutErr] = useState('');
+  const [payment, setPayment] = useState(DEFAULT_PAYMENT);
   const [myInvoices, setMyInvoices] = useState([]);
   const [invoicesLoading, setInvoicesLoading] = useState(false);
   const [invoiceLoadingId, setInvoiceLoadingId] = useState('');
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [viewMode, setViewMode] = useState('sell');
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [initError, setInitError] = useState('');
+  const initDone = useRef(false);
+
+  useBarcodeScanner({
+    enabled: viewMode === 'sell' && pos.shiftOpen,
+    onScan: async (code) => {
+      try {
+        const item = await pos.resolveItemByScan(code);
+        if (item) pos.addToCart(item);
+        else setCheckoutErr(`No product for barcode: ${code}`);
+      } catch (e) {
+        setCheckoutErr(getUserFriendlyMessage(e));
+      }
+    },
+  });
+
+  useEffect(() => {
+    if (initDone.current) return;
+    initDone.current = true;
+    (async () => {
+      try {
+        await pos.init();
+        getCustomers({ limit: 500 })
+          .then((res) => setCustomers(res.data.data || []))
+          .catch(() => setCustomers([]));
+      } catch (e) {
+        setInitError(getUserFriendlyMessage(e));
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (pos.profile?.defaultCustomer) setCustomer(pos.profile.defaultCustomer);
+  }, [pos.profile?.defaultCustomer]);
+
+  useEffect(() => {
+    if (pos.paymentModes?.length) {
+      const cash = pos.paymentModes.find((m) => /cash/i.test(m.name))?.name || pos.paymentModes[0].name;
+      setPayment((p) => ({ ...p, singleMode: cash, cashMode: cash }));
+    }
+  }, [pos.paymentModes]);
 
   const loadMyInvoices = useCallback(async () => {
     if (!user?.name) return;
@@ -147,48 +150,70 @@ export default function POSPage() {
   }, [user?.name]);
 
   useEffect(() => {
-    pos.loadItems();
-    getCustomers({ limit: 500 })
-      .then((res) => {
-        const rows = res.data.data || [];
-        setCustomers(rows);
-      })
-      .catch(() => setCustomers([]));
-  }, []);
-
-  useEffect(() => {
     loadMyInvoices();
   }, [loadMyInvoices, pos.lastInvoice]);
 
   useEffect(() => {
     if (pos.lastInvoice?.name) {
       setSelectedInvoice(pos.lastInvoice);
+      setShowReceipt(true);
       setViewMode('invoices');
     }
   }, [pos.lastInvoice]);
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (viewMode !== 'sell') return;
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
+        if (e.key === 'F9') e.preventDefault();
+        else return;
+      }
+      if (e.key === 'F2' && pos.shiftOpen && pos.cart.length) {
+        e.preventDefault();
+        handleCheckout();
+      }
+      if (e.key === 'Escape' && pos.cart.length) {
+        e.preventDefault();
+        handleClearCart();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
 
   const handleSearch = useCallback(async (q) => {
     pos.setQuery(q);
     await pos.loadItems(q);
   }, [pos]);
 
+  const handleClearCart = () => {
+    if (!pos.cart.length) return;
+    if (window.confirm('Clear all items from the cart?')) pos.clearCart();
+  };
+
   const handleCheckout = async () => {
     setCheckoutErr('');
+    if (!pos.shiftOpen) {
+      setCheckoutErr('Start a shift before checkout.');
+      return;
+    }
     try {
       const selected = customers.find((c) => c.name === customer);
       const nationalId = selected?.national_id || selected?.custom_national_id || selected?.tax_id || '';
-      await pos.checkout({
+      const invoice = await pos.checkout({
         customer,
+        paymentState: payment,
         invoiceExtras: nationalId
-          ? {
-              national_id: nationalId,
-              custom_national_id: nationalId,
-              tax_id: nationalId,
-            }
+          ? { national_id: nationalId, custom_national_id: nationalId, tax_id: nationalId }
           : {},
       });
+      notify.success(`Sale complete — ${invoice?.name || 'invoice submitted'}`);
+    } catch (e) {
+      const msg = getUserFriendlyMessage(e);
+      setCheckoutErr(msg);
+      if (e?.recoverable) notify.warning(msg);
+      else notify.error(msg);
     }
-    catch (e) { setCheckoutErr(e.message); }
   };
 
   const handleOpenInvoice = async (invoiceName) => {
@@ -199,46 +224,34 @@ export default function POSPage() {
       const invoiceDoc = res?.data?.data || { name: invoiceName };
       setSelectedInvoice(invoiceDoc);
       pos.setLastInvoice(invoiceDoc);
+      setShowReceipt(true);
     } catch {
-      const fallback = { name: invoiceName, items: [], customer: '—', grand_total: 0, status: 'Draft' };
-      setSelectedInvoice(fallback);
-      pos.setLastInvoice(fallback);
+      setSelectedInvoice({ name: invoiceName, items: [], customer: '—', grand_total: 0, status: 'Draft' });
     } finally {
       setInvoiceLoadingId('');
     }
   };
 
+  const sellDisabled = !pos.shiftOpen || pos.profileLoading;
+
   return (
     <div className="pos-page">
-      {/* ── Top Bar ── */}
       <header className="pos-header">
         <div className="pos-header__brand">
-          <img className="pos-header__logo" src="/logo.png" alt="Elmahdi logo" />
+          <img className="pos-header__logo" src="/logo.png" alt="" />
           <span className="pos-header__name">Elmahdi POS</span>
         </div>
         <div className="pos-header__center">
           <div className="pos-header__tools">
             <div className="pos-view-toggle">
-              <button
-                type="button"
-                className={`pos-view-toggle__btn ${viewMode === 'sell' ? 'pos-view-toggle__btn--active' : ''}`}
-                onClick={() => setViewMode('sell')}
-              >
-                Sell
-              </button>
-              <button
-                type="button"
-                className={`pos-view-toggle__btn ${viewMode === 'invoices' ? 'pos-view-toggle__btn--active' : ''}`}
-                onClick={() => setViewMode('invoices')}
-              >
-                My Invoices
-              </button>
+              <button type="button" className={`pos-view-toggle__btn ${viewMode === 'sell' ? 'pos-view-toggle__btn--active' : ''}`} onClick={() => setViewMode('sell')}>Sell</button>
+              <button type="button" className={`pos-view-toggle__btn ${viewMode === 'invoices' ? 'pos-view-toggle__btn--active' : ''}`} onClick={() => setViewMode('invoices')}>My Invoices</button>
             </div>
             {viewMode === 'sell' && (
               <SearchInput
                 value={pos.query}
                 onChange={handleSearch}
-                placeholder="Search products… (barcode, name)"
+                placeholder="Search or scan barcode…"
                 inputRef={pos.searchRef}
                 autoFocus
               />
@@ -258,91 +271,134 @@ export default function POSPage() {
         </div>
       </header>
 
+      <POSShiftBar
+        profile={pos.profile}
+        shift={pos.shift}
+        shiftOpen={pos.shiftOpen}
+        shiftLoading={pos.shiftLoading}
+        shiftError={pos.shiftError}
+        onStartShift={pos.openShift}
+        onEndShift={pos.closeShift}
+        onRefresh={pos.refreshShift}
+      />
+
+      <POSMetricsBar metrics={pos.metrics} shiftOpen={pos.shiftOpen} />
+
+      {(initError || pos.profileError) && (
+        <ApiErrorCard message={initError || pos.profileError} onRetry={() => pos.init()} />
+      )}
+
+      {pos.pendingInvoice && (
+        <div className="pos-pending card">
+          <p>Invoice <strong className="mono">{pos.pendingInvoice}</strong> was created but may not be submitted.</p>
+          <div className="pos-pending__actions">
+            <Btn variant="primary" size="sm" loading={pos.checkoutLoading} onClick={() => pos.recoverPendingInvoice()}>Retry submit</Btn>
+            <Btn variant="ghost" size="sm" onClick={() => pos.dismissPendingInvoice()}>Dismiss</Btn>
+          </div>
+        </div>
+      )}
+
       {viewMode === 'sell' ? (
         <div className="pos-body">
-        {/* ── Product Grid ── */}
-        <section className="pos-products">
-          {pos.loading ? (
-            <div className="pos-loading"><Spinner size={28} /></div>
-          ) : pos.items.length === 0 ? (
-            <EmptyState icon="🔍" title="No products found" desc="Try a different search term" />
-          ) : (
-            <div className="pos-grid">
-              {pos.items.map(item => (
-                <ItemCard key={item.item_code} item={item} onAdd={pos.addToCart} />
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* ── Cart ── */}
-        <aside className="pos-cart">
-          <div className="pos-cart__header">
-            <h2 className="pos-cart__title">Cart</h2>
-            <span className="pos-cart__count">{pos.cartCount} items</span>
-            {pos.cartCount > 0 && (
-              <button className="pos-cart__clear" onClick={pos.clearCart}>Clear</button>
+          <section className="pos-products">
+            {pos.error && (
+              <ApiErrorCard title="Could not load products" message={getUserFriendlyMessage(pos.error)} onRetry={() => pos.loadItems(pos.query)} />
             )}
-          </div>
-
-          <div className="pos-cart__customer">
-            <label className="pos-cart__customer-label">Customer</label>
-            <select
-              className="pos-cart__customer-input"
-              value={customer}
-              onChange={e => setCustomer(e.target.value)}
-            >
-              <option value="Walk-in Customer">Walk-in Customer</option>
-              {customers
-                .filter((c) => c.name !== 'Walk-in Customer')
-                .map((c) => {
-                const label = c.customer_name || c.name;
-                return <option key={c.name} value={c.name}>{label}</option>;
-              })}
-            </select>
-          </div>
-
-          <div className="pos-cart__items">
-            {pos.cart.length === 0 ? (
-              <EmptyState icon="🛒" title="Cart is empty" desc="Tap a product to add it" />
+            {pos.loading && !pos.items.length ? (
+              <PageLoading size={28} className="pos-loading" />
+            ) : pos.items.length === 0 ? (
+              <EmptyState icon="🔍" title="No products found" desc={pos.shiftOpen ? 'Search or scan a barcode' : 'Start your shift first'} />
             ) : (
-              pos.cart.map(item => (
-                <CartRow key={item.item_code} item={item}
-                  onQty={pos.updateQty} onRemove={pos.removeFromCart} />
-              ))
+              <div className={`pos-grid ${pos.loading ? 'pos-grid--loading' : ''}`}>
+                {pos.items.map((item) => (
+                  <ItemCard key={item.item_code} item={item} onAdd={pos.addToCart} disabled={sellDisabled} />
+                ))}
+              </div>
             )}
-          </div>
+          </section>
 
-          <div className="pos-cart__footer">
-            <div className="pos-cart__subtotal">
-              <span>Subtotal</span>
-              <span>EGP {pos.cartTotal.toFixed(2)}</span>
+          <aside className="pos-cart">
+            <div className="pos-cart__header">
+              <h2 className="pos-cart__title">Cart</h2>
+              <span className="pos-cart__count">{pos.cartCount} items</span>
+              {pos.cartCount > 0 && (
+                <button type="button" className="pos-cart__clear" onClick={handleClearCart}>Clear</button>
+              )}
             </div>
-            <div className="pos-cart__total">
-              <span>Total</span>
-              <span className="pos-cart__total-amount">EGP {pos.cartTotal.toFixed(2)}</span>
+
+            {!pos.shiftOpen && (
+              <p className="pos-cart__shift-warn">Start shift to enable checkout (F2)</p>
+            )}
+
+            <div className="pos-cart__customer">
+              <label className="pos-cart__customer-label" htmlFor="pos-customer">Customer</label>
+              <select id="pos-customer" className="pos-cart__customer-input" value={customer} onChange={(e) => setCustomer(e.target.value)} disabled={sellDisabled}>
+                <option value="Walk-in Customer">Walk-in Customer</option>
+                {customers.filter((c) => c.name !== 'Walk-in Customer').map((c) => (
+                  <option key={c.name} value={c.name}>{c.customer_name || c.name}</option>
+                ))}
+              </select>
             </div>
 
-            {checkoutErr && <p className="pos-cart__error">{checkoutErr}</p>}
+            <POSPaymentPanel
+              paymentModes={pos.paymentModes}
+              total={pos.cartTotal}
+              value={payment}
+              onChange={setPayment}
+              disabled={sellDisabled || !pos.cart.length}
+            />
 
-            <Btn
-              variant="primary" size="lg"
-              loading={pos.checkoutLoading}
-              disabled={pos.cart.length === 0}
-              onClick={handleCheckout}
-              style={{ width: '100%' }}
-            >
-              💳 Checkout — EGP {pos.cartTotal.toFixed(2)}
-            </Btn>
-          </div>
-        </aside>
-      </div>
+            <div className="pos-cart__items">
+              {pos.cart.length === 0 ? (
+                <EmptyState icon="🛒" title="Cart is empty" desc="Tap a product or scan barcode" />
+              ) : (
+                pos.cart.map((item) => (
+                  <CartRow
+                    key={item.item_code}
+                    item={item}
+                    onQty={pos.updateQty}
+                    onRemove={pos.removeFromCart}
+                    maxQty={availableQty(item) ?? undefined}
+                  />
+                ))
+              )}
+            </div>
+
+            {(pos.cartWarning || pos.stockIssues.length > 0) && (
+              <div className="pos-cart__warnings">
+                {pos.cartWarning && <p>{pos.cartWarning}</p>}
+                {pos.stockIssues.map((i) => (
+                  <p key={i.item_code}>{i.item_name}: {i.message}</p>
+                ))}
+              </div>
+            )}
+
+            <div className="pos-cart__footer">
+              <div className="pos-cart__total">
+                <span>Total</span>
+                <span className="pos-cart__total-amount mono">EGP {pos.cartTotal.toFixed(2)}</span>
+              </div>
+              {checkoutErr && <p className="pos-cart__error">{checkoutErr}</p>}
+              <Btn
+                variant="primary"
+                size="lg"
+                className="pos-cart__checkout-btn"
+                loading={pos.checkoutLoading}
+                disabled={!pos.cart.length || sellDisabled}
+                onClick={handleCheckout}
+              >
+                Checkout · EGP {pos.cartTotal.toFixed(2)}
+              </Btn>
+              <p className="pos-cart__shortcuts mono">F2 checkout · Esc clear cart</p>
+            </div>
+          </aside>
+        </div>
       ) : (
         <div className="pos-invoices-page">
           <section className="card pos-invoices-page__list">
             <div className="pos-cart__history-head">
               <h3>My Invoices</h3>
-              <button className="pos-cart__history-refresh" onClick={loadMyInvoices}>Refresh</button>
+              <button type="button" className="pos-cart__history-refresh" onClick={loadMyInvoices}>Refresh</button>
             </div>
             {invoicesLoading ? (
               <div className="pos-cart__history-loading"><Spinner size={18} /></div>
@@ -360,10 +416,10 @@ export default function POSPage() {
                   >
                     <div>
                       <p className="pos-cart__history-id mono">{inv.name}</p>
-                      <p className="pos-cart__history-meta">{inv.customer || 'Walk-in Customer'} · {inv.posting_date || '-'}</p>
+                      <p className="pos-cart__history-meta">{inv.customer || 'Walk-in'} · {inv.posting_date || '-'}</p>
                     </div>
                     <span className="pos-cart__history-total">
-                      {invoiceLoadingId === inv.name ? 'Loading…' : `EGP ${Number(inv.grand_total || 0).toFixed(2)}`}
+                      {invoiceLoadingId === inv.name ? '…' : `EGP ${Number(inv.grand_total || 0).toFixed(2)}`}
                     </span>
                   </button>
                 ))}
@@ -371,7 +427,20 @@ export default function POSPage() {
             )}
           </section>
 
-          <InvoiceDetailsPanel invoice={selectedInvoice} />
+          <div className="pos-invoice-detail">
+            {showReceipt && selectedInvoice ? (
+              <POSThermalReceipt
+                invoice={selectedInvoice}
+                companyName={pos.profile?.company}
+                onClose={() => setShowReceipt(false)}
+              />
+            ) : (
+              <div className="card pos-invoice-panel__empty">
+                <h3>Select an invoice</h3>
+                <p>View receipt and print from the list.</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

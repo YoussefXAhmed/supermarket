@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Btn, EmptyState, PageHeader, Spinner } from '../../components/ui';
+import { Btn, PageHeader, PageLoading, ApiErrorCard } from '../../components/ui';
+import { DashboardLayout, LayoutSection } from '../../components/layout/page-layouts';
+import { getERPDeskUrl } from '../../utils/erpLinks';
+import { getUserFriendlyMessage } from '../../utils/errorHandling';
 import InventoryOverviewCards from '../../components/inventory/InventoryOverviewCards';
 import InventoryProductsTable from '../../components/inventory/InventoryProductsTable';
-import { getInventorySnapshot } from '../../services/inventoryService';
+import { getInventorySnapshot, getWarehousesList } from '../../services/inventoryService';
 
 export default function InventoryPage() {
   const [rows, setRows] = useState([]);
@@ -15,27 +18,35 @@ export default function InventoryPage() {
   });
   const [q, setQ] = useState('');
   const [warehouse, setWarehouse] = useState('all');
+  const [warehouseList, setWarehouseList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const load = async () => {
+  const load = async (wh = warehouse) => {
     setLoading(true);
     setError('');
     try {
-      const snapshot = await getInventorySnapshot();
+      const snapshot = await getInventorySnapshot({
+        warehouse: wh === 'all' ? undefined : wh,
+      });
       setRows(snapshot.rows);
       setMetrics(snapshot.metrics);
     } catch (e) {
       setRows([]);
-      setError(e.message || 'Failed to load inventory');
+      setError(getUserFriendlyMessage(e, 'Failed to load inventory'));
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    load();
+    getWarehousesList().then(setWarehouseList).catch(() => {});
+    load('all');
   }, []);
+
+  useEffect(() => {
+    load(warehouse);
+  }, [warehouse]);
 
   const filtered = useMemo(() => {
     const text = q.trim().toLowerCase();
@@ -43,8 +54,6 @@ export default function InventoryPage() {
       const textOk = !text ||
         (r.item_name || '').toLowerCase().includes(text) ||
         (r.item_code || '').toLowerCase().includes(text);
-
-      // Keep current logic/data shape; warehouse filter is UI-ready and works when warehouse label exists.
       const warehouseLabel = String(r.warehouse || r.warehouse_label || 'all').toLowerCase();
       const warehouseOk = warehouse === 'all' || warehouseLabel === warehouse;
       return textOk && warehouseOk;
@@ -52,52 +61,58 @@ export default function InventoryPage() {
   }, [rows, q, warehouse]);
 
   return (
-    <div>
+    <DashboardLayout>
       <PageHeader
-        title="Inventory Dashboard"
-        subtitle="Products, quantity and valuation snapshot from ERPNext"
-        actions={<Btn variant="ghost" size="sm" onClick={load}>Refresh</Btn>}
+        title="Inventory"
+        subtitle="Stock snapshot from ERPNext"
+        dense
+        actions={<Btn variant="ghost" size="sm" onClick={() => load()}>Refresh</Btn>}
       />
 
       <InventoryOverviewCards metrics={metrics} />
 
-      <div className="card panel">
-        <div className="toolbar">
+      <LayoutSection variant="flat" flushHead>
+        <div className="toolbar" style={{ margin: 0 }}>
           <div className="toolbar__group">
             <input
               className="input toolbar__input-md"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search items by name or code"
+              placeholder="Search items"
             />
             <select
               className="input toolbar__input-fixed"
               value={warehouse}
               onChange={(e) => setWarehouse(e.target.value)}
             >
-              <option value="all">All Warehouses</option>
+              <option value="all">All warehouses</option>
+              {warehouseList.map((w) => (
+                <option key={w.name} value={w.name}>{w.warehouse_name || w.name}</option>
+              ))}
             </select>
           </div>
-          <a className="btn btn--ghost btn--sm" href="http://localhost:8000/app/item" target="_blank" rel="noreferrer">
-            + New Item
+          <a className="btn btn--ghost btn--sm" href={getERPDeskUrl('item')} target="_blank" rel="noreferrer">
+            + New item
           </a>
         </div>
-      </div>
+      </LayoutSection>
 
       {loading ? (
-        <div className="content-loading">
-          <Spinner size={28} />
-        </div>
+        <PageLoading size={24} />
       ) : error ? (
-        <div className="card content-error">
-          {error}
-        </div>
+        <ApiErrorCard message={error} onRetry={() => load()} />
       ) : filtered.length === 0 ? (
-        <EmptyState icon="📦" title="No inventory data" desc="Try a different search term." />
+        <p className="empty-inline">No inventory rows match your filters.</p>
       ) : (
-        <InventoryProductsTable rows={filtered} />
+        <LayoutSection
+          title="Products"
+          subtitle={`${filtered.length} items`}
+          variant="raised"
+          flushHead
+        >
+          <InventoryProductsTable rows={filtered} />
+        </LayoutSection>
       )}
-    </div>
+    </DashboardLayout>
   );
 }
-

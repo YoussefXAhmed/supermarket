@@ -1,23 +1,29 @@
 import { useEffect, useState } from 'react';
 import { getCustomers } from '../../services/api';
-import { PageHeader, Spinner, EmptyState, Table } from '../../components/ui';
+import { PageHeader, PageLoading, ApiErrorCard, EmptyState, Table } from '../../components/ui';
+import { getUserFriendlyMessage } from '../../utils/errorHandling';
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState('');
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true);
+    setError('');
     getCustomers({ limit: 100 })
       .then(r => {
         setCustomers(r.data.data || []);
-        setError('');
       })
       .catch((e) => {
         setCustomers([]);
-        setError(e.message || 'Failed to load customers');
+        setError(getUserFriendlyMessage(e, 'Failed to load customers'));
       })
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    load();
   }, []);
 
   const columns = [
@@ -33,11 +39,9 @@ export default function CustomersPage() {
     <div>
       <PageHeader title="Customers" subtitle={`${customers.length} customers`} />
       {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}><Spinner size={26} /></div>
+        <PageLoading size={26} />
       ) : error ? (
-        <div className="card" style={{ borderColor: 'rgba(239,68,68,0.35)', color: 'var(--red)' }}>
-          {error}
-        </div>
+        <ApiErrorCard message={error} onRetry={load} />
       ) : customers.length === 0 ? (
         <EmptyState icon="👥" title="No customers yet" />
       ) : (

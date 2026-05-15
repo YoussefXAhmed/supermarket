@@ -1,28 +1,26 @@
 import axios from 'axios';
+import { ERP_API_BASE } from '../config/erp';
+import { normalizeERPError, logApiError } from '../utils/errorHandling';
 
-// Use same-origin requests in dev so Vite proxy handles ERPNext
-// and browser session cookies are set/read reliably.
-const BASE_URL = '';
+export { extractERPError } from '../utils/errorHandling';
+
+const API_TIMEOUT_MS = 30_000;
 
 const api = axios.create({
-  baseURL: BASE_URL,
+  baseURL: ERP_API_BASE,
+  timeout: API_TIMEOUT_MS,
   withCredentials: true,
-  headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+  headers: {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  },
 });
 
-/* ── Intercept responses for Frappe-style errors ── */
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    const data = err.response?.data || {};
-    let msg =
-      extractFrappeServerMessage(data) ||
-      data.exception ||
-      data.message ||
-      err.message ||
-      'Request failed';
-    if (typeof msg !== 'string') msg = String(msg);
-    return Promise.reject(new Error(msg));
+    logApiError(err.config?.url || 'request', err);
+    return Promise.reject(normalizeERPError(err));
   }
 );
 
@@ -225,31 +223,94 @@ export const deleteUser = (name) =>
    DASHBOARD / REPORTS
 ══════════════════════════════════════ */
 export const getDashboardStats = async () => {
-  const [invoices, items, customers] = await Promise.allSettled([
+  const monthStart = getMonthStart();
+  const lastMonthStart = getLastMonthStart();
+  const warnings = [];
+
+  const [invoices, lastMonthInv, items, customers] = await Promise.allSettled([
     api.get('/api/resource/Sales Invoice', {
       params: {
-        fields: JSON.stringify(['name', 'grand_total', 'status', 'posting_date']),
-        filters: JSON.stringify([['docstatus', '!=', 2], ['posting_date', '>=', getMonthStart()]]),
+        fields: JSON.stringify(['name', 'grand_total', 'status', 'posting_date', 'customer']),
+        filters: JSON.stringify([['docstatus', '!=', 2], ['posting_date', '>=', monthStart]]),
+        limit_page_length: 500,
+      },
+    }),
+    api.get('/api/resource/Sales Invoice', {
+      params: {
+        fields: JSON.stringify(['grand_total', 'posting_date']),
+        filters: JSON.stringify([
+          ['docstatus', '!=', 2],
+          ['posting_date', '>=', lastMonthStart],
+          ['posting_date', '<', monthStart],
+        ]),
         limit_page_length: 500,
       },
     }),
     api.get('/api/resource/Item', {
-      params: { fields: JSON.stringify(['name']), filters: JSON.stringify([['disabled', '=', 0]]), limit_page_length: 1 },
+      params: {
+        fields: JSON.stringify(['name']),
+        filters: JSON.stringify([['disabled', '=', 0]]),
+        limit_page_length: 500,
+      },
     }),
     api.get('/api/resource/Customer', {
-      params: { fields: JSON.stringify(['name']), limit_page_length: 1 },
+      params: { fields: JSON.stringify(['name']), limit_page_length: 500 },
     }),
   ]);
 
+  if (invoices.status === 'rejected') warnings.push('Could not load sales invoices');
   const invoiceData = invoices.status === 'fulfilled' ? invoices.value.data.data : [];
-  const itemCount = items.status === 'fulfilled' ? items.value.data.data.length : 0;
-  const customerCount = customers.status === 'fulfilled' ? customers.value.data.data.length : 0;
+  const lastMonthData = lastMonthInv.status === 'fulfilled' ? lastMonthInv.value.data.data : [];
+  const itemCount = items.status === 'fulfilled' ? (items.value.data.data?.length || 0) : 0;
+  const customerCount = customers.status === 'fulfilled' ? (customers.value.data.data?.length || 0) : 0;
 
-  const revenue = invoiceData.reduce((s, i) => s + (i.grand_total || 0), 0);
-  const paid = invoiceData.filter(i => i.status === 'Paid').length;
+  const revenue = invoiceData.reduce((s, i) => s + (Number(i.grand_total) || 0), 0);
+  const lastMonthRevenue = lastMonthData.reduce((s, i) => s + (Number(i.grand_total) || 0), 0);
+  const paid = invoiceData.filter((i) => i.status === 'Paid').length;
+  const unpaid = invoiceData.filter((i) => i.status === 'Unpaid' || i.status === 'Overdue').length;
+  const revenueTrend = lastMonthRevenue > 0
+    ? Math.round(((revenue - lastMonthRevenue) / lastMonthRevenue) * 100)
+    : revenue > 0 ? 100 : 0;
 
-  return { revenue, invoiceCount: invoiceData.length, paidCount: paid, itemCount, customerCount, invoiceData };
+  const GROSS_MARGIN_PCT = 0.28;
+  const estimatedProfit = revenue * GROSS_MARGIN_PCT;
+  const avgTicket = invoiceData.length ? revenue / invoiceData.length : 0;
+
+  const dailyMap = new Map();
+  for (const inv of invoiceData) {
+    const day = (inv.posting_date || '').slice(5, 10);
+    if (!day) continue;
+    dailyMap.set(day, (dailyMap.get(day) || 0) + (Number(inv.grand_total) || 0));
+  }
+  const salesTrend = [...dailyMap.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .slice(-14)
+    .map(([label, value]) => ({ label, value }));
+
+  return {
+    revenue,
+    lastMonthRevenue,
+    revenueTrend,
+    invoiceCount: invoiceData.length,
+    paidCount: paid,
+    unpaidCount: unpaid,
+    itemCount,
+    customerCount,
+    estimatedProfit,
+    grossMarginPct: GROSS_MARGIN_PCT * 100,
+    avgTicket,
+    invoiceData,
+    salesTrend,
+    warnings,
+  };
 };
+
+function getLastMonthStart() {
+  const d = new Date();
+  d.setMonth(d.getMonth() - 1);
+  d.setDate(1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+}
 
 function getMonthStart() {
   const d = new Date();
@@ -293,22 +354,8 @@ async function withResolvedItemPrices(itemsResponse) {
 
     return { ...itemsResponse, data: { ...itemsResponse.data, data: merged } };
   } catch {
-    // If Item Price query is not permitted, keep original Item data.
     return itemsResponse;
   }
 }
 
 export default api;
-
-function extractFrappeServerMessage(data) {
-  try {
-    const raw = data?._server_messages;
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed) || !parsed.length) return null;
-    const first = JSON.parse(parsed[0]);
-    return first?.message || null;
-  } catch {
-    return null;
-  }
-}

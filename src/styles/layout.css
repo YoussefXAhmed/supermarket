@@ -153,25 +153,56 @@
   overflow-y: auto;
 }
 .admin-content {
-  padding: 28px 32px;
+  padding: 22px 24px;
   max-width: 1400px;
   animation: fadeIn 0.25s ease;
 }
 
+.admin-content.dense-module {
+  padding: 18px 20px 24px;
+}
+
+.sidebar__collapse-btn--mobile {
+  display: none;
+}
+.sidebar__footer .role-badge {
+  margin-bottom: 6px;
+  align-self: flex-start;
+}
+
+.inventory-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3, 12px);
+}
+.inventory-nav__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 /* ── Responsive ── */
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   .admin-layout {
-    grid-template-columns: 0 1fr;
-  }
-  .admin-layout--collapsed {
-    grid-template-columns: 62px 1fr;
+    grid-template-columns: 1fr;
   }
   .sidebar {
-    position: fixed; z-index: 100;
+    position: fixed;
+    z-index: 200;
+    width: var(--sidebar-w);
     transform: translateX(-100%);
+    transition: transform 0.2s ease;
   }
-  .admin-layout--collapsed .sidebar {
+  .sidebar--open,
+  .admin-layout--mobile-nav .sidebar {
     transform: translateX(0);
   }
-  .admin-content { padding: 20px 16px; }
+  .sidebar__collapse-btn--mobile {
+    display: flex;
+  }
+  .admin-content {
+    padding: 20px 16px;
+  }
 }

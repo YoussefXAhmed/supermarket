@@ -1,61 +1,89 @@
-import { useState } from 'react';
-import { Badge, Btn, EmptyState, PageHeader, Spinner, Table } from '../../../components/ui';
+import { useEffect, useState } from 'react';
+import { Badge, Btn, EmptyState, PageHeader, PageLoading, ApiErrorCard, Table } from '../../../components/ui';
 import { listBins } from '../../../services/inventoryApi';
+import { getReorderSuggestions, getWarehousesList } from '../../../services/inventoryService';
+import { getUserFriendlyMessage } from '../../../utils/errorHandling';
 
 export default function AlertsPage() {
+  const [tab, setTab] = useState('low');
   const [threshold, setThreshold] = useState(10);
+  const [warehouse, setWarehouse] = useState('all');
+  const [warehouses, setWarehouses] = useState([]);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    getWarehousesList().then(setWarehouses).catch(() => {});
+  }, []);
 
   const load = async () => {
     setLoading(true);
     setError('');
     try {
-      const res = await listBins({
-        limit: 800,
-        filters: [['actual_qty', '<=', Number(threshold)]],
-      });
-      setRows(res?.data?.data || []);
+      if (tab === 'reorder') {
+        const suggestions = await getReorderSuggestions({
+          warehouse: warehouse === 'all' ? undefined : warehouse,
+        });
+        setRows(suggestions.map((r) => ({
+          item_code: r.item_code,
+          warehouse: r.warehouse || '—',
+          actual_qty: r.qty,
+          reorder_level: r.reorder_level,
+          suggested_qty: r.suggested_qty,
+        })));
+      } else {
+        const filters = [['actual_qty', '<=', Number(threshold)]];
+        if (warehouse !== 'all') filters.push(['warehouse', '=', warehouse]);
+        const res = await listBins({ limit: 800, filters });
+        setRows(res?.data?.data || []);
+      }
     } catch (e) {
       setRows([]);
-      setError(e.message || 'Failed to load low stock alerts');
+      setError(getUserFriendlyMessage(e));
     } finally {
       setLoading(false);
     }
   };
 
-  const columns = [
-    { key: 'item_code', label: 'Item', render: (v) => <span className="mono">{v}</span> },
-    { key: 'warehouse', label: 'Warehouse' },
-    { key: 'actual_qty', label: 'Qty', render: (v) => <Badge color={Number(v || 0) <= 0 ? 'red' : 'amber'}>{Number(v || 0).toFixed(2)}</Badge> },
-    { key: 'valuation_rate', label: 'Valuation', render: (v) => <span className="mono">EGP {Number(v || 0).toFixed(2)}</span> },
-  ];
+  const columns = tab === 'reorder'
+    ? [
+        { key: 'item_code', label: 'Item', render: (v) => <span className="mono">{v}</span> },
+        { key: 'warehouse', label: 'Warehouse' },
+        { key: 'actual_qty', label: 'On hand', render: (v) => <Badge color="amber">{Number(v || 0).toFixed(2)}</Badge> },
+        { key: 'reorder_level', label: 'Reorder at', render: (v) => <span className="mono">{v}</span> },
+        { key: 'suggested_qty', label: 'Order qty', render: (v) => <strong>{v}</strong> },
+      ]
+    : [
+        { key: 'item_code', label: 'Item', render: (v) => <span className="mono">{v}</span> },
+        { key: 'warehouse', label: 'Warehouse' },
+        { key: 'actual_qty', label: 'Qty', render: (v) => <Badge color={Number(v || 0) <= 0 ? 'red' : 'amber'}>{Number(v || 0).toFixed(2)}</Badge> },
+        { key: 'valuation_rate', label: 'Valuation', render: (v) => `EGP ${Number(v || 0).toFixed(2)}` },
+      ];
 
   return (
     <div>
-      <PageHeader title="Low Stock Alerts" subtitle="Threshold-based alerts from Bin quantities" />
+      <PageHeader title="Stock alerts" subtitle="Low stock and reorder-level warnings" />
       <div className="card panel">
-        <div className="toolbar__group">
-          <label className="page-header__sub">Threshold</label>
-          <input
-            className="input toolbar__input-xs"
-            type="number"
-            min="0"
-            step="1"
-            value={threshold}
-            onChange={(e) => setThreshold(e.target.value)}
-          />
-          <Btn variant="ghost" size="sm" onClick={load}>Load Alerts</Btn>
+        <div className="toolbar">
+          <div className="pos-view-toggle">
+            <button type="button" className={`pos-view-toggle__btn ${tab === 'low' ? 'pos-view-toggle__btn--active' : ''}`} onClick={() => setTab('low')}>Low stock</button>
+            <button type="button" className={`pos-view-toggle__btn ${tab === 'reorder' ? 'pos-view-toggle__btn--active' : ''}`} onClick={() => setTab('reorder')}>Reorder level</button>
+          </div>
+          <div className="toolbar__group">
+            <select className="input toolbar__input-fixed" value={warehouse} onChange={(e) => setWarehouse(e.target.value)}>
+              <option value="all">All warehouses</option>
+              {warehouses.map((w) => <option key={w.name} value={w.name}>{w.warehouse_name || w.name}</option>)}
+            </select>
+            {tab === 'low' && (
+              <input className="input toolbar__input-xs" type="number" min="0" value={threshold} onChange={(e) => setThreshold(e.target.value)} title="Max qty threshold" />
+            )}
+            <Btn variant="ghost" size="sm" onClick={load}>Load alerts</Btn>
+          </div>
         </div>
       </div>
-
-      {loading ? (
-        <div className="content-loading"><Spinner size={26} /></div>
-      ) : error ? (
-        <div className="card content-error">{error}</div>
-      ) : rows.length === 0 ? (
-        <EmptyState icon="🚨" title="No low stock alerts loaded" desc="Set threshold and click Load Alerts." />
+      {loading ? <PageLoading size={26} /> : error ? <ApiErrorCard message={error} onRetry={load} /> : rows.length === 0 ? (
+        <EmptyState icon="🚨" title="No alerts" desc="Adjust filters and load." />
       ) : (
         <Table columns={columns} data={rows} />
       )}
