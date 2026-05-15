@@ -66,7 +66,7 @@ The SPA is a **thin client**: no application server in this repo. Production saf
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/admin-dashboard.svg" alt="Admin dashboard" width="92%" />
+  <img src="docs/screenshots/admin-dashboard.png" alt="Admin dashboard" width="92%" />
   &nbsp;&nbsp;
   <img src="docs/screenshots/shift-reconciliation.svg" alt="Shift reconciliation" width="92%" />
 </p>

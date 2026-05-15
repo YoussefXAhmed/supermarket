@@ -10,7 +10,7 @@ Add production-quality captures (1440×900 or 1920×1080, dark theme) for the RE
 | `purchasing.svg` | Purchasing dashboard + workflow bar |
 | `returns.svg` | Returns & refunds workspace |
 | `shift-reconciliation.svg` | Shift close / variance summary |
-| `admin-dashboard.svg` | Admin KPIs + recent invoices |
+| `admin-dashboard.png` | Admin KPIs + recent invoices |
 
 SVG previews ship with the repo for GitHub README rendering; replace with PNG when ready.
 
