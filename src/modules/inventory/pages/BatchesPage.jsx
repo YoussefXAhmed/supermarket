@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Badge, Btn, PageHeader, PageLoading, ApiErrorCard, Table } from '../../../components/ui';
+import { ApiErrorCard, Badge, Btn, PageHeader, PageLoading, Table } from '../../../components/ui';
+import { TablePageLayout, LayoutSection, TableRegion } from '../../../components/layout/page-layouts';
 import { getBatchAlerts } from '../../../services/inventoryService';
 import { getUserFriendlyMessage } from '../../../utils/errorHandling';
 
@@ -42,19 +43,50 @@ export default function BatchesPage() {
     },
   ];
 
+  const sparse = rows.length > 0 && rows.length <= 8;
+
   return (
-    <div>
-      <PageHeader title="Batch &amp; Expiry" subtitle="Near-expiry and expired batches from ERPNext" />
-      <div className="card panel">
-        <div className="toolbar__group">
-          <label className="page-header__sub">Alert within (days)</label>
-          <input className="input toolbar__input-xs" type="number" min="1" value={daysAhead} onChange={(e) => setDaysAhead(e.target.value)} />
-          <Btn variant="ghost" size="sm" onClick={load}>Load batches</Btn>
+    <TablePageLayout className="page-layout--list-page" tableConstrain={sparse}>
+      <PageHeader
+        title="Batch & Expiry"
+        subtitle="Near-expiry and expired batches from ERPNext"
+        dense
+      />
+
+      <LayoutSection variant="flat" flushHead>
+        <div className="toolbar">
+          <div className="toolbar__group">
+            <label className="page-header__sub">Alert within (days)</label>
+            <input
+              className="input toolbar__input-xs"
+              type="number"
+              min="1"
+              value={daysAhead}
+              onChange={(e) => setDaysAhead(e.target.value)}
+            />
+            <Btn variant="ghost" size="sm" onClick={load}>
+              Load batches
+            </Btn>
+          </div>
         </div>
-      </div>
-      {loading ? <PageLoading size={26} /> : error ? <ApiErrorCard message={error} onRetry={load} /> : (
-        <Table columns={columns} data={rows} emptyMsg="No near-expiry batches — click Load batches" />
+      </LayoutSection>
+
+      {loading ? (
+        <PageLoading size={26} />
+      ) : error ? (
+        <ApiErrorCard message={error} onRetry={load} />
+      ) : (
+        <LayoutSection variant="raised" flushHead fit={sparse}>
+          <TableRegion fit={sparse}>
+            <Table
+              columns={columns}
+              data={rows}
+              compact
+              emptyMsg="No near-expiry batches — click Load batches"
+            />
+          </TableRegion>
+        </LayoutSection>
       )}
-    </div>
+    </TablePageLayout>
   );
 }

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
+import { ApiErrorCard, Badge, PageHeader, PageLoading } from '../../components/ui';
+import { AdminPageLayout, LayoutSection } from '../../components/layout/page-layouts';
+import { ERP_BASE_URL } from '../../config/erp';
 import { useAuth } from '../../hooks/useAuth';
 import { getCompanies, getCompany } from '../../services/api';
-import { PageHeader, Badge, Spinner, ApiErrorCard } from '../../components/ui';
-import { ERP_BASE_URL } from '../../config/erp';
 import { getERPDeskUrl } from '../../utils/erpLinks';
 import { getUserFriendlyMessage } from '../../utils/errorHandling';
 
@@ -37,75 +38,72 @@ export default function SettingsPage() {
   }, [loadCompany]);
 
   return (
-    <div>
-      <PageHeader title="Settings" subtitle="System configuration" />
+    <AdminPageLayout>
+      <PageHeader title="Settings" subtitle="System configuration" dense />
 
       <div className="settings-grid">
-
-        {/* Profile */}
-        <div className="card">
-          <h3 className="section-title">My Profile</h3>
+        <LayoutSection variant="raised" title="My Profile">
           <div className="kv-stack">
             <Row label="Full Name" value={user?.full_name} />
-            <Row label="Email"     value={user?.email} />
-            <Row label="Username"  value={user?.name} />
+            <Row label="Email" value={user?.email} />
+            <Row label="Username" value={user?.name} />
           </div>
-          <div className="panel" style={{ marginTop: 16, marginBottom: 0 }}>
+          <div className="panel">
             <p className="subtle-label">Roles</p>
             <div className="badge-wrap">
-              {roles.map(r => <Badge key={r} color="blue">{r}</Badge>)}
+              {roles.map((r) => (
+                <Badge key={r} color="blue">
+                  {r}
+                </Badge>
+              ))}
             </div>
           </div>
-        </div>
+        </LayoutSection>
 
-        {/* ERPNext Connection */}
-        <div className="card">
-          <h3 className="section-title">ERPNext Connection</h3>
+        <LayoutSection variant="raised" title="ERPNext Connection">
           <div className="kv-stack">
-            <Row label="Base URL"  value={ERP_BASE_URL} />
-            <Row label="Auth"      value="Cookie-based (withCredentials)" />
-            <Row label="Protocol"  value="Frappe REST API v2" />
+            <Row label="Base URL" value={ERP_BASE_URL} />
+            <Row label="Auth" value="Cookie-based (withCredentials)" />
+            <Row label="Protocol" value="Frappe REST API v2" />
           </div>
-          <div className="panel" style={{ marginTop: 16, marginBottom: 0 }}>
+          <div className="panel">
             <a
               href={getERPDeskUrl()}
-              target="_blank" rel="noreferrer"
+              target="_blank"
+              rel="noreferrer"
               className="btn btn--ghost btn--sm"
-            >Open ERPNext ↗</a>
-          </div>
-        </div>
-
-        {/* Quick Links */}
-        <div className="card">
-          <h3 className="section-title">Quick Links</h3>
-          <div className="quick-links">
-          {[
-            ['Item List',      '/app/item'],
-            ['POS Profile',    '/app/pos-profile'],
-            ['Price List',     '/app/price-list'],
-            ['Warehouse',      '/app/warehouse'],
-            ['User Management','/app/user'],
-          ].map(([label, path]) => (
-            <a
-              key={path}
-              href={getERPDeskUrl(path.replace(/^\/app/, ''))}
-              target="_blank" rel="noreferrer"
-              className="quick-link-row"
             >
-              {label}
-              <span className="quick-link-row__arrow">↗</span>
+              Open ERPNext ↗
             </a>
-          ))}
           </div>
-        </div>
+        </LayoutSection>
 
-        {/* Company Details */}
-        <div className="card">
-          <h3 className="section-title">Company Details</h3>
+        <LayoutSection variant="raised" title="Quick Links">
+          <div className="quick-links">
+            {[
+              ['Item List', '/app/item'],
+              ['POS Profile', '/app/pos-profile'],
+              ['Price List', '/app/price-list'],
+              ['Warehouse', '/app/warehouse'],
+              ['User Management', '/app/user'],
+            ].map(([label, path]) => (
+              <a
+                key={path}
+                href={getERPDeskUrl(path.replace(/^\/app/, ''))}
+                target="_blank"
+                rel="noreferrer"
+                className="quick-link-row"
+              >
+                {label}
+                <span className="quick-link-row__arrow">↗</span>
+              </a>
+            ))}
+          </div>
+        </LayoutSection>
+
+        <LayoutSection variant="raised" title="Company Details">
           {companyLoading ? (
-            <div className="content-loading" style={{ padding: '18px 0' }}>
-              <Spinner size={20} />
-            </div>
+            <PageLoading size={20} />
           ) : companyError ? (
             <ApiErrorCard title="Company details unavailable" message={companyError} onRetry={loadCompany} />
           ) : !company ? (
@@ -123,9 +121,9 @@ export default function SettingsPage() {
               <Row label="Holiday List" value={company.default_holiday_list} />
             </div>
           )}
-        </div>
+        </LayoutSection>
       </div>
-    </div>
+    </AdminPageLayout>
   );
 }
 

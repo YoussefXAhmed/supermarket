@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { PageHeader, PageLoading, ApiErrorCard, Table, Btn, Badge, PartialDataBanner } from '../../components/ui';
-import { getInvoiceMatchingRows } from '../../services/purchasingService';
+import { ApiErrorCard, Badge, Btn, PageHeader, PageLoading, PartialDataBanner, Table } from '../../components/ui';
+import { TablePageLayout, LayoutSection, TableRegion } from '../../components/layout/page-layouts';
 import { linkReceiptToInvoice } from '../../services/purchasingApi';
+import { getInvoiceMatchingRows } from '../../services/purchasingService';
 import { getUserFriendlyMessage } from '../../utils/errorHandling';
 
 const fmt = (n) =>
@@ -59,7 +60,9 @@ export default function InvoiceMatchingPage() {
       key: 'billing_status',
       label: 'Billing',
       render: (v) => (
-        <Badge color={v === 'Billed' ? 'green' : v === 'Partly billed' ? 'amber' : 'default'}>{v}</Badge>
+        <Badge color={v === 'Billed' ? 'green' : v === 'Partly billed' ? 'amber' : 'default'}>
+          {v}
+        </Badge>
       ),
     },
     {
@@ -77,9 +80,7 @@ export default function InvoiceMatchingPage() {
       label: 'Purchase invoice(s)',
       render: (v, row) => {
         if (row.purchase_invoices?.length) {
-          return (
-            <span className="mono">{row.purchase_invoices.join(', ')}</span>
-          );
+          return <span className="mono">{row.purchase_invoices.join(', ')}</span>;
         }
         if (row.linked) {
           return <span className="page-header__sub">Billed (no line link returned)</span>;
@@ -87,13 +88,19 @@ export default function InvoiceMatchingPage() {
         return (
           <div className="toolbar__group">
             <input
-              className="input"
-              style={{ maxWidth: 140 }}
+              className="input toolbar__input-sm"
               placeholder="Draft PINV"
               value={invoiceInputs[row.receipt] || ''}
-              onChange={(e) => setInvoiceInputs((prev) => ({ ...prev, [row.receipt]: e.target.value }))}
+              onChange={(e) =>
+                setInvoiceInputs((prev) => ({ ...prev, [row.receipt]: e.target.value }))
+              }
             />
-            <Btn variant="ghost" size="sm" loading={linking === row.receipt} onClick={() => handleLink(row.receipt)}>
+            <Btn
+              variant="ghost"
+              size="sm"
+              loading={linking === row.receipt}
+              onClick={() => handleLink(row.receipt)}
+            >
               Link
             </Btn>
           </div>
@@ -102,12 +109,19 @@ export default function InvoiceMatchingPage() {
     },
   ];
 
+  const sparse = rows.length > 0 && rows.length <= 8;
+
   return (
-    <div>
+    <TablePageLayout className="page-layout--list-page" tableConstrain={sparse}>
       <PageHeader
         title="Invoice matching"
         subtitle="Match receipts to invoices via Purchase Invoice Item links and billing status"
-        actions={<Btn variant="ghost" size="sm" onClick={load}>Refresh</Btn>}
+        dense
+        actions={
+          <Btn variant="ghost" size="sm" onClick={load}>
+            Refresh
+          </Btn>
+        }
       />
       <PartialDataBanner warnings={warnings} />
       {loading ? (
@@ -115,8 +129,12 @@ export default function InvoiceMatchingPage() {
       ) : error ? (
         <ApiErrorCard message={error} onRetry={load} />
       ) : (
-        <Table columns={columns} data={rows} emptyMsg="No submitted purchase receipts" />
+        <LayoutSection variant="raised" flushHead fit={sparse}>
+          <TableRegion fit={sparse}>
+            <Table columns={columns} data={rows} compact emptyMsg="No submitted purchase receipts" />
+          </TableRegion>
+        </LayoutSection>
       )}
-    </div>
+    </TablePageLayout>
   );
 }

@@ -28,7 +28,11 @@ export default function LoginPage() {
       await sleep(220);
       let authState = await loadUser();
       // ERPNext may need a brief moment to persist / expose role assignments.
-      if ((!authState?.user || authState?.homePath === '/login') && authState?.reason !== 'guest') {
+      if (
+        (!authState?.user || authState?.homePath === '/login') &&
+        authState?.reason !== 'guest' &&
+        authState?.reason !== 'roles-unreadable'
+      ) {
         await sleep(380);
         authState = await loadUser();
       }
@@ -39,8 +43,16 @@ export default function LoginPage() {
 
       if (authState.user && authState.homePath && authState.homePath !== '/login') {
         navigate(authState.homePath, { replace: true });
+      } else if (authState.reason === 'roles-unreadable') {
+        setErr(
+          authState.authError ||
+            'Your role permissions could not be verified. Contact an administrator.'
+        );
+        if (import.meta.env.DEV && authState.authError?.includes('elmahdi')) {
+          console.warn('[login] Install erp-custom/elmahdi on ERPNext — see erp-custom/README.md');
+        }
       } else {
-        setErr('Login failed: unable to resolve role-based home path.');
+        setErr('Login failed: no workspace access is assigned to this account.');
       }
     } catch (e) {
       setErr(e.message || 'Invalid credentials');

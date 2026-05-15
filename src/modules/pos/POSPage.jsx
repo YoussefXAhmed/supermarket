@@ -80,10 +80,28 @@ function CartRow({ item, onQty, onRemove, maxQty }) {
 }
 
 export default function POSPage() {
-  const { isAdmin, isInventory, logout, user } = useAuth();
+  const {
+    canOperatePOS,
+    canManageShift,
+    canMonitorCashiers,
+    canAccessInventory,
+    canAccessAdminWorkspace,
+    logout,
+    user,
+  } = useAuth();
   const navigate = useNavigate();
   const notify = useNotify();
   const pos = usePOS(user);
+
+  const handleEndShift = useCallback(async () => {
+    try {
+      const result = await pos.closeShift();
+      if (result?.redirectTo) navigate(result.redirectTo);
+    } catch (e) {
+      notify.error(getUserFriendlyMessage(e));
+    }
+  }, [pos, navigate, notify]);
+
   const [customer, setCustomer] = useState('Walk-in Customer');
   const [customers, setCustomers] = useState([]);
   const [checkoutErr, setCheckoutErr] = useState('');
@@ -93,6 +111,10 @@ export default function POSPage() {
   const [invoiceLoadingId, setInvoiceLoadingId] = useState('');
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [viewMode, setViewMode] = useState('sell');
+
+  useEffect(() => {
+    if (!canOperatePOS && viewMode === 'sell') setViewMode('invoices');
+  }, [canOperatePOS, viewMode]);
   const [showReceipt, setShowReceipt] = useState(false);
   const [initError, setInitError] = useState('');
   const initDone = useRef(false);
@@ -232,7 +254,8 @@ export default function POSPage() {
     }
   };
 
-  const sellDisabled = !pos.shiftOpen || pos.profileLoading;
+  const readOnlyPOS = !canOperatePOS;
+  const sellDisabled = readOnlyPOS || !pos.shiftOpen || pos.profileLoading;
 
   return (
     <div className="pos-page">
@@ -244,10 +267,14 @@ export default function POSPage() {
         <div className="pos-header__center">
           <div className="pos-header__tools">
             <div className="pos-view-toggle">
-              <button type="button" className={`pos-view-toggle__btn ${viewMode === 'sell' ? 'pos-view-toggle__btn--active' : ''}`} onClick={() => setViewMode('sell')}>Sell</button>
-              <button type="button" className={`pos-view-toggle__btn ${viewMode === 'invoices' ? 'pos-view-toggle__btn--active' : ''}`} onClick={() => setViewMode('invoices')}>My Invoices</button>
+              {canOperatePOS && (
+                <button type="button" className={`pos-view-toggle__btn ${viewMode === 'sell' ? 'pos-view-toggle__btn--active' : ''}`} onClick={() => setViewMode('sell')}>Sell</button>
+              )}
+              <button type="button" className={`pos-view-toggle__btn ${viewMode === 'invoices' ? 'pos-view-toggle__btn--active' : ''}`} onClick={() => setViewMode('invoices')}>
+                {canOperatePOS ? 'My Invoices' : 'Invoices'}
+              </button>
             </div>
-            {viewMode === 'sell' && (
+            {viewMode === 'sell' && canOperatePOS && (
               <SearchInput
                 value={pos.query}
                 onChange={handleSearch}
@@ -263,13 +290,21 @@ export default function POSPage() {
             user={user}
             compact
             links={[
-              ...(isAdmin || isInventory ? [{ label: 'Stock', onClick: () => navigate('/inventory') }] : []),
-              ...(isAdmin ? [{ label: 'Admin', onClick: () => navigate('/admin') }] : []),
+              ...(canAccessInventory ? [{ label: 'Stock', onClick: () => navigate('/inventory') }] : []),
+              ...(canAccessAdminWorkspace ? [{ label: 'Admin', onClick: () => navigate('/admin') }] : []),
             ]}
             onLogout={async () => { await logout(); navigate('/login'); }}
           />
         </div>
       </header>
+
+      {readOnlyPOS && (
+        <p className="pos-cart__shift-warn" style={{ margin: '0 1rem' }}>
+          {canMonitorCashiers
+            ? 'Monitor mode — checkout and shift controls are disabled.'
+            : 'View-only — you do not have permission to operate the register.'}
+        </p>
+      )}
 
       <POSShiftBar
         profile={pos.profile}
@@ -278,8 +313,9 @@ export default function POSPage() {
         shiftLoading={pos.shiftLoading}
         shiftError={pos.shiftError}
         onStartShift={pos.openShift}
-        onEndShift={pos.closeShift}
+        onEndShift={handleEndShift}
         onRefresh={pos.refreshShift}
+        readOnly={readOnlyPOS || !canManageShift}
       />
 
       <POSMetricsBar metrics={pos.metrics} shiftOpen={pos.shiftOpen} />
@@ -384,10 +420,10 @@ export default function POSPage() {
                 size="lg"
                 className="pos-cart__checkout-btn"
                 loading={pos.checkoutLoading}
-                disabled={!pos.cart.length || sellDisabled}
+                disabled={!canOperatePOS || !pos.cart.length || sellDisabled}
                 onClick={handleCheckout}
               >
-                Checkout · EGP {pos.cartTotal.toFixed(2)}
+                {canOperatePOS ? `Checkout · EGP ${pos.cartTotal.toFixed(2)}` : 'Checkout disabled'}
               </Btn>
               <p className="pos-cart__shortcuts mono">F2 checkout · Esc clear cart</p>
             </div>

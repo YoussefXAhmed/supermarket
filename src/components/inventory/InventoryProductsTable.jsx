@@ -1,7 +1,7 @@
 import { Badge, Table } from '../ui';
 import { getERPDeskUrl } from '../../utils/erpLinks';
 
-export default function InventoryProductsTable({ rows }) {
+export default function InventoryProductsTable({ rows, showValuation = true }) {
   const columns = [
     {
       key: 'item_name',
@@ -27,11 +27,13 @@ export default function InventoryProductsTable({ rows }) {
         </div>
       ),
     },
-    {
-      key: 'price',
-      label: 'Price',
-      render: (v) => <span className="mono">EGP {v.toFixed(2)}</span>,
-    },
+    ...(showValuation
+      ? [{
+        key: 'price',
+        label: 'Price',
+        render: (v) => <span className="mono">EGP {v.toFixed(2)}</span>,
+      }]
+      : []),
     {
       key: 'stock_state',
       label: 'Status',

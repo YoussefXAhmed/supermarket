@@ -19,10 +19,16 @@ const api = axios.create({
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    logApiError(err.config?.url || 'request', err);
+    if (!err.config?.silentAuthProbe) {
+      logApiError(err.config?.url || 'request', err);
+    }
     return Promise.reject(normalizeERPError(err));
   }
 );
+
+function authProbeConfig() {
+  return { silentAuthProbe: true };
+}
 
 /* ══════════════════════════════════════
    AUTH
@@ -38,11 +44,75 @@ export const getCurrentUser = () =>
 
 export const getUserRoles = (user) =>
   api.get('/api/resource/User/' + encodeURIComponent(user), {
-    params: { fields: JSON.stringify(['name', 'full_name', 'email', 'user_image', 'role_profile_name', 'roles']) },
+    ...authProbeConfig(),
+    params: {
+      fields: JSON.stringify([
+        'name',
+        'full_name',
+        'email',
+        'user_image',
+        'role_profile_name',
+        'roles',
+      ]),
+    },
   });
 
-export const getSessionBoot = () =>
-  api.get('/api/method/frappe.sessions.get');
+/**
+ * Server-side session identity (requires elmahdi app on ERPNext).
+ * Uses frappe.get_roles() — works when User/Has Role REST is forbidden.
+ */
+export const getSessionIdentity = () =>
+  api.get('/api/method/elmahdi.api.auth.get_session_identity', authProbeConfig());
+
+/** Field-level User read (may work when full User doc read is denied). */
+export const getUserFieldValues = (username, fieldnames) =>
+  api.get('/api/method/frappe.client.get_value', {
+    ...authProbeConfig(),
+    params: {
+      doctype: 'User',
+      fieldname: JSON.stringify(fieldnames),
+      filters: JSON.stringify(username),
+    },
+  });
+
+/**
+ * Has Role rows — usually forbidden for operational users; kept as optional fallback.
+ */
+export const getHasRolesForUser = async (username) => {
+  const filters = [
+    ['parent', '=', username],
+    ['parenttype', '=', 'User'],
+  ];
+  const cfg = authProbeConfig();
+  try {
+    const res = await api.get('/api/method/frappe.client.get_list', {
+      ...cfg,
+      params: {
+        doctype: 'Has Role',
+        fields: JSON.stringify(['role']),
+        filters: JSON.stringify(filters),
+        limit_page_length: 50,
+      },
+    });
+    return res.data?.message || [];
+  } catch {
+    const res = await api.get('/api/resource/Has Role', {
+      ...cfg,
+      params: {
+        fields: JSON.stringify(['role']),
+        filters: JSON.stringify(filters),
+        limit_page_length: 50,
+      },
+    });
+    return res.data?.data || [];
+  }
+};
+
+export const getRoleProfile = (profileName) =>
+  api.get(`/api/resource/Role Profile/${encodeURIComponent(profileName)}`, {
+    ...authProbeConfig(),
+    params: { fields: JSON.stringify(['name', 'roles']) },
+  });
 
 /* ══════════════════════════════════════
    ITEMS / PRODUCTS
@@ -196,7 +266,15 @@ export const getCompany = (name) =>
 export const getUsers = (params = {}) =>
   api.get('/api/resource/User', {
     params: {
-      fields: JSON.stringify(['name', 'full_name', 'email', 'enabled', 'user_type', 'last_login']),
+      fields: JSON.stringify([
+        'name',
+        'full_name',
+        'email',
+        'enabled',
+        'user_type',
+        'last_login',
+        'role_profile_name',
+      ]),
       filters: JSON.stringify([['name', '!=', 'Guest']]),
       order_by: 'modified desc',
       limit_page_length: params.limit || 100,
@@ -204,20 +282,57 @@ export const getUsers = (params = {}) =>
     },
   });
 
-export const createUser = ({ email, first_name, enabled = 1, send_welcome_email = 0, role_profile_name }) =>
+export const createUser = ({
+  email,
+  first_name,
+  enabled = 1,
+  send_welcome_email = 0,
+  role_profile_name,
+  user_type,
+}) =>
   api.post('/api/resource/User', {
     email,
     first_name,
     enabled,
     send_welcome_email,
+    ...(user_type ? { user_type } : {}),
     ...(role_profile_name ? { role_profile_name } : {}),
   });
+
+export const updateUser = (name, data) =>
+  api.put(`/api/resource/User/${encodeURIComponent(name)}`, data);
 
 export const setUserEnabled = (name, enabled) =>
   api.put(`/api/resource/User/${encodeURIComponent(name)}`, { enabled: enabled ? 1 : 0 });
 
+/** @deprecated Do not use from SPA — disable users instead. */
 export const deleteUser = (name) =>
   api.delete(`/api/resource/User/${encodeURIComponent(name)}`);
+
+export const createUserPermission = ({
+  user,
+  allow,
+  for_value,
+  apply_to_all_doctypes = 1,
+  is_default = 0,
+}) =>
+  api.post('/api/resource/User Permission', {
+    user,
+    allow,
+    for_value,
+    apply_to_all_doctypes,
+    is_default,
+  });
+
+export const getPriceLists = (params = {}) =>
+  api.get('/api/resource/Price List', {
+    params: {
+      fields: JSON.stringify(['name', 'enabled']),
+      filters: JSON.stringify([['enabled', '=', 1]]),
+      order_by: 'name asc',
+      limit_page_length: params.limit || 100,
+    },
+  });
 
 /* ══════════════════════════════════════
    DASHBOARD / REPORTS

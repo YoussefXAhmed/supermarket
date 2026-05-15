@@ -1,7 +1,8 @@
-import { useEffect, useState, useMemo } from 'react';
-import { Btn, EmptyState, PageHeader, PageLoading, ApiErrorCard, Table } from '../../../components/ui';
-import { getStockBalanceReport, getWarehousesList } from '../../../services/inventoryService';
+import { useEffect, useMemo, useState } from 'react';
+import { ApiErrorCard, Btn, EmptyState, PageHeader, PageLoading, Table } from '../../../components/ui';
+import { TablePageLayout, LayoutSection, TableRegion } from '../../../components/layout/page-layouts';
 import { listStockLedger } from '../../../services/inventoryApi';
+import { getStockBalanceReport, getWarehousesList } from '../../../services/inventoryService';
 import { getUserFriendlyMessage } from '../../../utils/errorHandling';
 import { exportToCsv, printElement } from '../../../utils/exportCsv';
 
@@ -53,17 +54,21 @@ export default function ReportsPage() {
 
   const flatBalance = useMemo(
     () => balanceGrouped.flatMap((g) => g.items.map((i) => ({ ...i, warehouse: g.warehouse }))),
-    [balanceGrouped]
+    [balanceGrouped],
   );
 
   const exportBalance = () => {
-    exportToCsv(`stock-balance-${warehouse}`, [
-      { key: 'warehouse', label: 'Warehouse' },
-      { key: 'item_code', label: 'Item' },
-      { key: 'actual_qty', label: 'Qty', export: (r) => r.actual_qty },
-      { key: 'available_qty', label: 'Available', export: (r) => r.available_qty },
-      { key: 'stock_value', label: 'Value', export: (r) => r.stock_value },
-    ], flatBalance);
+    exportToCsv(
+      `stock-balance-${warehouse}`,
+      [
+        { key: 'warehouse', label: 'Warehouse' },
+        { key: 'item_code', label: 'Item' },
+        { key: 'actual_qty', label: 'Qty', export: (r) => r.actual_qty },
+        { key: 'available_qty', label: 'Available', export: (r) => r.available_qty },
+        { key: 'stock_value', label: 'Value', export: (r) => r.stock_value },
+      ],
+      flatBalance,
+    );
   };
 
   const balanceColumns = [
@@ -83,33 +88,69 @@ export default function ReportsPage() {
   ];
 
   return (
-    <div>
+    <TablePageLayout className="page-layout--list-page">
       <PageHeader
         title="Inventory Reports"
         subtitle="Stock balance, movement, export and print"
+        dense
         actions={
           <>
-            <Btn variant="ghost" size="sm" onClick={loadReports}>Load</Btn>
-            {flatBalance.length > 0 && <Btn variant="ghost" size="sm" onClick={exportBalance}>Export CSV</Btn>}
-            {flatBalance.length > 0 && <Btn variant="ghost" size="sm" onClick={() => printElement('inv-report-print')}>Print</Btn>}
+            <Btn variant="ghost" size="sm" onClick={loadReports}>
+              Load
+            </Btn>
+            {flatBalance.length > 0 && (
+              <Btn variant="ghost" size="sm" onClick={exportBalance}>
+                Export CSV
+              </Btn>
+            )}
+            {flatBalance.length > 0 && (
+              <Btn variant="ghost" size="sm" onClick={() => printElement('inv-report-print')}>
+                Print
+              </Btn>
+            )}
           </>
         }
       />
 
-      <div className="card panel">
-        <div className="toolbar__group">
-          <select className="input toolbar__input-fixed" value={warehouse} onChange={(e) => setWarehouse(e.target.value)}>
-            <option value="all">All warehouses</option>
-            {warehouses.map((w) => <option key={w.name} value={w.name}>{w.warehouse_name || w.name}</option>)}
-          </select>
-          <input className="input toolbar__input-sm" placeholder="Filter item code" value={itemSearch} onChange={(e) => setItemSearch(e.target.value)} />
-          <input className="input toolbar__input-fixed" type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} title="Movement from date" />
-          <label className="inv-checkbox">
-            <input type="checkbox" checked={groupByWarehouse} onChange={(e) => setGroupByWarehouse(e.target.checked)} />
-            Group by warehouse
-          </label>
+      <LayoutSection variant="flat" flushHead>
+        <div className="toolbar">
+          <div className="toolbar__group">
+            <select
+              className="input toolbar__input-fixed"
+              value={warehouse}
+              onChange={(e) => setWarehouse(e.target.value)}
+            >
+              <option value="all">All warehouses</option>
+              {warehouses.map((w) => (
+                <option key={w.name} value={w.name}>
+                  {w.warehouse_name || w.name}
+                </option>
+              ))}
+            </select>
+            <input
+              className="input toolbar__input-sm"
+              placeholder="Filter item code"
+              value={itemSearch}
+              onChange={(e) => setItemSearch(e.target.value)}
+            />
+            <input
+              className="input toolbar__input-fixed"
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              title="Movement from date"
+            />
+            <label className="inv-checkbox">
+              <input
+                type="checkbox"
+                checked={groupByWarehouse}
+                onChange={(e) => setGroupByWarehouse(e.target.checked)}
+              />
+              Group by warehouse
+            </label>
+          </div>
         </div>
-      </div>
+      </LayoutSection>
 
       {loading ? (
         <PageLoading size={26} />
@@ -117,39 +158,46 @@ export default function ReportsPage() {
         <ApiErrorCard message={error} onRetry={loadReports} />
       ) : (
         <div id="inv-report-print">
-          {groupByWarehouse ? (
-            balanceGrouped.map((group) => (
-              <div key={group.warehouse} className="card panel">
-                <h3 className="section-title">
-                  {group.warehouse}
-                  <span className="page-header__sub" style={{ marginLeft: 8 }}>
-                    Qty {group.total_qty.toFixed(0)} · EGP {group.total_value.toFixed(2)}
-                  </span>
-                </h3>
-                {group.items.length === 0 ? (
-                  <EmptyState title="No rows" />
-                ) : (
-                  <Table columns={balanceColumns} data={group.items} />
-                )}
-              </div>
-            ))
-          ) : (
-            <div className="card panel">
-              <h3 className="section-title">Stock balance</h3>
-              <Table columns={[{ key: 'warehouse', label: 'Warehouse' }, ...balanceColumns]} data={flatBalance} />
-            </div>
-          )}
+          {groupByWarehouse
+            ? balanceGrouped.map((group) => (
+                <LayoutSection
+                  key={group.warehouse}
+                  variant="raised"
+                  title={group.warehouse}
+                  subtitle={`Qty ${group.total_qty.toFixed(0)} · EGP ${group.total_value.toFixed(2)}`}
+                >
+                  {group.items.length === 0 ? (
+                    <EmptyState title="No rows" />
+                  ) : (
+                    <TableRegion>
+                      <Table columns={balanceColumns} data={group.items} compact />
+                    </TableRegion>
+                  )}
+                </LayoutSection>
+              ))
+            : (
+                <LayoutSection variant="raised" title="Stock balance">
+                  <TableRegion>
+                    <Table
+                      columns={[{ key: 'warehouse', label: 'Warehouse' }, ...balanceColumns]}
+                      data={flatBalance}
+                      compact
+                    />
+                  </TableRegion>
+                </LayoutSection>
+              )}
 
-          <div className="card panel">
-            <h3 className="section-title">Stock movement</h3>
+          <LayoutSection variant="raised" title="Stock movement">
             {movementRows.length === 0 ? (
               <EmptyState icon="📈" title="No movement rows" />
             ) : (
-              <Table columns={movementColumns} data={movementRows} />
+              <TableRegion>
+                <Table columns={movementColumns} data={movementRows} compact />
+              </TableRegion>
             )}
-          </div>
+          </LayoutSection>
         </div>
       )}
-    </div>
+    </TablePageLayout>
   );
 }

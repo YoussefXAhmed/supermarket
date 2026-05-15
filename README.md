@@ -147,6 +147,23 @@ Do not hardcode `localhost:8000` in components.
 
 ---
 
+## Engineering documentation
+
+Persistent project context for agents and developers:
+
+| Doc | Purpose |
+|-----|---------|
+| [docs/PROJECT_CONTEXT.md](docs/PROJECT_CONTEXT.md) | Overview, stack, modules, **project score**, top 10 fixes |
+| [docs/CURRENT_STATE.md](docs/CURRENT_STATE.md) | What's done / in progress / debt |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Routing, services, data flow, auth |
+| [docs/UI_RULES.md](docs/UI_RULES.md) | Layout shells, tables, spacing |
+| [docs/ERP_RULES.md](docs/ERP_RULES.md) | ERPNext API patterns, stock/POS/purchasing rules |
+| [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) | Audited gaps and scan commands |
+| [docs/NEXT_STEPS.md](docs/NEXT_STEPS.md) | Phased stabilization roadmap |
+| [docs/PRODUCTION_READINESS.md](docs/PRODUCTION_READINESS.md) | Deploy & ERPNext config checklist |
+
+---
+
 ## Design System
 
 Dark theme with amber accent. Tokens in `src/styles/globals.css`:

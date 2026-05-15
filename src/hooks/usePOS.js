@@ -3,15 +3,14 @@ import { getPOSInvoice } from '../services/api';
 import { checkoutPOSInvoice, retrySubmitPOSInvoice } from '../services/posCheckout';
 import {
   resolveActivePOSProfile,
-  getOpenPOSOpeningEntry,
-  startPOSShift,
-  endPOSShift,
   searchPOSItems,
   refreshItemStock,
   getPOSPaymentModes,
   getShiftMetrics,
   setStoredPOSProfile,
 } from '../services/posApi';
+import { getOpenPOSOpeningEntry } from '../services/shiftsApi';
+import { openShift as openShiftService } from '../services/shiftsService';
 import { validateCartStock, canAddToCart, validateLineStock } from '../utils/posStock';
 import { getUserFriendlyMessage } from '../utils/errorHandling';
 
@@ -102,12 +101,13 @@ export function usePOS(user) {
     setShiftLoading(true);
     setShiftError(null);
     try {
-      const entry = await startPOSShift({
+      const entry = await openShiftService({
         posProfile: p.name,
         company: p.company,
         openingAmount,
         modeOfPayment,
         user: user?.name,
+        canOpen: true,
       });
       setShift(entry);
       shiftRef.current = entry;
@@ -122,26 +122,9 @@ export function usePOS(user) {
   }, [user?.name, refreshMetrics]);
 
   const closeShift = useCallback(async () => {
-    const p = profileRef.current;
     const s = shiftRef.current;
-    if (!p || !s?.name) throw new Error('No open shift');
-    setShiftLoading(true);
-    setShiftError(null);
-    try {
-      await endPOSShift({
-        posProfile: p.name,
-        company: p.company,
-        openingEntry: s.name,
-      });
-      setShift(null);
-      shiftRef.current = null;
-      setMetrics({ sales: 0, invoiceCount: 0, averageOrder: 0 });
-    } catch (e) {
-      setShiftError(getUserFriendlyMessage(e));
-      throw e;
-    } finally {
-      setShiftLoading(false);
-    }
+    if (!s?.name) throw new Error('No open shift');
+    return { redirectTo: `/shifts/close?opening=${encodeURIComponent(s.name)}` };
   }, []);
 
   const loadItems = useCallback(async (q = '') => {

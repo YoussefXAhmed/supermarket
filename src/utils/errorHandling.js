@@ -10,6 +10,22 @@ export const NETWORK_ERROR_MESSAGE =
 export const AUTH_ERROR_MESSAGE =
   'Your session may have expired. Please sign in again.';
 
+export const PERMISSION_ERROR_MESSAGE =
+  'You do not have permission for this action in ERPNext. Contact your store manager or administrator.';
+
+function isPermissionDenied({ status, code, message, raw }) {
+  if (status === 403) return true;
+  const exc = String(code || raw?.exc_type || '');
+  if (/PermissionError/i.test(exc)) return true;
+  const msg = String(message || '').toLowerCase();
+  return (
+    msg.includes('not permitted') ||
+    msg.includes('permission') ||
+    msg.includes('not allowed') ||
+    msg.includes('forbidden')
+  );
+}
+
 /**
  * Parse Frappe `_server_messages` JSON payload.
  */
@@ -40,6 +56,8 @@ export function extractERPError(error) {
       status: error.status ?? null,
       code: error.code ?? null,
       raw: error.raw ?? null,
+      isPermissionError: Boolean(error.isPermissionError),
+      isAuthError: Boolean(error.isAuthError),
     };
   }
 
@@ -54,8 +72,12 @@ export function extractERPError(error) {
     (typeof error.message === 'string' ? error.message : null) ||
     FALLBACK_ERROR_MESSAGE;
 
-  if (status === 401 || status === 403) {
+  if (status === 401) {
     message = AUTH_ERROR_MESSAGE;
+  } else if (isPermissionDenied({ status, code: data.exc_type, message, raw: data })) {
+    if (message === FALLBACK_ERROR_MESSAGE || /session|login|expired/i.test(message)) {
+      message = PERMISSION_ERROR_MESSAGE;
+    }
   } else if (!response && (error.code === 'ECONNABORTED' || error.message?.includes('Network'))) {
     message = NETWORK_ERROR_MESSAGE;
   } else if (!response && error.message?.includes('timeout')) {
@@ -69,6 +91,13 @@ export function extractERPError(error) {
     status,
     code: data.exc_type || error.code || null,
     raw: data,
+    isPermissionError: isPermissionDenied({
+      status,
+      code: data.exc_type,
+      message,
+      raw: data,
+    }),
+    isAuthError: status === 401,
   };
 }
 
@@ -78,12 +107,14 @@ export function extractERPError(error) {
 export function normalizeERPError(error) {
   if (error instanceof Error && error.isNormalized) return error;
 
-  const { message, status, code, raw } = extractERPError(error);
+  const { message, status, code, raw, isPermissionError, isAuthError } = extractERPError(error);
   const err = new Error(message);
   err.isNormalized = true;
   err.status = status;
   err.code = code;
   err.raw = raw;
+  err.isPermissionError = isPermissionError;
+  err.isAuthError = isAuthError;
   if (error && typeof error === 'object') {
     err.cause = error;
   }

@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Badge, Btn, EmptyState, PageHeader, PageLoading, ApiErrorCard, Table } from '../../../components/ui';
+import { ApiErrorCard, Badge, Btn, EmptyState, PageHeader, PageLoading, Table } from '../../../components/ui';
+import { TablePageLayout, LayoutSection, TableRegion } from '../../../components/layout/page-layouts';
 import { listBins } from '../../../services/inventoryApi';
 import { getReorderSuggestions, getWarehousesList } from '../../../services/inventoryService';
 import { getUserFriendlyMessage } from '../../../utils/errorHandling';
+import { useInventoryCapabilities } from '../../../hooks/useInventoryCapabilities';
 
 export default function AlertsPage() {
+  const { canInventoryViewValuation } = useInventoryCapabilities();
   const [tab, setTab] = useState('low');
   const [threshold, setThreshold] = useState(10);
   const [warehouse, setWarehouse] = useState('all');
@@ -25,13 +28,15 @@ export default function AlertsPage() {
         const suggestions = await getReorderSuggestions({
           warehouse: warehouse === 'all' ? undefined : warehouse,
         });
-        setRows(suggestions.map((r) => ({
-          item_code: r.item_code,
-          warehouse: r.warehouse || '—',
-          actual_qty: r.qty,
-          reorder_level: r.reorder_level,
-          suggested_qty: r.suggested_qty,
-        })));
+        setRows(
+          suggestions.map((r) => ({
+            item_code: r.item_code,
+            warehouse: r.warehouse || '—',
+            actual_qty: r.qty,
+            reorder_level: r.reorder_level,
+            suggested_qty: r.suggested_qty,
+          })),
+        );
       } else {
         const filters = [['actual_qty', '<=', Number(threshold)]];
         if (warehouse !== 'all') filters.push(['warehouse', '=', warehouse]);
@@ -46,47 +51,109 @@ export default function AlertsPage() {
     }
   };
 
-  const columns = tab === 'reorder'
-    ? [
-        { key: 'item_code', label: 'Item', render: (v) => <span className="mono">{v}</span> },
-        { key: 'warehouse', label: 'Warehouse' },
-        { key: 'actual_qty', label: 'On hand', render: (v) => <Badge color="amber">{Number(v || 0).toFixed(2)}</Badge> },
-        { key: 'reorder_level', label: 'Reorder at', render: (v) => <span className="mono">{v}</span> },
-        { key: 'suggested_qty', label: 'Order qty', render: (v) => <strong>{v}</strong> },
-      ]
-    : [
-        { key: 'item_code', label: 'Item', render: (v) => <span className="mono">{v}</span> },
-        { key: 'warehouse', label: 'Warehouse' },
-        { key: 'actual_qty', label: 'Qty', render: (v) => <Badge color={Number(v || 0) <= 0 ? 'red' : 'amber'}>{Number(v || 0).toFixed(2)}</Badge> },
-        { key: 'valuation_rate', label: 'Valuation', render: (v) => `EGP ${Number(v || 0).toFixed(2)}` },
-      ];
+  const columns =
+    tab === 'reorder'
+      ? [
+          { key: 'item_code', label: 'Item', render: (v) => <span className="mono">{v}</span> },
+          { key: 'warehouse', label: 'Warehouse' },
+          {
+            key: 'actual_qty',
+            label: 'On hand',
+            render: (v) => <Badge color="amber">{Number(v || 0).toFixed(2)}</Badge>,
+          },
+          { key: 'reorder_level', label: 'Reorder at', render: (v) => <span className="mono">{v}</span> },
+          { key: 'suggested_qty', label: 'Order qty', render: (v) => <strong>{v}</strong> },
+        ]
+      : [
+          { key: 'item_code', label: 'Item', render: (v) => <span className="mono">{v}</span> },
+          { key: 'warehouse', label: 'Warehouse' },
+          {
+            key: 'actual_qty',
+            label: 'Qty',
+            render: (v) => (
+              <Badge color={Number(v || 0) <= 0 ? 'red' : 'amber'}>
+                {Number(v || 0).toFixed(2)}
+              </Badge>
+            ),
+          },
+          ...(canInventoryViewValuation
+            ? [
+                {
+                  key: 'valuation_rate',
+                  label: 'Valuation',
+                  render: (v) => `EGP ${Number(v || 0).toFixed(2)}`,
+                },
+              ]
+            : []),
+        ];
+
+  const sparse = rows.length > 0 && rows.length <= 8;
 
   return (
-    <div>
-      <PageHeader title="Stock alerts" subtitle="Low stock and reorder-level warnings" />
-      <div className="card panel">
+    <TablePageLayout className="page-layout--list-page" tableConstrain={sparse}>
+      <PageHeader title="Stock alerts" subtitle="Low stock and reorder-level warnings" dense />
+
+      <LayoutSection variant="flat" flushHead>
         <div className="toolbar">
           <div className="pos-view-toggle">
-            <button type="button" className={`pos-view-toggle__btn ${tab === 'low' ? 'pos-view-toggle__btn--active' : ''}`} onClick={() => setTab('low')}>Low stock</button>
-            <button type="button" className={`pos-view-toggle__btn ${tab === 'reorder' ? 'pos-view-toggle__btn--active' : ''}`} onClick={() => setTab('reorder')}>Reorder level</button>
+            <button
+              type="button"
+              className={`pos-view-toggle__btn ${tab === 'low' ? 'pos-view-toggle__btn--active' : ''}`}
+              onClick={() => setTab('low')}
+            >
+              Low stock
+            </button>
+            <button
+              type="button"
+              className={`pos-view-toggle__btn ${tab === 'reorder' ? 'pos-view-toggle__btn--active' : ''}`}
+              onClick={() => setTab('reorder')}
+            >
+              Reorder level
+            </button>
           </div>
           <div className="toolbar__group">
-            <select className="input toolbar__input-fixed" value={warehouse} onChange={(e) => setWarehouse(e.target.value)}>
+            <select
+              className="input toolbar__input-fixed"
+              value={warehouse}
+              onChange={(e) => setWarehouse(e.target.value)}
+            >
               <option value="all">All warehouses</option>
-              {warehouses.map((w) => <option key={w.name} value={w.name}>{w.warehouse_name || w.name}</option>)}
+              {warehouses.map((w) => (
+                <option key={w.name} value={w.name}>
+                  {w.warehouse_name || w.name}
+                </option>
+              ))}
             </select>
             {tab === 'low' && (
-              <input className="input toolbar__input-xs" type="number" min="0" value={threshold} onChange={(e) => setThreshold(e.target.value)} title="Max qty threshold" />
+              <input
+                className="input toolbar__input-xs"
+                type="number"
+                min="0"
+                value={threshold}
+                onChange={(e) => setThreshold(e.target.value)}
+                title="Max qty threshold"
+              />
             )}
-            <Btn variant="ghost" size="sm" onClick={load}>Load alerts</Btn>
+            <Btn variant="ghost" size="sm" onClick={load}>
+              Load alerts
+            </Btn>
           </div>
         </div>
-      </div>
-      {loading ? <PageLoading size={26} /> : error ? <ApiErrorCard message={error} onRetry={load} /> : rows.length === 0 ? (
+      </LayoutSection>
+
+      {loading ? (
+        <PageLoading size={26} />
+      ) : error ? (
+        <ApiErrorCard message={error} onRetry={load} />
+      ) : rows.length === 0 ? (
         <EmptyState icon="🚨" title="No alerts" desc="Adjust filters and load." />
       ) : (
-        <Table columns={columns} data={rows} />
+        <LayoutSection variant="raised" flushHead fit={sparse}>
+          <TableRegion fit={sparse}>
+            <Table columns={columns} data={rows} compact />
+          </TableRegion>
+        </LayoutSection>
       )}
-    </div>
+    </TablePageLayout>
   );
 }

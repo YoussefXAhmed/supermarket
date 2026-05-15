@@ -10,6 +10,7 @@ export default function POSShiftBar({
   onStartShift,
   onEndShift,
   onRefresh,
+  readOnly = false,
 }) {
   const [showStart, setShowStart] = useState(false);
   const [openingAmount, setOpeningAmount] = useState('0');
@@ -39,12 +40,12 @@ export default function POSShiftBar({
       </div>
 
       <div className="pos-shift-bar__actions">
-        {!shiftOpen && !showStart && (
+        {!readOnly && !shiftOpen && !showStart && (
           <Btn variant="primary" size="sm" loading={shiftLoading} onClick={() => setShowStart(true)}>
             Start shift
           </Btn>
         )}
-        {shiftOpen && (
+        {!readOnly && shiftOpen && (
           <Btn variant="danger" size="sm" loading={shiftLoading} onClick={onEndShift}>
             End shift
           </Btn>
@@ -54,7 +55,7 @@ export default function POSShiftBar({
         </Btn>
       </div>
 
-      {showStart && !shiftOpen && (
+      {!readOnly && showStart && !shiftOpen && (
         <div className="pos-shift-bar__form card">
           <p className="pos-shift-bar__form-title">Opening balance</p>
           <div className="pos-shift-bar__form-row">

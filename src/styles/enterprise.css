@@ -39,6 +39,7 @@
 .role-badge--admin { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
 .role-badge--pos { border-color: var(--green); color: var(--green); background: var(--green-bg); }
 .role-badge--inventory { border-color: var(--blue); color: var(--blue); background: var(--blue-bg); }
+.role-badge--purchasing { border-color: var(--green); color: var(--green); background: var(--green-bg); }
 .role-badge--manager { border-color: var(--amber); color: var(--amber); background: var(--amber-bg); }
 
 .toast-stack {

@@ -1,8 +1,14 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { PageHeader, Btn, ApiErrorCard, Table, Badge, PageLoading } from '../../components/ui';
+import { ApiErrorCard, Badge, Btn, PageHeader, PageLoading, Table } from '../../components/ui';
+import {
+  FormPageLayout,
+  LayoutSection,
+  TablePageLayout,
+  TableRegion,
+} from '../../components/layout/page-layouts';
+import { getCompanies, getItems } from '../../services/api';
 import { createAndSubmitPurchaseInvoice, listPurchaseInvoices, listSuppliers } from '../../services/purchasingApi';
-import { getItems, getCompanies } from '../../services/api';
 import { getUserFriendlyMessage } from '../../utils/errorHandling';
 
 const fmt = (n) =>
@@ -64,7 +70,11 @@ export default function PurchaseInvoicesPage() {
       setTab('list');
       loadList();
     } catch (e2) {
-      setErr(e2.draftName ? `${getUserFriendlyMessage(e2)} Draft: ${e2.draftName}` : getUserFriendlyMessage(e2));
+      setErr(
+        e2.draftName
+          ? `${getUserFriendlyMessage(e2)} Draft: ${e2.draftName}`
+          : getUserFriendlyMessage(e2),
+      );
     } finally {
       setSaving(false);
       submittingRef.current = false;
@@ -84,42 +94,115 @@ export default function PurchaseInvoicesPage() {
     },
   ];
 
+  const sparse = rows.length > 0 && rows.length <= 8;
+  const Layout = tab === 'list' ? TablePageLayout : FormPageLayout;
+
   return (
-    <div>
-      <PageHeader title="Purchase invoices" subtitle="Supplier payables and bill matching" />
-      <div className="card panel">
+    <Layout className="page-layout--list-page" tableConstrain={tab === 'list' && sparse}>
+      <PageHeader
+        title="Purchase invoices"
+        subtitle="Supplier payables and bill matching"
+        dense
+      />
+
+      <LayoutSection variant="flat" flushHead>
         <div className="pos-view-toggle">
-          <button type="button" className={`pos-view-toggle__btn ${tab === 'list' ? 'pos-view-toggle__btn--active' : ''}`} onClick={() => setTab('list')}>History</button>
-          <button type="button" className={`pos-view-toggle__btn ${tab === 'new' ? 'pos-view-toggle__btn--active' : ''}`} onClick={() => setTab('new')}>New invoice</button>
+          <button
+            type="button"
+            className={`pos-view-toggle__btn ${tab === 'list' ? 'pos-view-toggle__btn--active' : ''}`}
+            onClick={() => setTab('list')}
+          >
+            History
+          </button>
+          <button
+            type="button"
+            className={`pos-view-toggle__btn ${tab === 'new' ? 'pos-view-toggle__btn--active' : ''}`}
+            onClick={() => setTab('new')}
+          >
+            New invoice
+          </button>
         </div>
-      </div>
+      </LayoutSection>
 
       {tab === 'list' ? (
-        loading ? <PageLoading size={26} /> : <Table columns={columns} data={rows} emptyMsg="No purchase invoices" />
+        loading ? (
+          <PageLoading size={26} />
+        ) : (
+          <LayoutSection variant="raised" flushHead fit={sparse}>
+            <TableRegion fit={sparse}>
+              <Table columns={columns} data={rows} compact emptyMsg="No purchase invoices" />
+            </TableRegion>
+          </LayoutSection>
+        )
       ) : (
-        <form className="inv-form" onSubmit={onSubmit}>
-          <label>
-            Supplier
-            <select className="input" value={supplier} onChange={(e) => setSupplier(e.target.value)} required>
-              <option value="">Select</option>
-              {suppliers.map((s) => <option key={s.name} value={s.name}>{s.supplier_name || s.name}</option>)}
-            </select>
-          </label>
-          <label>Supplier bill # <input className="input" value={billNo} onChange={(e) => setBillNo(e.target.value)} /></label>
-          {lines.map((line, index) => (
-            <div key={index} className="recon-line">
-              <input className="input" list="pi-items" value={line.item_code} onChange={(e) => updateLine(index, { item_code: e.target.value })} required />
-              <input className="input" type="number" min="0.001" step="any" placeholder="Qty" value={line.qty} onChange={(e) => updateLine(index, { qty: e.target.value })} required />
-              <input className="input" type="number" min="0" step="0.01" placeholder="Rate" value={line.rate} onChange={(e) => updateLine(index, { rate: e.target.value })} />
-            </div>
-          ))}
-          <datalist id="pi-items">{items.map((it) => <option key={it.item_code} value={it.item_code} />)}</datalist>
-          <Btn type="button" variant="ghost" size="sm" onClick={() => setLines((p) => [...p, emptyLine()])}>+ Line</Btn>
-          <Btn type="submit" variant="primary" size="md" loading={saving}>Submit invoice</Btn>
-          {msg && <p className="inv-success">{msg}</p>}
-          {err && <ApiErrorCard message={err} />}
-        </form>
+        <LayoutSection variant="raised" title="New purchase invoice">
+          <form className="inv-form form-region" onSubmit={onSubmit}>
+            <label>
+              Supplier
+              <select
+                className="input"
+                value={supplier}
+                onChange={(e) => setSupplier(e.target.value)}
+                required
+              >
+                <option value="">Select</option>
+                {suppliers.map((s) => (
+                  <option key={s.name} value={s.name}>
+                    {s.supplier_name || s.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Supplier bill #
+              <input className="input" value={billNo} onChange={(e) => setBillNo(e.target.value)} />
+            </label>
+            {lines.map((line, index) => (
+              <div key={index} className="recon-line">
+                <input
+                  className="input"
+                  list="pi-items"
+                  value={line.item_code}
+                  onChange={(e) => updateLine(index, { item_code: e.target.value })}
+                  required
+                />
+                <input
+                  className="input"
+                  type="number"
+                  min="0.001"
+                  step="any"
+                  placeholder="Qty"
+                  value={line.qty}
+                  onChange={(e) => updateLine(index, { qty: e.target.value })}
+                  required
+                />
+                <input
+                  className="input"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="Rate"
+                  value={line.rate}
+                  onChange={(e) => updateLine(index, { rate: e.target.value })}
+                />
+              </div>
+            ))}
+            <datalist id="pi-items">
+              {items.map((it) => (
+                <option key={it.item_code} value={it.item_code} />
+              ))}
+            </datalist>
+            <Btn type="button" variant="ghost" size="sm" onClick={() => setLines((p) => [...p, emptyLine()])}>
+              + Line
+            </Btn>
+            <Btn type="submit" variant="primary" size="md" loading={saving}>
+              Submit invoice
+            </Btn>
+            {msg && <p className="inv-success">{msg}</p>}
+            {err && <ApiErrorCard message={err} />}
+          </form>
+        </LayoutSection>
       )}
-    </div>
+    </Layout>
   );
 }

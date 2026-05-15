@@ -1,26 +1,33 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { hasCapability } from '../../auth/capabilities';
 import UserSessionActions from './UserSessionActions';
 import ErrorBoundary from '../common/ErrorBoundary';
 import { RoleBadge } from '../ui';
 
-const NAV = [
-  { to: '/admin', label: 'Dashboard', icon: '◈', exact: true },
-  { to: '/admin/products', label: 'Products', icon: '🛒' },
-  { to: '/admin/inventory', label: 'Inventory', icon: '📦' },
-  { to: '/admin/purchasing', label: 'Purchasing', icon: '🛍️' },
-  { to: '/admin/invoices', label: 'Invoices', icon: '🧾' },
-  { to: '/admin/customers', label: 'Customers', icon: '👥' },
-  { to: '/admin/activity', label: 'Activity', icon: '📋' },
-  { to: '/admin/users', label: 'Users', icon: '🧑‍💼' },
-  { to: '/admin/reports', label: 'Reports', icon: '📊' },
-  { to: '/pos', label: 'POS', icon: '💳' },
-  { to: '/admin/settings', label: 'Settings', icon: '⚙️' },
+const NAV_FULL = [
+  { to: '/admin', label: 'Dashboard', icon: '◈', exact: true, cap: 'canAccessAdminWorkspace' },
+  { to: '/admin/products', label: 'Products', icon: '🛒', cap: 'canManageSystem' },
+  { to: '/admin/inventory', label: 'Inventory', icon: '📦', cap: 'canAccessInventory' },
+  { to: '/admin/purchasing', label: 'Purchasing', icon: '🛍️', cap: 'canAccessPurchasing' },
+  { to: '/admin/invoices', label: 'Invoices', icon: '🧾', cap: 'canViewReports' },
+  { to: '/admin/returns', label: 'Returns', icon: '↩', cap: 'canViewReturns' },
+  { to: '/shifts/history', label: 'Shifts', icon: '◷', cap: 'canViewShiftReports' },
+  { to: '/admin/customers', label: 'Customers', icon: '👥', cap: 'canViewReports' },
+  { to: '/admin/activity', label: 'Activity', icon: '📋', cap: 'canViewReports' },
+  { to: '/admin/users', label: 'Users', icon: '🧑‍💼', cap: 'canManageUsers' },
+  { to: '/admin/reports', label: 'Reports', icon: '📊', cap: 'canViewReports' },
+  { to: '/pos', label: 'POS', icon: '💳', cap: 'canViewPOS' },
+  { to: '/admin/settings', label: 'Settings', icon: '⚙️', cap: 'canManageSettings' },
 ];
 
-export default function AdminLayout() {
-  const { user, logout } = useAuth();
+const NAV_PURCHASING_WORKSPACE = [
+  { to: '/admin/purchasing', label: 'Purchasing', icon: '🛍️', cap: 'canAccessPurchasing' },
+];
+
+export default function AdminLayout({ purchasingWorkspace = false }) {
+  const { user, logout, capabilities } = useAuth();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
@@ -29,6 +36,18 @@ export default function AdminLayout() {
     await logout();
     navigate('/login');
   };
+
+  const navItems = useMemo(() => {
+    const pool =
+      purchasingWorkspace && !hasCapability(capabilities, 'canManageSystem')
+        ? NAV_PURCHASING_WORKSPACE
+        : NAV_FULL;
+    return pool.filter((item) => hasCapability(capabilities, item.cap));
+  }, [purchasingWorkspace, capabilities]);
+
+  const profileLink = hasCapability(capabilities, 'canManageSettings')
+    ? [{ label: 'Profile', onClick: () => navigate('/admin/settings') }]
+    : [];
 
   return (
     <div className={`admin-layout ${collapsed ? 'admin-layout--collapsed' : ''} ${mobileNav ? 'admin-layout--mobile-nav' : ''}`}>
@@ -50,7 +69,7 @@ export default function AdminLayout() {
         </div>
 
         <nav className="sidebar__nav">
-          {NAV.map((item) => (
+          {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -74,7 +93,7 @@ export default function AdminLayout() {
             <UserSessionActions
               user={user}
               compact
-              links={[{ label: 'Profile', onClick: () => navigate('/admin/settings') }]}
+              links={profileLink}
               onLogout={handleLogout}
             />
           )}

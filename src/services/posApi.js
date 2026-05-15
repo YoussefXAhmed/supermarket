@@ -125,94 +125,15 @@ function guessMopType(name) {
   return 'Cash';
 }
 
-export const listPOSOpeningEntries = (filters = [], limit = 5) =>
-  api.get('/api/resource/POS Opening Entry', {
-    params: {
-      fields: JSON.stringify([
-        'name',
-        'pos_profile',
-        'company',
-        'period_start_date',
-        'posting_date',
-        'status',
-        'docstatus',
-        'user',
-      ]),
-      filters: JSON.stringify(filters),
-      order_by: 'creation desc',
-      limit_page_length: limit,
-    },
-  });
+export { getOpenPOSOpeningEntry } from './shiftsApi';
+export { openShift as startPOSShift } from './shiftsService';
 
-export async function getOpenPOSOpeningEntry(posProfile, user) {
-  const today = new Date().toISOString().slice(0, 10);
-  const filters = [
-    ['pos_profile', '=', posProfile],
-    ['docstatus', '=', 1],
-  ];
-  if (user) filters.push(['user', '=', user]);
-
-  const res = await listPOSOpeningEntries(filters, 10);
-  const rows = (res?.data?.data || []).filter(
-    (r) => !r.status || r.status === 'Open'
-  );
-  const todayOpen = rows.find((r) => (r.posting_date || r.period_start_date || '').slice(0, 10) === today);
-  return todayOpen || rows[0] || null;
-}
-
-export const createPOSOpeningEntry = (payload) =>
-  api.post('/api/resource/POS Opening Entry', payload);
-
-export const submitPOSOpeningEntry = (name) =>
-  api.put(`/api/resource/POS Opening Entry/${encodeURIComponent(name)}`, { docstatus: 1 });
-
-export async function startPOSShift({ posProfile, company, openingAmount = 0, modeOfPayment = 'Cash', user }) {
-  const today = new Date().toISOString().slice(0, 10);
-  const payload = {
-    pos_profile: posProfile,
-    company,
-    period_start_date: today,
-    posting_date: today,
-    user: user || undefined,
-    balance_details: [
-      {
-        mode_of_payment: modeOfPayment,
-        opening_amount: Number(openingAmount) || 0,
-      },
-    ],
+/** @deprecated Use shift close reconciliation (/shifts/close) with counted cash. */
+export async function endPOSShift({ openingEntry }) {
+  if (!openingEntry) throw new Error('openingEntry required');
+  return {
+    redirectTo: `/shifts/close?opening=${encodeURIComponent(openingEntry)}`,
   };
-  const res = await createPOSOpeningEntry(payload);
-  const name = res?.data?.data?.name;
-  if (!name) throw new Error('Failed to create POS Opening Entry');
-  await submitPOSOpeningEntry(name);
-  const docRes = await api.get(`/api/resource/POS Opening Entry/${encodeURIComponent(name)}`);
-  return docRes?.data?.data || { name, status: 'Open' };
-}
-
-export const createPOSClosingEntry = (payload) =>
-  api.post('/api/resource/POS Closing Entry', payload);
-
-export const submitPOSClosingEntry = (name) =>
-  api.put(`/api/resource/POS Closing Entry/${encodeURIComponent(name)}`, { docstatus: 1 });
-
-export async function endPOSShift({ posProfile, company, openingEntry }) {
-  const today = new Date().toISOString().slice(0, 10);
-  const payload = {
-    pos_profile: posProfile,
-    company,
-    pos_opening_entry: openingEntry,
-    period_end_date: today,
-    posting_date: today,
-  };
-  const res = await createPOSClosingEntry(payload);
-  const name = res?.data?.data?.name;
-  if (!name) throw new Error('Failed to create POS Closing Entry');
-  try {
-    await submitPOSClosingEntry(name);
-  } catch (e) {
-    return { name, submitted: false, message: e.message };
-  }
-  return { name, submitted: true };
 }
 
 export const getBinsForWarehouse = (warehouse, itemCodes = []) => {

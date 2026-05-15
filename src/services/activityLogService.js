@@ -7,6 +7,8 @@ export const ActivityType = {
   ADJUSTMENT: 'adjustment',
   USER: 'user',
   PURCHASE: 'purchase',
+  RETURN: 'return',
+  SHIFT: 'shift',
   SYSTEM: 'system',
 };
 

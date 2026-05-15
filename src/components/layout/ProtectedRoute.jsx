@@ -1,9 +1,18 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { hasCapability } from '../../auth/capabilities';
 import { Spinner } from '../ui';
 
+const REQUIRE_CAP = {
+  admin: 'canAccessAdminWorkspace',
+  'admin-system': 'canManageSystem',
+  pos: 'canViewPOS',
+  inventory: 'canAccessInventory',
+  purchasing: 'canAccessPurchasing',
+};
+
 export default function ProtectedRoute({ children, require: requireRole = 'any' }) {
-  const { user, loading, isAdmin, isPOS, isInventory, homePath } = useAuth();
+  const { user, loading, capabilities, homePath } = useAuth();
 
   if (loading) {
     return (
@@ -15,19 +24,10 @@ export default function ProtectedRoute({ children, require: requireRole = 'any' 
 
   if (!user) return <Navigate to="/login" replace />;
 
-  if (requireRole === 'admin' && !isAdmin) {
-    return <Navigate to={homePath || '/login'} replace />;
-  }
+  if (requireRole === 'any') return children;
 
-  if (requireRole === 'pos' && isAdmin) {
-    return <Navigate to="/admin" replace />;
-  }
-
-  if (requireRole === 'pos' && !isPOS) {
-    return <Navigate to={homePath || '/login'} replace />;
-  }
-
-  if (requireRole === 'inventory' && !isAdmin && !isInventory) {
+  const cap = REQUIRE_CAP[requireRole];
+  if (cap && !hasCapability(capabilities, cap)) {
     return <Navigate to={homePath || '/login'} replace />;
   }
 

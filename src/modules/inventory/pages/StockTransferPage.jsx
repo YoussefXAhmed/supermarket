@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Btn, PageHeader, ApiErrorCard } from '../../../components/ui';
 import { FormPageLayout, LayoutSection } from '../../../components/layout/page-layouts';
-import { createAndSubmitStockEntry, getBin, listWarehouses } from '../../../services/inventoryApi';
+import { ApiErrorCard, Btn, PageHeader } from '../../../components/ui';
 import { getItems } from '../../../services/api';
+import { createAndSubmitStockEntry, getBin, listWarehouses } from '../../../services/inventoryApi';
 import { getUserFriendlyMessage } from '../../../utils/errorHandling';
 import { availableBinQty } from '../../../utils/inventoryValidation';
 
@@ -16,8 +16,8 @@ export default function StockTransferPage() {
   const [err, setErr] = useState('');
 
   useEffect(() => {
-    listWarehouses({ limit: 500 }).then((r) => setWarehouses(r?.data?.data || [])).catch(() => {});
-    getItems({ limit: 500 }).then((r) => setItems(r?.data?.data || [])).catch(() => {});
+    listWarehouses({ limit: 500 }).then((r) => setWarehouses(r?.data?.data || [])).catch(() => { });
+    getItems({ limit: 500 }).then((r) => setItems(r?.data?.data || [])).catch(() => { });
   }, []);
 
   useEffect(() => {

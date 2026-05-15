@@ -1,18 +1,32 @@
 import { useEffect, useState } from 'react';
-import { Btn, PageHeader, ApiErrorCard } from '../../../components/ui';
 import { FormPageLayout, LayoutSection } from '../../../components/layout/page-layouts';
-import { createAndSubmitStockEntry, getBin, listWarehouses } from '../../../services/inventoryApi';
+import { ApiErrorCard, Btn, PageHeader } from '../../../components/ui';
 import { getItems } from '../../../services/api';
+import { createAndSubmitStockEntry, getBin, listWarehouses } from '../../../services/inventoryApi';
 import { getUserFriendlyMessage } from '../../../utils/errorHandling';
 import { availableBinQty } from '../../../utils/inventoryValidation';
+import { useInventoryCapabilities } from '../../../hooks/useInventoryCapabilities';
 
-const TYPES = ['Material Receipt', 'Material Issue', 'Material Transfer'];
+const ENTRY_TYPES = [
+  { value: 'Material Receipt', cap: 'receipt' },
+  { value: 'Material Issue', cap: 'issue' },
+  { value: 'Material Transfer', cap: 'transfer' },
+];
 
 export default function StockEntryPage() {
+  const {
+    canInventoryReceipt,
+    canInventoryIssueTransfer,
+  } = useInventoryCapabilities();
+
+  const allowedTypes = ENTRY_TYPES.filter((t) => {
+    if (t.cap === 'receipt') return canInventoryReceipt;
+    return canInventoryIssueTransfer;
+  }).map((t) => t.value);
   const [warehouses, setWarehouses] = useState([]);
   const [items, setItems] = useState([]);
   const [form, setForm] = useState({
-    stock_entry_type: 'Material Receipt',
+    stock_entry_type: allowedTypes[0] || 'Material Receipt',
     item_code: '',
     qty: '',
     source_warehouse: '',
@@ -22,6 +36,12 @@ export default function StockEntryPage() {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
+
+  useEffect(() => {
+    if (allowedTypes.length && !allowedTypes.includes(form.stock_entry_type)) {
+      setForm((f) => ({ ...f, stock_entry_type: allowedTypes[0] }));
+    }
+  }, [allowedTypes, form.stock_entry_type]);
 
   useEffect(() => {
     listWarehouses({ limit: 500 })
@@ -50,6 +70,10 @@ export default function StockEntryPage() {
 
   const onSubmit = async (e) => {
     e.preventDefault();
+    if (!allowedTypes.includes(form.stock_entry_type)) {
+      setErr('You do not have permission for this stock entry type in ERPNext.');
+      return;
+    }
     setErr('');
     setMsg('');
     setSaving(true);
@@ -94,7 +118,7 @@ export default function StockEntryPage() {
           <label>
             Entry Type
             <select className="input" value={form.stock_entry_type} onChange={(e) => setForm((f) => ({ ...f, stock_entry_type: e.target.value }))}>
-              {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              {allowedTypes.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </label>
 

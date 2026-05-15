@@ -1,0 +1,21 @@
+[project]
+name = "elmahdi"
+authors = [{ name = "Elmahdi", email = "support@elmahdi.com" }]
+description = "SPA session identity API for supermarket ERP frontend"
+requires-python = ">=3.10"
+readme = "README.md"
+version = "1.0.0"
+dependencies = []
+
+[build-system]
+requires = ["flit_core >=3.4,<4"]
+build-backend = "flit_core.buildapi"
+
+[tool.bench.dev-dependencies]
+elmahdi = []
+
+[tool.bench.frappe-dependencies]
+frappe = ">=15.0.0,<16.0.0"
+
+[tool.flit.module]
+name = "elmahdi"

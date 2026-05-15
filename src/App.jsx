@@ -2,6 +2,8 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/layout/ProtectedRoute';
+import CapabilityRoute from './components/layout/CapabilityRoute';
+import InventoryCapabilityRoute from './components/layout/InventoryCapabilityRoute';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import AdminLayout from './components/layout/AdminLayout';
 import InventoryLayout from './components/layout/InventoryLayout';
@@ -38,6 +40,11 @@ const ReceiveStockPage = lazy(() => import('./modules/purchasing/ReceiveStockPag
 const PurchaseInvoicesPage = lazy(() => import('./modules/purchasing/PurchaseInvoicesPage'));
 const InvoiceMatchingPage = lazy(() => import('./modules/purchasing/InvoiceMatchingPage'));
 const PurchaseReportsPage = lazy(() => import('./modules/purchasing/PurchaseReportsPage'));
+const ReturnsPage = lazy(() => import('./modules/returns/ReturnsPage'));
+const ShiftsLayout = lazy(() => import('./components/layout/ShiftsLayout'));
+const ShiftOpenPage = lazy(() => import('./modules/shifts/pages/ShiftOpenPage'));
+const ShiftClosePage = lazy(() => import('./modules/shifts/pages/ShiftClosePage'));
+const ShiftHistoryPage = lazy(() => import('./modules/shifts/pages/ShiftHistoryPage'));
 
 function LazyPage({ children }) {
   return <Suspense fallback={<PageLoading size={28} />}>{children}</Suspense>;
@@ -62,6 +69,41 @@ export default function App() {
           />
 
           <Route
+            path="/shifts"
+            element={
+              <ProtectedRoute require="any">
+                <LazyPage><ShiftsLayout /></LazyPage>
+              </ProtectedRoute>
+            }
+          >
+            <Route
+              path="open"
+              element={(
+                <CapabilityRoute cap="canOpenShift">
+                  <LazyPage><ShiftOpenPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="close"
+              element={(
+                <CapabilityRoute cap="canCloseShift">
+                  <LazyPage><ShiftClosePage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="history"
+              element={(
+                <CapabilityRoute cap="canViewShiftReports">
+                  <LazyPage><ShiftHistoryPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route index element={<Navigate to="/shifts/open" replace />} />
+          </Route>
+
+          <Route
             path="/inventory"
             element={
               <ProtectedRoute require="inventory">
@@ -72,15 +114,55 @@ export default function App() {
             <Route index element={<LazyPage><InventoryDashboardPage /></LazyPage>} />
             <Route path="warehouses" element={<LazyPage><WarehousesPage /></LazyPage>} />
             <Route path="stock-entry" element={<LazyPage><StockEntryPage /></LazyPage>} />
-            <Route path="transfer" element={<LazyPage><StockTransferPage /></LazyPage>} />
-            <Route path="reconciliation" element={<LazyPage><ReconciliationPage /></LazyPage>} />
+            <Route
+              path="transfer"
+              element={(
+                <InventoryCapabilityRoute cap="canInventoryIssueTransfer">
+                  <LazyPage><StockTransferPage /></LazyPage>
+                </InventoryCapabilityRoute>
+              )}
+            />
+            <Route
+              path="reconciliation"
+              element={(
+                <InventoryCapabilityRoute cap="canInventoryReconcile">
+                  <LazyPage><ReconciliationPage /></LazyPage>
+                </InventoryCapabilityRoute>
+              )}
+            />
             <Route path="ledger" element={<LazyPage><StockLedgerPage /></LazyPage>} />
             <Route path="items" element={<LazyPage><ItemDetailsPage /></LazyPage>} />
             <Route path="alerts" element={<LazyPage><InventoryAlertsPage /></LazyPage>} />
             <Route path="reorder" element={<LazyPage><ReorderPage /></LazyPage>} />
             <Route path="batches" element={<LazyPage><BatchesPage /></LazyPage>} />
-            <Route path="analytics" element={<LazyPage><AnalyticsPage /></LazyPage>} />
+            <Route
+              path="analytics"
+              element={(
+                <InventoryCapabilityRoute cap="canInventoryAnalytics">
+                  <LazyPage><AnalyticsPage /></LazyPage>
+                </InventoryCapabilityRoute>
+              )}
+            />
             <Route path="reports" element={<LazyPage><InventoryReportsPage /></LazyPage>} />
+          </Route>
+
+          <Route
+            path="/admin/purchasing"
+            element={
+              <ProtectedRoute require="purchasing">
+                <AdminLayout purchasingWorkspace />
+              </ProtectedRoute>
+            }
+          >
+            <Route element={<PurchasingLayout />}>
+              <Route index element={<LazyPage><PurchasingDashboardPage /></LazyPage>} />
+              <Route path="suppliers" element={<LazyPage><SuppliersPage /></LazyPage>} />
+              <Route path="suppliers/:id" element={<LazyPage><SupplierDetailPage /></LazyPage>} />
+              <Route path="receive" element={<LazyPage><ReceiveStockPage /></LazyPage>} />
+              <Route path="invoices" element={<LazyPage><PurchaseInvoicesPage /></LazyPage>} />
+              <Route path="matching" element={<LazyPage><InvoiceMatchingPage /></LazyPage>} />
+              <Route path="reports" element={<LazyPage><PurchaseReportsPage /></LazyPage>} />
+            </Route>
           </Route>
 
           <Route
@@ -92,23 +174,43 @@ export default function App() {
             }
           >
             <Route index element={<LazyPage><DashboardPage /></LazyPage>} />
-            <Route path="products" element={<LazyPage><ProductsPage /></LazyPage>} />
+            <Route
+              path="products"
+              element={(
+                <CapabilityRoute cap="canManageSystem">
+                  <LazyPage><ProductsPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
             <Route path="inventory" element={<LazyPage><InventoryPage /></LazyPage>} />
-            <Route path="purchasing" element={<PurchasingLayout />}>
-              <Route index element={<LazyPage><PurchasingDashboardPage /></LazyPage>} />
-              <Route path="suppliers" element={<LazyPage><SuppliersPage /></LazyPage>} />
-              <Route path="suppliers/:id" element={<LazyPage><SupplierDetailPage /></LazyPage>} />
-              <Route path="receive" element={<LazyPage><ReceiveStockPage /></LazyPage>} />
-              <Route path="invoices" element={<LazyPage><PurchaseInvoicesPage /></LazyPage>} />
-              <Route path="matching" element={<LazyPage><InvoiceMatchingPage /></LazyPage>} />
-              <Route path="reports" element={<LazyPage><PurchaseReportsPage /></LazyPage>} />
-            </Route>
             <Route path="invoices" element={<LazyPage><InvoicesPage /></LazyPage>} />
+            <Route
+              path="returns"
+              element={(
+                <CapabilityRoute cap="canViewReturns">
+                  <LazyPage><ReturnsPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
             <Route path="customers" element={<LazyPage><CustomersPage /></LazyPage>} />
-            <Route path="users" element={<LazyPage><UsersPage /></LazyPage>} />
+            <Route
+              path="users"
+              element={(
+                <CapabilityRoute cap="canManageUsers">
+                  <LazyPage><UsersPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
             <Route path="reports" element={<LazyPage><ReportsPage /></LazyPage>} />
             <Route path="activity" element={<LazyPage><ActivityLogPage /></LazyPage>} />
-            <Route path="settings" element={<LazyPage><SettingsPage /></LazyPage>} />
+            <Route
+              path="settings"
+              element={(
+                <CapabilityRoute cap="canManageSettings">
+                  <LazyPage><SettingsPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
           </Route>
 
           <Route path="*" element={<Navigate to="/login" replace />} />

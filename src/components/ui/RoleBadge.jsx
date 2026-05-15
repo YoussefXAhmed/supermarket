@@ -1,23 +1,30 @@
 import { useAuth } from '../../hooks/useAuth';
 
 const LABELS = {
-  admin: { label: 'Administrator', className: 'role-badge--admin' },
-  manager: { label: 'Manager', className: 'role-badge--manager' },
-  pos: { label: 'Cashier', className: 'role-badge--pos' },
+  administrator: { label: 'Administrator', className: 'role-badge--admin' },
+  store_manager: { label: 'Store Manager', className: 'role-badge--manager' },
+  cashier: { label: 'Cashier', className: 'role-badge--pos' },
   inventory: { label: 'Inventory', className: 'role-badge--inventory' },
+  purchasing: { label: 'Purchasing', className: 'role-badge--purchasing' },
+  desk_manager: { label: 'Manager', className: 'role-badge--manager' },
+  desk: { label: 'Desk User', className: '' },
 };
 
-export function getRoleKind({ isAdmin, isPOS, isInventory, isManager }) {
-  if (isAdmin) return 'admin';
-  if (isManager) return 'manager';
-  if (isPOS) return 'pos';
-  if (isInventory) return 'inventory';
+/** @deprecated Use operationalPersona from capabilities */
+export function getRoleKind(caps = {}) {
+  const persona = caps.operationalPersona;
+  if (persona && LABELS[persona]) return persona;
+  if (caps.canManageSystem) return 'administrator';
+  if (caps.isStoreManager || caps.isManager) return 'store_manager';
+  if (caps.canOperatePOS) return 'cashier';
+  if (caps.canAccessInventory) return 'inventory';
+  if (caps.canAccessPurchasing) return 'purchasing';
   return null;
 }
 
 export default function RoleBadge() {
-  const { isAdmin, isPOS, isInventory, isManager, roleLabel } = useAuth();
-  const kind = getRoleKind({ isAdmin, isPOS, isInventory, isManager });
+  const { operationalPersona, roleLabel, capabilities } = useAuth();
+  const kind = operationalPersona || getRoleKind(capabilities);
   if (!kind) return null;
   const meta = LABELS[kind] || { label: roleLabel || kind, className: '' };
   return (

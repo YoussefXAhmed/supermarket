@@ -3,6 +3,8 @@
 **Generated:** May 2026  
 **Stack:** React 18 + Vite 5 + ERPNext (Frappe REST API)
 
+> **See also:** `docs/PROJECT_CONTEXT.md`, `docs/CURRENT_STATE.md`, `docs/NEXT_STEPS.md` for full engineering context and roadmap.
+
 ---
 
 ## 1. Executive summary

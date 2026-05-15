@@ -1,6 +1,6 @@
-import api, { getCompanies } from './api';
 import { validateStockEntry } from '../utils/inventoryValidation';
-import { logActivity, ActivityType } from './activityLogService';
+import { ActivityType, logActivity } from './activityLogService';
+import api, { getCompanies } from './api';
 
 const SUBMIT_RETRIES = 2;
 

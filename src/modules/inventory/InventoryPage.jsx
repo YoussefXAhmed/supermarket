@@ -6,8 +6,10 @@ import { getUserFriendlyMessage } from '../../utils/errorHandling';
 import InventoryOverviewCards from '../../components/inventory/InventoryOverviewCards';
 import InventoryProductsTable from '../../components/inventory/InventoryProductsTable';
 import { getInventorySnapshot, getWarehousesList } from '../../services/inventoryService';
+import { useInventoryCapabilities } from '../../hooks/useInventoryCapabilities';
 
 export default function InventoryPage() {
+  const { canInventoryViewValuation } = useInventoryCapabilities();
   const [rows, setRows] = useState([]);
   const [metrics, setMetrics] = useState({
     totalProducts: 0,
@@ -69,7 +71,7 @@ export default function InventoryPage() {
         actions={<Btn variant="ghost" size="sm" onClick={() => load()}>Refresh</Btn>}
       />
 
-      <InventoryOverviewCards metrics={metrics} />
+      <InventoryOverviewCards metrics={metrics} showValuation={canInventoryViewValuation} />
 
       <LayoutSection variant="flat" flushHead>
         <div className="toolbar" style={{ margin: 0 }}>
@@ -110,7 +112,7 @@ export default function InventoryPage() {
           variant="raised"
           flushHead
         >
-          <InventoryProductsTable rows={filtered} />
+          <InventoryProductsTable rows={filtered} showValuation={canInventoryViewValuation} />
         </LayoutSection>
       )}
     </DashboardLayout>

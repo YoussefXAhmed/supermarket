@@ -1,8 +1,8 @@
 import { getItems } from './api';
 import {
+  listBatches,
   listBins,
   listItemsForInventory,
-  listBatches,
   listStockLedger,
   listWarehouses,
 } from './inventoryApi';

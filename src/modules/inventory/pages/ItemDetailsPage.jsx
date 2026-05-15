@@ -1,11 +1,14 @@
 import { useState } from 'react';
-import { Btn, EmptyState, PageHeader, PageLoading, ApiErrorCard, Table, Badge } from '../../../components/ui';
-import { getItemDetails, listBins, listBatches } from '../../../services/inventoryApi';
+import MovementTimeline from '../../../components/inventory/MovementTimeline';
+import { ApiErrorCard, Badge, Btn, EmptyState, PageHeader, PageLoading, Table } from '../../../components/ui';
+import { AdminPageLayout, LayoutSection, TableRegion } from '../../../components/layout/page-layouts';
+import { getItemDetails, listBatches, listBins } from '../../../services/inventoryApi';
 import { getItemMovementTimeline } from '../../../services/inventoryService';
 import { getUserFriendlyMessage } from '../../../utils/errorHandling';
-import MovementTimeline from '../../../components/inventory/MovementTimeline';
+import { useInventoryCapabilities } from '../../../hooks/useInventoryCapabilities';
 
 export default function ItemDetailsPage() {
+  const { canInventoryViewValuation } = useInventoryCapabilities();
   const [itemCode, setItemCode] = useState('');
   const [item, setItem] = useState(null);
   const [bins, setBins] = useState([]);
@@ -61,14 +64,25 @@ export default function ItemDetailsPage() {
   ];
 
   return (
-    <div>
-      <PageHeader title="Item Details" subtitle="Stock, batches, and movement timeline" />
-      <div className="card panel">
-        <div className="toolbar__group">
-          <input className="input toolbar__input-sm" placeholder="Item code" value={itemCode} onChange={(e) => setItemCode(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && load()} />
-          <Btn variant="ghost" size="sm" onClick={load}>Load item</Btn>
+    <AdminPageLayout>
+      <PageHeader title="Item Details" subtitle="Stock, batches, and movement timeline" dense />
+
+      <LayoutSection variant="flat" flushHead>
+        <div className="toolbar">
+          <div className="toolbar__group">
+            <input
+              className="input toolbar__input-sm"
+              placeholder="Item code"
+              value={itemCode}
+              onChange={(e) => setItemCode(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && load()}
+            />
+            <Btn variant="ghost" size="sm" onClick={load}>
+              Load item
+            </Btn>
+          </div>
         </div>
-      </div>
+      </LayoutSection>
 
       {loading ? (
         <PageLoading size={26} />
@@ -78,35 +92,53 @@ export default function ItemDetailsPage() {
         <EmptyState icon="🧾" title="No item loaded" desc="Enter item code and click Load item." />
       ) : (
         <>
-          <div className="card panel">
-            <h3 className="section-title">{item.item_name || item.item_code}</h3>
+          <LayoutSection
+            variant="raised"
+            title={item.item_name || item.item_code}
+            subtitle="Item master"
+          >
             <div className="meta-grid">
-              <p><strong>Code:</strong> <span className="mono">{item.item_code}</span></p>
-              <p><strong>Group:</strong> {item.item_group || '—'}</p>
-              <p><strong>UOM:</strong> {item.stock_uom || '—'}</p>
-              <p><strong>Rate:</strong> EGP {Number(item.standard_rate || 0).toFixed(2)}</p>
+              <p>
+                <strong>Code:</strong> <span className="mono">{item.item_code}</span>
+              </p>
+              <p>
+                <strong>Group:</strong> {item.item_group || '—'}
+              </p>
+              <p>
+                <strong>UOM:</strong> {item.stock_uom || '—'}
+              </p>
+              {canInventoryViewValuation ? (
+                <p>
+                  <strong>Rate:</strong> EGP {Number(item.standard_rate || 0).toFixed(2)}
+                </p>
+              ) : null}
               {item.has_batch_no ? <p><Badge color="blue">Batch tracked</Badge></p> : null}
             </div>
-          </div>
+          </LayoutSection>
 
-          <div className="card panel">
-            <h3 className="section-title">Warehouse stock</h3>
-            {bins.length === 0 ? <EmptyState title="No bin records" /> : <Table columns={binColumns} data={bins} />}
-          </div>
+          <LayoutSection variant="raised" title="Warehouse stock">
+            {bins.length === 0 ? (
+              <EmptyState title="No bin records" />
+            ) : (
+              <TableRegion>
+                <Table columns={binColumns} data={bins} compact />
+              </TableRegion>
+            )}
+          </LayoutSection>
 
           {batches.length > 0 && (
-            <div className="card panel">
-              <h3 className="section-title">Batches</h3>
-              <Table columns={batchColumns} data={batches} />
-            </div>
+            <LayoutSection variant="raised" title="Batches">
+              <TableRegion>
+                <Table columns={batchColumns} data={batches} compact />
+              </TableRegion>
+            </LayoutSection>
           )}
 
-          <div className="card panel">
-            <h3 className="section-title">Movement timeline</h3>
+          <LayoutSection variant="raised" title="Movement timeline">
             <MovementTimeline rows={timeline} />
-          </div>
+          </LayoutSection>
         </>
       )}
-    </div>
+    </AdminPageLayout>
   );
 }
