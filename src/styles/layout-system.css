@@ -31,6 +31,7 @@
 
   /* Sparse table cap */
   --layout-table-fit-max: 52rem;
+  --layout-table-fit-max-relaxed: 68rem;
 }
 
 /* ── Page shells (centered, width-capped) ── */
@@ -70,6 +71,17 @@
 .page-layout--table-fit .table-region--fit {
   width: fit-content;
   max-width: min(100%, var(--layout-table-fit-max));
+}
+
+/* Golden list baseline — wider sparse tables on ultrawide */
+.page-layout--table-fit.page-layout--table-fit-relaxed .layout-section--fit,
+.page-layout--table-fit.page-layout--table-fit-relaxed .table-region--fit {
+  max-width: min(100%, var(--layout-table-fit-max-relaxed));
+}
+
+/* List pages — slightly more rhythm below header while staying dense */
+.page-layout--list-page.density--compact {
+  gap: var(--layout-gap-comfortable);
 }
 
 /* Density utilities */
