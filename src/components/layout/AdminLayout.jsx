@@ -13,7 +13,7 @@ const NAV_FULL = [
   { to: '/admin/purchasing', label: 'Purchasing', icon: '🛍️', cap: 'canAccessPurchasing' },
   { to: '/admin/invoices', label: 'Invoices', icon: '🧾', cap: 'canViewReports' },
   { to: '/admin/returns', label: 'Returns', icon: '↩', cap: 'canViewReturns' },
-  { to: '/shifts/history', label: 'Shifts', icon: '◷', cap: 'canViewShiftReports' },
+  { to: '/admin/shifts/history', label: 'Shifts', icon: '◷', cap: 'canViewShiftReports' },
   { to: '/admin/customers', label: 'Customers', icon: '👥', cap: 'canViewReports' },
   { to: '/admin/activity', label: 'Activity', icon: '📋', cap: 'canViewReports' },
   { to: '/admin/users', label: 'Users', icon: '🧑‍💼', cap: 'canManageUsers' },

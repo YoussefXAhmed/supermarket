@@ -29,7 +29,7 @@ export default function InventoryPage() {
     setError('');
     try {
       const snapshot = await getInventorySnapshot({
-        warehouse: wh === 'all' ? undefined : wh,
+        warehouse: wh,
       });
       setRows(snapshot.rows);
       setMetrics(snapshot.metrics);

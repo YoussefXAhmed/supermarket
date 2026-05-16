@@ -74,6 +74,11 @@ export default function InventoryProductsTable({ rows, showValuation = true }) {
     },
   ];
 
-  return <Table columns={columns} data={rows} emptyMsg="No inventory products found" compact />;
+  const tableData = rows.map((row) => ({
+    ...row,
+    id: row.row_key || `${row.item_code}|${row.warehouse || 'all'}`,
+  }));
+
+  return <Table columns={columns} data={tableData} emptyMsg="No inventory products found" compact />;
 }
 

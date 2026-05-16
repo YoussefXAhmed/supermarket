@@ -34,8 +34,84 @@ export async function getWarehousesList() {
   return (res?.data?.data || []).filter((w) => !w.is_group);
 }
 
+function rowFromBin(bin, itemByCode) {
+  const code = bin.item_code;
+  if (!code) return null;
+
+  const item = itemByCode.get(code) || {};
+  const qty = toNum(bin.actual_qty);
+  const standardRate = toNum(item.standard_rate);
+  const valuationRate = toNum(bin.valuation_rate);
+  const price = standardRate > 0 ? standardRate : valuationRate;
+  const value = qty * price;
+  const wh = bin.warehouse || '';
+  const reorderMap = parseReorderLevels(item);
+  const reorderLevel = reorderMap.get(wh) ?? 0;
+
+  return {
+    row_key: `${code}|${wh}`,
+    item_code: code,
+    item_name: item.item_name || code,
+    qty,
+    price,
+    value,
+    warehouse: wh,
+    warehouse_label: wh,
+    reorder_level: reorderLevel,
+    needs_reorder: reorderLevel > 0 && qty <= reorderLevel,
+  };
+}
+
+/** One table row per ERP Bin (item + warehouse); no cross-warehouse aggregation. */
+export function buildPerWarehouseRows(bins, items) {
+  const itemByCode = new Map(items.map((i) => [i.item_code, i]));
+  const seen = new Set();
+  const rows = [];
+
+  for (const bin of bins) {
+    const wh = bin.warehouse || '';
+    const key = `${bin.item_code}|${wh}`;
+    if (!bin.item_code || seen.has(key)) continue;
+    seen.add(key);
+    const row = rowFromBin(bin, itemByCode);
+    if (row) rows.push(row);
+  }
+
+  rows.sort((a, b) => b.value - a.value || a.item_code.localeCompare(b.item_code));
+  return rows;
+}
+
+/** KPI totals — aggregated across bins (unique products, summed qty/value). */
+export function computeInventoryMetrics(rows) {
+  const qtyByItem = new Map();
+  const valueByItem = new Map();
+
+  for (const row of rows) {
+    const code = row.item_code;
+    qtyByItem.set(code, (qtyByItem.get(code) || 0) + row.qty);
+    valueByItem.set(code, (valueByItem.get(code) || 0) + row.value);
+  }
+
+  let lowStock = 0;
+  let outOfStock = 0;
+  for (const qty of qtyByItem.values()) {
+    if (qty <= 0) outOfStock += 1;
+    else if (qty <= 5) lowStock += 1;
+  }
+
+  return {
+    totalProducts: qtyByItem.size,
+    totalQty: rows.reduce((s, r) => s + r.qty, 0),
+    totalValue: rows.reduce((s, r) => s + r.value, 0),
+    lowStock,
+    outOfStock,
+    reorderCount: rows.filter((r) => r.needs_reorder).length,
+  };
+}
+
 export async function getInventorySnapshot({ itemLimit = 400, binLimit = 2000, warehouse } = {}) {
-  const binFilters = warehouse && warehouse !== 'all' ? [['warehouse', '=', warehouse]] : [];
+  const scopedWarehouse = warehouse && warehouse !== 'all' ? warehouse : null;
+  const binFilters = scopedWarehouse ? [['warehouse', '=', scopedWarehouse]] : [];
   const [itemsRes, binsRes] = await Promise.all([
     listItemsForInventory({ limit: itemLimit }).catch(() => getItems({ limit: itemLimit })),
     listBins({ limit: binLimit, filters: binFilters }),
@@ -43,64 +119,11 @@ export async function getInventorySnapshot({ itemLimit = 400, binLimit = 2000, w
 
   const items = itemsRes?.data?.data || [];
   const bins = binsRes?.data?.data || [];
-
-  const qtyByItem = new Map();
-  const valuationByItem = new Map();
-  const warehouseByItem = new Map();
-
-  for (const row of bins) {
-    const code = row.item_code;
-    if (!code) continue;
-    const rowQty = toNum(row.actual_qty);
-    qtyByItem.set(code, (qtyByItem.get(code) || 0) + rowQty);
-    if (!warehouseByItem.has(code)) warehouseByItem.set(code, row.warehouse);
-
-    const valuationRate = toNum(row.valuation_rate);
-    if (valuationRate > 0) {
-      const prev = valuationByItem.get(code) || 0;
-      if (valuationRate > prev) valuationByItem.set(code, valuationRate);
-    }
-  }
-
-  const itemByCode = new Map(items.map((i) => [i.item_code, i]));
-
-  const rows = items.map((item) => {
-    const qty = qtyByItem.get(item.item_code) || 0;
-    const standardRate = toNum(item.standard_rate);
-    const valuationRate = valuationByItem.get(item.item_code) || 0;
-    const price = standardRate > 0 ? standardRate : valuationRate;
-    const value = qty * price;
-    const reorderMap = parseReorderLevels(itemByCode.get(item.item_code) || item);
-    const wh = warehouseByItem.get(item.item_code);
-    const reorderLevel = warehouse && warehouse !== 'all'
-      ? reorderMap.get(warehouse) ?? 0
-      : Math.max(0, ...reorderMap.values());
-
-    return {
-      item_code: item.item_code,
-      item_name: item.item_name,
-      qty,
-      price,
-      value,
-      warehouse: wh,
-      warehouse_label: wh,
-      reorder_level: reorderLevel,
-      needs_reorder: reorderLevel > 0 && qty <= reorderLevel,
-    };
-  });
-
-  rows.sort((a, b) => b.value - a.value);
-
-  const totalProducts = rows.length;
-  const totalQty = rows.reduce((s, r) => s + r.qty, 0);
-  const totalValue = rows.reduce((s, r) => s + r.value, 0);
-  const lowStock = rows.filter((r) => r.qty > 0 && r.qty <= 5).length;
-  const outOfStock = rows.filter((r) => r.qty <= 0).length;
-  const reorderCount = rows.filter((r) => r.needs_reorder).length;
+  const rows = buildPerWarehouseRows(bins, items);
 
   return {
     rows,
-    metrics: { totalProducts, totalQty, totalValue, lowStock, outOfStock, reorderCount },
+    metrics: computeInventoryMetrics(rows),
   };
 }
 

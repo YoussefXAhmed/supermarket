@@ -268,12 +268,13 @@ export function deriveCapabilities(roleList = [], roleProfileName = '') {
   const profile =
     resolveRoleProfileKey(roleProfileName) || inferProfileFromRoles(roleList);
 
-  if (profile && CAPS_BY_ROLE_PROFILE[profile]) {
-    return capabilitiesFromRoleProfile(profile, roleList);
-  }
-
+  // System Manager / Administrator ERP roles override operational role profiles.
   if (roleList.some((r) => ADMIN_ROLES.has(r))) {
     return administratorCapabilities(roleList, profile);
+  }
+
+  if (profile && CAPS_BY_ROLE_PROFILE[profile]) {
+    return capabilitiesFromRoleProfile(profile, roleList);
   }
 
   return capabilitiesFromErpRoles(roleList, profile);
@@ -285,10 +286,10 @@ export function canAccessPurchasing(caps) {
 
 export function homePathFromCapabilities(caps) {
   if (caps.canManageSystem) return '/admin';
-  if (caps.canOperatePOS) return '/pos';
-  if (caps.canAccessInventory) return '/inventory';
-  if (caps.canAccessPurchasing) return '/admin/purchasing';
   if (caps.canAccessAdminWorkspace) return '/admin';
+  if (caps.canOperatePOS) return '/pos';
+  if (caps.canAccessPurchasing) return '/admin/purchasing';
+  if (caps.canAccessInventory) return '/inventory';
   return '/login';
 }
 

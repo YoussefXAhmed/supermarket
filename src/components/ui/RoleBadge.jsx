@@ -24,7 +24,9 @@ export function getRoleKind(caps = {}) {
 
 export default function RoleBadge() {
   const { operationalPersona, roleLabel, capabilities } = useAuth();
-  const kind = operationalPersona || getRoleKind(capabilities);
+  const kind = capabilities?.canManageSystem
+    ? 'administrator'
+    : operationalPersona || getRoleKind(capabilities);
   if (!kind) return null;
   const meta = LABELS[kind] || { label: roleLabel || kind, className: '' };
   return (

@@ -211,6 +211,40 @@ export default function App() {
                 </CapabilityRoute>
               )}
             />
+            <Route
+              path="shifts"
+              element={(
+                <CapabilityRoute cap="canViewShiftReports">
+                  <LazyPage><ShiftsLayout /></LazyPage>
+                </CapabilityRoute>
+              )}
+            >
+              <Route
+                path="open"
+                element={(
+                  <CapabilityRoute cap="canOpenShift">
+                    <LazyPage><ShiftOpenPage /></LazyPage>
+                  </CapabilityRoute>
+                )}
+              />
+              <Route
+                path="close"
+                element={(
+                  <CapabilityRoute cap="canCloseShift">
+                    <LazyPage><ShiftClosePage /></LazyPage>
+                  </CapabilityRoute>
+                )}
+              />
+              <Route
+                path="history"
+                element={(
+                  <CapabilityRoute cap="canViewShiftReports">
+                    <LazyPage><ShiftHistoryPage /></LazyPage>
+                  </CapabilityRoute>
+                )}
+              />
+              <Route index element={<Navigate to="history" replace />} />
+            </Route>
           </Route>
 
           <Route path="*" element={<Navigate to="/login" replace />} />
