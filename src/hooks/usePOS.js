@@ -5,10 +5,12 @@ import {
   resolveActivePOSProfile,
   searchPOSItems,
   refreshItemStock,
+  fetchItemBinsAcrossWarehouses,
   getPOSPaymentModes,
   getShiftMetrics,
   setStoredPOSProfile,
 } from '../services/posApi';
+import { normalizeERPError } from '../utils/errorHandling';
 import { getOpenPOSOpeningEntry } from '../services/shiftsApi';
 import { openShift as openShiftService } from '../services/shiftsService';
 import { validateCartStock, canAddToCart, validateLineStock } from '../utils/posStock';
@@ -40,6 +42,7 @@ export function usePOS(user) {
   const searchRef = useRef(null);
   const profileRef = useRef(null);
   const shiftRef = useRef(null);
+  const checkoutInFlightRef = useRef(false);
 
   profileRef.current = profile;
   shiftRef.current = shift;
@@ -175,10 +178,11 @@ export function usePOS(user) {
 
   const addToCart = useCallback((item, { qty = 1 } = {}) => {
     setCartWarning('');
+    const wh = profileRef.current?.warehouse || '';
     setCart((prev) => {
       const existing = prev.find((c) => c.item_code === item.item_code);
       const nextQty = (existing?.qty || 0) + qty;
-      const check = canAddToCart({ ...item, available_qty: item.available_qty }, existing?.qty || 0);
+      const check = canAddToCart({ ...item, available_qty: item.available_qty }, existing?.qty || 0, wh);
       if (!check.ok && qty > 0) {
         setCartWarning(check.message);
         return prev;
@@ -215,7 +219,7 @@ export function usePOS(user) {
     setCart((prev) => {
       const line = prev.find((c) => c.item_code === item_code);
       if (!line) return prev;
-      const issue = validateLineStock(line, qty);
+      const issue = validateLineStock(line, qty, profileRef.current?.warehouse || '');
       if (issue) {
         setCartWarning(issue.message);
         if (issue.available != null && issue.available > 0) {
@@ -255,6 +259,8 @@ export function usePOS(user) {
 
   const checkout = useCallback(
     async ({ customer, paymentState, invoiceExtras = {} } = {}) => {
+      if (checkoutInFlightRef.current) return null;
+
       const p = profileRef.current;
       const s = shiftRef.current;
       if (!p) throw new Error('POS Profile not loaded');
@@ -263,14 +269,17 @@ export function usePOS(user) {
       }
       if (!cart.length) return null;
 
+      checkoutInFlightRef.current = true;
       let cartSnapshot = cart;
       cartSnapshot = await syncCartStock(cartSnapshot);
       setCart(cartSnapshot);
 
-      const issues = validateCartStock(cartSnapshot);
+      const binsByItem = await fetchItemBinsAcrossWarehouses(cartSnapshot.map((i) => i.item_code));
+      const issues = validateCartStock(cartSnapshot, p.warehouse, binsByItem);
       setStockIssues(issues);
       if (issues.length) {
-        const msg = issues.map((i) => `${i.item_name}: ${i.message}`).join('; ');
+        const msg = issues.map((i) => `${i.item_code}: ${i.message}`).join('; ');
+        checkoutInFlightRef.current = false;
         throw new Error(msg);
       }
 
@@ -306,12 +315,17 @@ export function usePOS(user) {
         await refreshMetrics();
         return invoice;
       } catch (e) {
-        if (e.invoiceName) {
-          setPendingInvoice(e.invoiceName);
+        const normalized = e?.isNormalized ? e : normalizeERPError(e);
+        normalized.posWarehouse = p.warehouse;
+        if (normalized.recoverable && normalized.invoiceName && !normalized.isStockError) {
+          setPendingInvoice(normalized.invoiceName);
+        } else {
+          setPendingInvoice(null);
         }
-        setError(getUserFriendlyMessage(e));
-        throw e;
+        setError(getUserFriendlyMessage(normalized));
+        throw normalized;
       } finally {
+        checkoutInFlightRef.current = false;
         setCheckoutLoading(false);
       }
     },
@@ -319,19 +333,27 @@ export function usePOS(user) {
   );
 
   const recoverPendingInvoice = useCallback(async () => {
-    if (!pendingInvoice) return null;
+    if (!pendingInvoice || checkoutInFlightRef.current) return null;
+    checkoutInFlightRef.current = true;
     setCheckoutLoading(true);
+    const wh = profileRef.current?.warehouse || '';
     try {
-      const doc = await retrySubmitPOSInvoice(pendingInvoice);
+      const doc = await retrySubmitPOSInvoice(pendingInvoice, { posWarehouse: wh });
       setLastInvoice(doc);
       setPendingInvoice(null);
       clearCart();
       await refreshMetrics();
       return doc;
     } catch (e) {
-      setError(getUserFriendlyMessage(e));
-      throw e;
+      const normalized = e?.isNormalized ? e : normalizeERPError(e);
+      normalized.posWarehouse = wh;
+      if (normalized.isStockError) {
+        setPendingInvoice(null);
+      }
+      setError(getUserFriendlyMessage(normalized));
+      throw normalized;
     } finally {
+      checkoutInFlightRef.current = false;
       setCheckoutLoading(false);
     }
   }, [pendingInvoice, clearCart, refreshMetrics]);

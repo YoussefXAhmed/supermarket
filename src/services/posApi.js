@@ -278,6 +278,37 @@ export async function refreshItemStock(itemCode, warehouse) {
   return available_qty;
 }
 
+/** Bins with stock for cart items (all warehouses) — POS alternate-warehouse hints. */
+export async function fetchItemBinsAcrossWarehouses(itemCodes = []) {
+  const codes = [...new Set(itemCodes.filter(Boolean))];
+  if (!codes.length) return new Map();
+
+  try {
+    const res = await api.get('/api/resource/Bin', {
+      params: {
+        fields: JSON.stringify(['item_code', 'warehouse', 'actual_qty', 'reserved_qty']),
+        filters: JSON.stringify([
+          ['item_code', 'in', codes],
+          ['actual_qty', '>', 0],
+        ]),
+        limit_page_length: Math.max(200, codes.length * 10),
+      },
+    });
+    const map = new Map();
+    for (const bin of res?.data?.data || []) {
+      const code = bin.item_code;
+      if (!code) continue;
+      const qty = Math.max(0, Number(bin.actual_qty || 0) - Number(bin.reserved_qty || 0));
+      if (qty <= 0) continue;
+      if (!map.has(code)) map.set(code, []);
+      map.get(code).push({ warehouse: bin.warehouse, qty });
+    }
+    return map;
+  } catch {
+    return new Map();
+  }
+}
+
 export const getShiftPOSInvoices = ({ posProfile, fromDate, owner, limit = 500 }) => {
   const filters = [
     ['docstatus', '=', 1],

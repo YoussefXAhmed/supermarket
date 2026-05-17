@@ -18,6 +18,7 @@ const InventoryPage = lazy(() => import('./modules/admin/InventoryPage'));
 const InvoicesPage = lazy(() => import('./modules/admin/InvoicesPage'));
 const CustomersPage = lazy(() => import('./modules/admin/CustomersPage'));
 const UsersPage = lazy(() => import('./modules/admin/UsersPage'));
+const AdminWarehousesPage = lazy(() => import('./modules/admin/AdminWarehousesPage'));
 const ReportsPage = lazy(() => import('./modules/admin/ReportsPage'));
 const SettingsPage = lazy(() => import('./modules/admin/SettingsPage'));
 const ActivityLogPage = lazy(() => import('./modules/admin/ActivityLogPage'));
@@ -198,6 +199,14 @@ export default function App() {
               element={(
                 <CapabilityRoute cap="canManageUsers">
                   <LazyPage><UsersPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="warehouses"
+              element={(
+                <CapabilityRoute cap="canManageSystem">
+                  <LazyPage><AdminWarehousesPage /></LazyPage>
                 </CapabilityRoute>
               )}
             />

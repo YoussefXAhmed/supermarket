@@ -233,7 +233,8 @@ export default function POSPage() {
     } catch (e) {
       const msg = getUserFriendlyMessage(e);
       setCheckoutErr(msg);
-      if (e?.recoverable) notify.warning(msg);
+      if (e?.isStockError) notify.error(msg);
+      else if (e?.recoverable) notify.warning(msg);
       else notify.error(msg);
     }
   };
@@ -326,10 +327,13 @@ export default function POSPage() {
 
       {pos.pendingInvoice && (
         <div className="pos-pending card">
-          <p>Invoice <strong className="mono">{pos.pendingInvoice}</strong> was created but may not be submitted.</p>
+          <p>
+            Draft invoice <strong className="mono">{pos.pendingInvoice}</strong> exists in ERP but is not submitted.
+            Retry only if stock or validation issues are resolved.
+          </p>
           <div className="pos-pending__actions">
             <Btn variant="primary" size="sm" loading={pos.checkoutLoading} onClick={() => pos.recoverPendingInvoice()}>Retry submit</Btn>
-            <Btn variant="ghost" size="sm" onClick={() => pos.dismissPendingInvoice()}>Dismiss</Btn>
+            <Btn variant="ghost" size="sm" onClick={() => pos.dismissPendingInvoice()}>Dismiss draft</Btn>
           </div>
         </div>
       )}

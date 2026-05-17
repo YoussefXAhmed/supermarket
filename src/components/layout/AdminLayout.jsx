@@ -17,6 +17,7 @@ const NAV_FULL = [
   { to: '/admin/customers', label: 'Customers', icon: '👥', cap: 'canViewReports' },
   { to: '/admin/activity', label: 'Activity', icon: '📋', cap: 'canViewReports' },
   { to: '/admin/users', label: 'Users', icon: '🧑‍💼', cap: 'canManageUsers' },
+  { to: '/admin/warehouses', label: 'Warehouses', icon: '🏬', cap: 'canManageSystem' },
   { to: '/admin/reports', label: 'Reports', icon: '📊', cap: 'canViewReports' },
   { to: '/pos', label: 'POS', icon: '💳', cap: 'canViewPOS' },
   { to: '/admin/settings', label: 'Settings', icon: '⚙️', cap: 'canManageSettings' },

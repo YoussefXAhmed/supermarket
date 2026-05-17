@@ -35,11 +35,53 @@ export function parseFrappeServerMessages(data) {
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed) || !parsed.length) return null;
-    const first = JSON.parse(parsed[0]);
-    return first?.message || null;
+    const parts = [];
+    for (const entry of parsed) {
+      try {
+        const obj = typeof entry === 'string' ? JSON.parse(entry) : entry;
+        if (obj?.message) parts.push(String(obj.message));
+      } catch {
+        if (typeof entry === 'string') parts.push(entry);
+      }
+    }
+    return parts.filter(Boolean).join(' ') || null;
   } catch {
     return null;
   }
+}
+
+const STOCK_ERROR_RE =
+  /no stock in warehouse|insufficient stock|negative stock|not enough stock|qty.*not available|stock validation|cannot be negative/i;
+
+/**
+ * @param {{ message?: string, status?: number|null, code?: string|null, raw?: object|null }} info
+ */
+export function isStockValidationError(info) {
+  const status = info?.status;
+  const code = String(info?.code || info?.raw?.exc_type || '');
+  const text = [
+    info?.message,
+    code,
+    info?.raw?.exception,
+    info?.raw?.exc,
+    typeof info?.raw?.message === 'string' ? info.raw.message : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  if (status === 417) return true;
+  if (/StockValidationError|NegativeStockError|InsufficientStockError/i.test(code)) return true;
+  return STOCK_ERROR_RE.test(text);
+}
+
+/**
+ * User-facing POS stock failure (warehouse from ERP message when present).
+ */
+export function formatPosStockErrorMessage(info, fallbackWarehouse = '') {
+  const msg = String(info?.message || '');
+  const whMatch = msg.match(/warehouse\s+([^.;]+)/i);
+  const warehouse = (whMatch?.[1] || fallbackWarehouse || 'selected warehouse').trim();
+  return `Sale failed — insufficient stock in warehouse ${warehouse}`;
 }
 
 /**
@@ -86,7 +128,7 @@ export function extractERPError(error) {
 
   if (typeof message !== 'string') message = String(message);
 
-  return {
+  const base = {
     message,
     status,
     code: data.exc_type || error.code || null,
@@ -99,6 +141,8 @@ export function extractERPError(error) {
     }),
     isAuthError: status === 401,
   };
+  base.isStockError = isStockValidationError(base);
+  return base;
 }
 
 /**
@@ -107,7 +151,8 @@ export function extractERPError(error) {
 export function normalizeERPError(error) {
   if (error instanceof Error && error.isNormalized) return error;
 
-  const { message, status, code, raw, isPermissionError, isAuthError } = extractERPError(error);
+  const extracted = extractERPError(error);
+  const { message, status, code, raw, isPermissionError, isAuthError, isStockError } = extracted;
   const err = new Error(message);
   err.isNormalized = true;
   err.status = status;
@@ -115,8 +160,11 @@ export function normalizeERPError(error) {
   err.raw = raw;
   err.isPermissionError = isPermissionError;
   err.isAuthError = isAuthError;
+  err.isStockError = isStockError;
   if (error && typeof error === 'object') {
     err.cause = error;
+    if (error.invoiceName) err.invoiceName = error.invoiceName;
+    if (error.recoverable != null) err.recoverable = error.recoverable;
   }
   return err;
 }
@@ -125,8 +173,11 @@ export function normalizeERPError(error) {
  * User-friendly message for UI (never exposes stack traces).
  */
 export function getUserFriendlyMessage(error, fallback = FALLBACK_ERROR_MESSAGE) {
-  const { message } = extractERPError(error);
-  return message || fallback;
+  const info = extractERPError(error);
+  if (info.isStockError || error?.isStockError) {
+    return formatPosStockErrorMessage(info, error?.posWarehouse);
+  }
+  return info.message || fallback;
 }
 
 /**

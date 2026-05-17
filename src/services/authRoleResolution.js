@@ -162,8 +162,14 @@ export async function resolveUserAuthProfile(username) {
     }
   }
 
-  // 5) Expand allowlisted Role Profile
-  if (roleProfileName && isAllowlistedRoleProfile(roleProfileName)) {
+  // 5) Role Profile REST — skip when session identity or allowlisted profile already suffices
+  const shouldFetchRoleProfile =
+    roleProfileName &&
+    roleList.length === 0 &&
+    !isAllowlistedRoleProfile(roleProfileName) &&
+    !sources.includes('session-identity');
+
+  if (shouldFetchRoleProfile) {
     try {
       const rpRes = await getRoleProfile(roleProfileName);
       const profileRoles = extractRolesFromRoleProfileDoc(rpRes.data?.data);
@@ -172,7 +178,7 @@ export async function resolveUserAuthProfile(username) {
         sources.push('role-profile');
       }
     } catch {
-      /* profile name alone may still map workspace */
+      /* desk-only fallback; operational users should not hit this */
     }
   }
 
