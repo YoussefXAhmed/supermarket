@@ -15,6 +15,27 @@ export function alternateWarehouseHint(itemCode, bins, posWarehouse) {
   return `${itemCode} available in ${parts.join(', ')} but not in ${posWarehouse}`;
 }
 
+/** Short hint for checkout banners, e.g. "Available in Outer WH". */
+export function shortAlternateWarehouseHint(bins, posWarehouse) {
+  const others = (bins || []).filter(
+    (b) => b.warehouse && b.warehouse !== posWarehouse && Number(b.qty) > 0,
+  );
+  if (!others.length) return null;
+  if (others.length === 1) return `Available in ${others[0].warehouse}`;
+  const names = others.map((b) => b.warehouse).join(', ');
+  return `Available in ${names}`;
+}
+
+/** First alternate-warehouse hint across cart lines (for operational banners). */
+export function firstCartAlternateHint(cart, binsByItem, posWarehouse) {
+  for (const line of cart || []) {
+    const bins = binsByItem?.get?.(line.item_code) || null;
+    const hint = shortAlternateWarehouseHint(bins, posWarehouse);
+    if (hint) return hint;
+  }
+  return '';
+}
+
 export function availableQty(item) {
   if (item?.is_stock_item === 0 || item?.is_stock_item === false) return null;
   if (item.available_qty === undefined || item.available_qty === null) return null;

@@ -13,6 +13,25 @@ export const AUTH_ERROR_MESSAGE =
 export const PERMISSION_ERROR_MESSAGE =
   'You do not have permission for this action in ERPNext. Contact your store manager or administrator.';
 
+/**
+ * Strip HTML tags/entities from Frappe server messages for plain-text UI.
+ */
+export function stripHtml(text) {
+  if (text == null || text === '') return '';
+  return String(text)
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<\/p>/gi, ' ')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function isPermissionDenied({ status, code, message, raw }) {
   if (status === 403) return true;
   const exc = String(code || raw?.exc_type || '');
@@ -39,9 +58,9 @@ export function parseFrappeServerMessages(data) {
     for (const entry of parsed) {
       try {
         const obj = typeof entry === 'string' ? JSON.parse(entry) : entry;
-        if (obj?.message) parts.push(String(obj.message));
+        if (obj?.message) parts.push(stripHtml(obj.message));
       } catch {
-        if (typeof entry === 'string') parts.push(entry);
+        if (typeof entry === 'string') parts.push(stripHtml(entry));
       }
     }
     return parts.filter(Boolean).join(' ') || null;
@@ -75,13 +94,24 @@ export function isStockValidationError(info) {
 }
 
 /**
- * User-facing POS stock failure (warehouse from ERP message when present).
+ * Extract warehouse label from ERP stock validation text.
  */
-export function formatPosStockErrorMessage(info, fallbackWarehouse = '') {
-  const msg = String(info?.message || '');
-  const whMatch = msg.match(/warehouse\s+([^.;]+)/i);
-  const warehouse = (whMatch?.[1] || fallbackWarehouse || 'selected warehouse').trim();
-  return `Sale failed — insufficient stock in warehouse ${warehouse}`;
+export function parseWarehouseFromStockMessage(message, fallbackWarehouse = '') {
+  const msg = stripHtml(message || '');
+  const whMatch =
+    msg.match(/warehouse\s+([^.;]+)/i) ||
+    msg.match(/in\s+([A-Z0-9][^.;]{0,80}?)(?:\s*[.;]|$)/i);
+  return (whMatch?.[1] || fallbackWarehouse || 'selected warehouse').trim();
+}
+
+/**
+ * User-facing POS stock failure (primary line + optional alternate-warehouse hint).
+ */
+export function formatPosStockErrorMessage(info, { fallbackWarehouse = '', hint = '' } = {}) {
+  const warehouse = parseWarehouseFromStockMessage(info?.message, fallbackWarehouse);
+  const primary = `Insufficient stock in ${warehouse}`;
+  const secondary = hint ? String(hint).trim() : '';
+  return secondary ? `${primary}. ${secondary}` : primary;
 }
 
 /**
@@ -127,6 +157,7 @@ export function extractERPError(error) {
   }
 
   if (typeof message !== 'string') message = String(message);
+  message = stripHtml(message);
 
   const base = {
     message,
@@ -175,7 +206,10 @@ export function normalizeERPError(error) {
 export function getUserFriendlyMessage(error, fallback = FALLBACK_ERROR_MESSAGE) {
   const info = extractERPError(error);
   if (info.isStockError || error?.isStockError) {
-    return formatPosStockErrorMessage(info, error?.posWarehouse);
+    return formatPosStockErrorMessage(info, {
+      fallbackWarehouse: error?.posWarehouse || '',
+      hint: error?.stockHint || '',
+    });
   }
   return info.message || fallback;
 }

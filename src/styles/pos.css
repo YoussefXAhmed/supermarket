@@ -548,6 +548,17 @@
 .pos-cart__shortcuts { font-size: 0.68rem; color: var(--text-3); text-align: center; margin-top: 8px; }
 .pos-cart__checkout-btn { width: 100%; }
 
+.pos-operational-banner {
+  margin: 0 20px 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--red-bg);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: var(--red);
+  font-size: 0.85rem;
+}
+.pos-operational-banner p { margin: 0; }
+
 .pos-pending {
   margin: 0 20px 8px;
   padding: 12px 16px;

@@ -231,8 +231,7 @@ export default function POSPage() {
       });
       notify.success(`Sale complete — ${invoice?.name || 'invoice submitted'}`);
     } catch (e) {
-      const msg = getUserFriendlyMessage(e);
-      setCheckoutErr(msg);
+      const msg = pos.checkoutError || getUserFriendlyMessage(e);
       if (e?.isStockError) notify.error(msg);
       else if (e?.recoverable) notify.warning(msg);
       else notify.error(msg);
@@ -325,6 +324,12 @@ export default function POSPage() {
         <ApiErrorCard message={initError || pos.profileError} onRetry={() => pos.init()} />
       )}
 
+      {pos.checkoutError && (
+        <div className="pos-operational-banner" role="alert">
+          <p>{pos.checkoutError}</p>
+        </div>
+      )}
+
       {pos.pendingInvoice && (
         <div className="pos-pending card">
           <p>
@@ -341,8 +346,8 @@ export default function POSPage() {
       {viewMode === 'sell' ? (
         <div className="pos-body">
           <section className="pos-products">
-            {pos.error && (
-              <ApiErrorCard title="Could not load products" message={getUserFriendlyMessage(pos.error)} onRetry={() => pos.loadItems(pos.query)} />
+            {pos.productsError && (
+              <ApiErrorCard title="Could not load products" message={pos.productsError} onRetry={() => pos.loadItems(pos.query)} />
             )}
             {pos.loading && !pos.items.length ? (
               <PageLoading size={28} className="pos-loading" />
@@ -418,7 +423,9 @@ export default function POSPage() {
                 <span>Total</span>
                 <span className="pos-cart__total-amount mono">EGP {pos.cartTotal.toFixed(2)}</span>
               </div>
-              {checkoutErr && <p className="pos-cart__error">{checkoutErr}</p>}
+              {(checkoutErr || pos.checkoutError) && (
+                <p className="pos-cart__error">{checkoutErr || pos.checkoutError}</p>
+              )}
               <Btn
                 variant="primary"
                 size="lg"
