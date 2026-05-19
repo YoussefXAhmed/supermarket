@@ -157,6 +157,7 @@ export { default as TrendChart } from './TrendChart';
 export { default as PaginatedTable } from './PaginatedTable';
 export { default as ExportToolbar } from './ExportToolbar';
 export { default as RoleBadge } from './RoleBadge';
+export { default as UserAvatar } from './UserAvatar';
 
 export function SearchInput({ value, onChange, placeholder, inputRef, autoFocus }) {
   return (

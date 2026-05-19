@@ -18,7 +18,7 @@ export function validatePurchaseLines(lines) {
     const qty = Number(line.qty);
     if (!Number.isFinite(qty) || qty <= 0) errors.push(`Line ${row}: quantity must be greater than zero.`);
     const rate = Number(line.rate);
-    if (!Number.isFinite(rate) || rate < 0) errors.push(`Line ${row}: rate cannot be negative.`);
+    if (!Number.isFinite(rate) || rate <= 0) errors.push(`Line ${row}: buying rate must be greater than zero.`);
     const key = `${line.item_code}|${line.warehouse || ''}`;
     if (seen.has(key)) errors.push(`Line ${row}: duplicate item/warehouse.`);
     seen.add(key);

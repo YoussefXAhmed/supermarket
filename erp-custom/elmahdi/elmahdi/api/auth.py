@@ -8,22 +8,39 @@ API: GET /api/method/elmahdi.api.auth.get_session_identity
 """
 
 import frappe
-from frappe import _
 
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=True)
 def get_session_identity():
-    user = frappe.session.user
-    if not user or user == "Guest":
-        frappe.throw(_("Not logged in"), frappe.AuthenticationError)
+    """SPA session probe — must return 200 for Guest (no 403 spam when not logged in)."""
+    user = frappe.session.user or "Guest"
+    if user == "Guest":
+        return {
+            "name": "Guest",
+            "email": "",
+            "full_name": "",
+            "first_name": "",
+            "last_name": "",
+            "user_image": None,
+            "role_profile_name": "",
+            "roles": [],
+        }
 
     roles = list(frappe.get_roles(user))
-    row = frappe.db.get_value(
-        "User",
-        user,
-        ["first_name", "last_name", "email", "role_profile_name", "user_image"],
-        as_dict=True,
-    ) or {}
+    row = {}
+    try:
+        row = (
+            frappe.db.get_value(
+                "User",
+                user,
+                ["first_name", "last_name", "email", "role_profile_name", "user_image"],
+                as_dict=True,
+            )
+            or {}
+        )
+    except Exception:
+        # Operational users may lack User read; session + roles still suffice for SPA.
+        row = {}
 
     first_name = row.get("first_name") or ""
     last_name = row.get("last_name") or ""

@@ -13,6 +13,11 @@ export const AUTH_ERROR_MESSAGE =
 export const PERMISSION_ERROR_MESSAGE =
   'You do not have permission for this action in ERPNext. Contact your store manager or administrator.';
 
+export const INVALID_SHIFT_SESSION_MESSAGE = 'Invalid/incomplete shift session';
+
+const SHIFT_SESSION_INVALID_RE =
+  /pos opening entry must be submitted|incomplete shift session|invalid\/incomplete shift/i;
+
 /**
  * Strip HTML tags/entities from Frappe server messages for plain-text UI.
  */
@@ -94,6 +99,33 @@ export function isStockValidationError(info) {
 }
 
 /**
+ * Draft/unsubmitted POS Opening Entry — shift summary unavailable.
+ */
+export function isInvalidShiftSessionError(infoOrError) {
+  if (!infoOrError) return false;
+  if (infoOrError.isInvalidShiftSession) return true;
+  const info =
+    infoOrError.isNormalized || infoOrError.status != null || infoOrError.code
+      ? infoOrError
+      : extractERPError(infoOrError);
+  const code = String(info?.code || info?.raw?.exc_type || '');
+  const msg = String(info?.message || '');
+  if (infoOrError?.isInvalidShiftSession) return true;
+  if (code === 'ValidationError' && SHIFT_SESSION_INVALID_RE.test(msg)) return true;
+  return SHIFT_SESSION_INVALID_RE.test(msg);
+}
+
+export function createInvalidShiftSessionError(cause = null) {
+  const err = new Error(INVALID_SHIFT_SESSION_MESSAGE);
+  err.isNormalized = true;
+  err.isInvalidShiftSession = true;
+  err.isSilent = true;
+  err.code = 'ValidationError';
+  if (cause) err.cause = cause;
+  return err;
+}
+
+/**
  * Extract warehouse label from ERP stock validation text.
  */
 export function parseWarehouseFromStockMessage(message, fallbackWarehouse = '') {
@@ -157,7 +189,10 @@ export function extractERPError(error) {
   }
 
   if (typeof message !== 'string') message = String(message);
-  message = stripHtml(message);
+  message = stripHtml(message)
+    .replace(/^frappe\.exceptions\.\w+:\s*/i, '')
+    .replace(/^Exception:\s*/i, '')
+    .trim();
 
   const base = {
     message,
@@ -173,6 +208,7 @@ export function extractERPError(error) {
     isAuthError: status === 401,
   };
   base.isStockError = isStockValidationError(base);
+  base.isInvalidShiftSession = isInvalidShiftSessionError(base);
   return base;
 }
 
@@ -183,8 +219,19 @@ export function normalizeERPError(error) {
   if (error instanceof Error && error.isNormalized) return error;
 
   const extracted = extractERPError(error);
-  const { message, status, code, raw, isPermissionError, isAuthError, isStockError } = extracted;
-  const err = new Error(message);
+  const {
+    message,
+    status,
+    code,
+    raw,
+    isPermissionError,
+    isAuthError,
+    isStockError,
+    isInvalidShiftSession,
+  } = extracted;
+  const err = new Error(
+    isInvalidShiftSession ? INVALID_SHIFT_SESSION_MESSAGE : message,
+  );
   err.isNormalized = true;
   err.status = status;
   err.code = code;
@@ -192,6 +239,8 @@ export function normalizeERPError(error) {
   err.isPermissionError = isPermissionError;
   err.isAuthError = isAuthError;
   err.isStockError = isStockError;
+  err.isInvalidShiftSession = isInvalidShiftSession;
+  if (isInvalidShiftSession) err.isSilent = true;
   if (error && typeof error === 'object') {
     err.cause = error;
     if (error.invoiceName) err.invoiceName = error.invoiceName;
@@ -205,6 +254,9 @@ export function normalizeERPError(error) {
  */
 export function getUserFriendlyMessage(error, fallback = FALLBACK_ERROR_MESSAGE) {
   const info = extractERPError(error);
+  if (info.isInvalidShiftSession || error?.isInvalidShiftSession) {
+    return INVALID_SHIFT_SESSION_MESSAGE;
+  }
   if (info.isStockError || error?.isStockError) {
     return formatPosStockErrorMessage(info, {
       fallbackWarehouse: error?.posWarehouse || '',

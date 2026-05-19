@@ -1,3 +1,9 @@
 [pre_model_sync]
 
 [post_model_sync]
+elmahdi.patches.repair_draft_pos_openings
+elmahdi.setup.approval_custom_fields
+elmahdi.setup.operational_permissions
+elmahdi.setup.grant_operational_item_price_read
+elmahdi.patches.harden_operational_approvals
+elmahdi.setup.letterhead

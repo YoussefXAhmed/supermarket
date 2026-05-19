@@ -1,18 +1,23 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { PageHeader, PageLoading, ApiErrorCard, StatCard, Btn, PartialDataBanner } from '../../components/ui';
+import { useAuth } from '../../hooks/useAuth';
+import { hasCapability } from '../../auth/capabilities';
 import { DashboardLayout, LayoutSection, TableRegion } from '../../components/layout/page-layouts';
 import { getPurchasingAnalytics } from '../../services/purchasingService';
 import { getUserFriendlyMessage } from '../../utils/errorHandling';
+import { useOperationalRefresh } from '../../services/operationalRefresh';
 import { fmtCurrencyCompact } from '../../utils/format';
 
 export default function PurchasingDashboardPage() {
+  const { capabilities } = useAuth();
+  const showApprovals = hasCapability(capabilities, 'canViewPurchaseApprovals');
   const [data, setData] = useState(null);
   const [warnings, setWarnings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true);
     setError('');
     getPurchasingAnalytics()
@@ -26,11 +31,13 @@ export default function PurchasingDashboardPage() {
         setError(getUserFriendlyMessage(e));
       })
       .finally(() => setLoading(false));
-  };
+  }, []);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
+
+  useOperationalRefresh(load, [load]);
 
   if (loading) return <PageLoading size={24} />;
 
@@ -76,6 +83,9 @@ export default function PurchasingDashboardPage() {
           </div>
           <div className="workflow-bar__actions">
             <Link to="/admin/purchasing/receive" className="btn btn--primary btn--sm">Receive stock</Link>
+            {showApprovals && (
+              <Link to="/admin/purchasing/approvals" className="btn btn--ghost btn--sm">Approvals</Link>
+            )}
             <Link to="/admin/purchasing/invoices" className="btn btn--ghost btn--sm">New invoice</Link>
             <Link to="/admin/purchasing/matching" className="btn btn--ghost btn--sm">Matching</Link>
             <Link to="/admin/purchasing/suppliers" className="btn btn--ghost btn--sm">Suppliers</Link>

@@ -51,6 +51,10 @@ const TEMPLATE_ERP_ROLE_SIGNATURES = {
     'purchase manager',
     'sales manager',
   ],
+  [OPERATIONAL_USER_TEMPLATES.accountant.roleProfileName]: [
+    'accounts user',
+    'accounts manager',
+  ],
 };
 
 /**

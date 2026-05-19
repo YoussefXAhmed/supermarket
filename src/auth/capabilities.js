@@ -45,7 +45,25 @@ export const INVENTORY_ANY_ROLES = new Set([
 
 export const PURCHASING_ROLES = new Set(['purchase user', 'purchase manager']);
 
-export const PURCHASING_APPROVE_ROLES = new Set(['purchase manager']);
+export const PURCHASING_APPROVE_ROLES = new Set([
+  'purchase manager',
+  'stock manager',
+  'warehouse manager',
+]);
+
+export const PURCHASING_ACCOUNTANT_APPROVE_ROLES = new Set([
+  'accounts manager',
+  'accounts user',
+]);
+
+/** May approve/submit draft POS Closing Entry (manager workflow) */
+export const SHIFT_APPROVE_ROLES = new Set([
+  'accounts manager',
+  'accounts user',
+  'sales manager',
+  'stock manager',
+  'purchase manager',
+]);
 
 const CAPABILITY_DEFAULTS = {
   canViewPOS: false,
@@ -58,6 +76,12 @@ const CAPABILITY_DEFAULTS = {
   canViewInvoices: false,
   canAccessPurchasing: false,
   canApprovePurchasing: false,
+  canApprovePurchasingAccountant: false,
+  canViewPurchaseApprovals: false,
+  canViewApprovalsDashboard: false,
+  canAccessAccountantWorkspace: false,
+  canViewSupplierPayments: false,
+  canManageSupplierPayments: false,
   canViewSuppliers: false,
   canAccessAdminWorkspace: false,
   canViewReports: false,
@@ -115,6 +139,24 @@ function finalizeCapabilities(caps) {
     c.canAccessPurchasing = Boolean(c.canManageSystem || c.isPurchasing);
   }
 
+  c.canViewPurchaseApprovals = Boolean(
+    c.canApprovePurchasing || c.canApprovePurchasingAccountant || c.canManageSystem,
+  );
+
+  c.canViewApprovalsDashboard = Boolean(
+    c.canViewApprovalsDashboard ||
+      c.canApproveShift ||
+      c.canViewPurchaseApprovals ||
+      c.canManageSystem,
+  );
+
+  c.canViewSupplierPayments = Boolean(
+    c.canManageSupplierPayments || c.canAccessAccountantWorkspace || c.canManageSystem,
+  );
+  if (c.canManageSystem) {
+    c.canManageSupplierPayments = true;
+  }
+
   return c;
 }
 
@@ -153,6 +195,9 @@ function administratorCapabilities(roleList = [], roleProfileName = '') {
       canApproveReturns: true,
       canApproveReconciliation: true,
       canApprovePurchasing: true,
+      canApprovePurchasingAccountant: true,
+      canAccessAccountantWorkspace: true,
+      canViewApprovalsDashboard: true,
       canAccessPurchasing: true,
       canViewSuppliers: true,
       canAccessInventory: true,
@@ -205,6 +250,9 @@ function capabilitiesFromErpRoles(roleList = [], roleProfileName = '') {
   const hasInventoryRole = normalized.some((r) => INVENTORY_ANY_ROLES.has(r));
   const canAccessPurchasing = normalized.some((r) => PURCHASING_ROLES.has(r));
   const canApprovePurchasing = normalized.some((r) => PURCHASING_APPROVE_ROLES.has(r));
+  const canApprovePurchasingAccountant = normalized.some((r) =>
+    PURCHASING_ACCOUNTANT_APPROVE_ROLES.has(r),
+  );
   const hasManagerInventoryRole = normalized.some((r) => INVENTORY_MANAGER_ROLES.has(r));
 
   const roleLabel =
@@ -230,11 +278,13 @@ function capabilitiesFromErpRoles(roleList = [], roleProfileName = '') {
     canOperatePOS,
     canOpenShift: canOperatePOS,
     canCloseShift: canOperatePOS,
-    canApproveShift: false,
-    canViewShiftReports: normalized.some((r) => POS_VIEW_ROLES.has(r)),
+    canApproveShift: normalized.some((r) => SHIFT_APPROVE_ROLES.has(r)),
+    canViewShiftReports:
+      normalized.some((r) => POS_VIEW_ROLES.has(r) || SHIFT_APPROVE_ROLES.has(r)),
     canViewInvoices: canViewPOS,
     canAccessPurchasing,
     canApprovePurchasing,
+    canApprovePurchasingAccountant,
     canViewSuppliers: canAccessPurchasing,
     canAccessInventory: hasInventoryRole,
     canAccessAdminWorkspace: false,
@@ -284,14 +334,7 @@ export function canAccessPurchasing(caps) {
   return Boolean(caps?.canAccessPurchasing);
 }
 
-export function homePathFromCapabilities(caps) {
-  if (caps.canManageSystem) return '/admin';
-  if (caps.canAccessAdminWorkspace) return '/admin';
-  if (caps.canOperatePOS) return '/pos';
-  if (caps.canAccessPurchasing) return '/admin/purchasing';
-  if (caps.canAccessInventory) return '/inventory';
-  return '/login';
-}
+export { resolveHomePath as homePathFromCapabilities } from './routeAccess';
 
 /** @deprecated Fail-closed — do not infer access from usernames or identifiers */
 export function homePathFromIdentifier() {

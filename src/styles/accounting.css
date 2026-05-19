@@ -1,0 +1,205 @@
+.ap-workflow-banner {
+  font-size: 0.875rem;
+  color: var(--text-muted, #64748b);
+  background: var(--muted-bg, #f8fafc);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.ap-workflow-banner a {
+  color: var(--primary, #ea580c);
+}
+
+.ap-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.ap-pill__pct {
+  opacity: 0.85;
+  font-weight: 500;
+}
+
+.ap-pill--unpaid {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #fcd34d;
+}
+
+.ap-pill--partial {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #93c5fd;
+}
+
+.ap-pill--paid {
+  background: #ecfdf5;
+  color: #047857;
+  border-color: #6ee7b7;
+}
+
+.ap-pill--overdue {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fca5a5;
+}
+
+.ap-pill--cancelled,
+.ap-pill--draft {
+  background: var(--muted-bg, #f1f5f9);
+  color: var(--text-muted, #64748b);
+}
+
+.ap-lifecycle-pill {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  background: var(--primary-bg, #fff7ed);
+  color: var(--primary, #ea580c);
+  margin-right: 0.5rem;
+}
+
+.receipt-matching-card__lifecycle {
+  font-size: 0.875rem;
+  margin: 0 0 0.75rem;
+  color: var(--text-muted, #64748b);
+}
+
+.receipt-matching-card__outstanding {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--amber, #b45309);
+}
+
+.ap-aging-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+}
+
+.ap-aging-grid__label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-muted, #64748b);
+}
+
+.ap-payments-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+}
+
+.ap-payments-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.ap-payments-view-toggle {
+  display: flex;
+  gap: 0.35rem;
+  margin-left: auto;
+}
+
+.ap-invoices-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.ap-invoices-table th,
+.ap-invoices-table td {
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border, #e2e8f0);
+}
+
+.ap-invoices-table__overdue {
+  background: #fffbeb;
+}
+
+.ap-payment-history {
+  list-style: none;
+  margin: 0;
+  padding: 1rem;
+}
+
+.ap-payment-history__item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--border, #e2e8f0);
+  font-size: 0.875rem;
+}
+
+.ap-payment-form__intro {
+  font-size: 0.875rem;
+  color: var(--text-muted, #64748b);
+  margin: 0 0 1rem;
+}
+
+.ap-payment-form__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.ap-payment-form__invoices-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 1rem 0 0.5rem;
+}
+
+.ap-payment-form__invoice-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.ap-payment-form__invoice-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto 100px;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border, #e2e8f0);
+  font-size: 0.875rem;
+}
+
+.ap-payment-form__check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ap-payment-form__total {
+  text-align: right;
+  margin: 1rem 0;
+}
+
+.ap-payment-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}

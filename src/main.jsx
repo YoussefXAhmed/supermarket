@@ -11,6 +11,9 @@ import './styles/layout.css';
 import './styles/login.css';
 import './styles/pos.css';
 import './styles/shifts.css';
+import './styles/purchasing.css';
+import './styles/approvals.css';
+import './styles/accounting.css';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

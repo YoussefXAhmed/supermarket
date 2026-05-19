@@ -6,6 +6,7 @@ import {
   listStockLedger,
   listWarehouses,
 } from './inventoryApi';
+import { binAvailableQty } from '../utils/stockAvailability';
 
 function toNum(v) {
   const n = Number(v);
@@ -39,7 +40,7 @@ function rowFromBin(bin, itemByCode) {
   if (!code) return null;
 
   const item = itemByCode.get(code) || {};
-  const qty = toNum(bin.actual_qty);
+  const qty = binAvailableQty(bin);
   const standardRate = toNum(item.standard_rate);
   const valuationRate = toNum(bin.valuation_rate);
   const price = standardRate > 0 ? standardRate : valuationRate;
@@ -111,10 +112,25 @@ export function computeInventoryMetrics(rows) {
 
 export async function getInventorySnapshot({ itemLimit = 400, binLimit = 2000, warehouse } = {}) {
   const scopedWarehouse = warehouse && warehouse !== 'all' ? warehouse : null;
-  const binFilters = scopedWarehouse ? [['warehouse', '=', scopedWarehouse]] : [];
   const [itemsRes, binsRes] = await Promise.all([
     listItemsForInventory({ limit: itemLimit }).catch(() => getItems({ limit: itemLimit })),
-    listBins({ limit: binLimit, filters: binFilters }),
+    scopedWarehouse
+      ? (async () => {
+          const { fetchWarehouseStock } = await import('./stockService');
+          const stockMap = await fetchWarehouseStock(scopedWarehouse);
+          return {
+            data: {
+              data: Object.entries(stockMap).map(([item_code, row]) => ({
+                item_code,
+                warehouse: scopedWarehouse,
+                actual_qty: row.actual_qty,
+                reserved_qty: row.reserved_qty,
+                valuation_rate: row.valuation_rate,
+              })),
+            },
+          };
+        })()
+      : listBins({ limit: binLimit }),
   ]);
 
   const items = itemsRes?.data?.data || [];

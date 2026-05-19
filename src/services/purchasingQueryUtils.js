@@ -1,4 +1,4 @@
-import { extractERPError } from '../utils/errorHandling';
+import { extractERPError, stripHtml } from '../utils/errorHandling';
 
 /** Header fields permitted on Purchase Receipt list queries (ERPNext REST). */
 export const PURCHASE_RECEIPT_LIST_FIELDS = [
@@ -10,6 +10,9 @@ export const PURCHASE_RECEIPT_LIST_FIELDS = [
   'docstatus',
   'set_warehouse',
   'per_billed',
+  'pending_purchase_approval',
+  'purchase_approval_level',
+  'approval_status',
 ];
 
 /** Child-table fields linking Purchase Invoice → Purchase Receipt. */
@@ -23,13 +26,26 @@ export function isFieldPermitError(error) {
 /**
  * Run a list API call; on failure return empty data + warning (never throw).
  */
+/** User-safe warning text (no raw Python exception class names). */
+export function humanizeOperationalWarning(label, error) {
+  const raw = stripHtml(extractERPError(error).message || '');
+  let message = raw
+    .replace(/^frappe\.exceptions\.\w+:\s*/i, '')
+    .replace(/^Exception:\s*/i, '')
+    .trim();
+  if (!message || /^permission/i.test(message)) {
+    message = 'You do not have permission to load this data in ERPNext.';
+  }
+  return `${label}: ${message}`;
+}
+
 export async function safeResourceList(fetchFn, label, warnings = []) {
   try {
     const res = await fetchFn();
     return { data: res?.data?.data || [], error: null };
   } catch (e) {
-    const message = extractERPError(e).message;
-    warnings.push(`${label}: ${message}`);
+    const message = humanizeOperationalWarning(label, e);
+    warnings.push(message);
     return { data: [], error: message };
   }
 }

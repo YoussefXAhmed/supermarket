@@ -2,38 +2,15 @@ import {
   listSuppliers,
   listPurchaseInvoices,
   listPurchaseReceipts,
-  listPurchaseInvoiceItemReceiptLinks,
 } from './purchasingApi';
-import {
-  safeResourceList,
-  buildReceiptToInvoicesMap,
-  isReceiptFullyBilled,
-  billingStatusLabel,
-} from './purchasingQueryUtils';
+import { safeResourceList } from './purchasingQueryUtils';
+import { getPurchasingWorkspaceHistory } from './purchasingApprovalApi';
+import { fetchInvoiceMatchingWorkspace } from './invoiceMatchingService';
+import { purchaseReceiptStatusLabel } from '../utils/approvalStatuses';
 
 function toNum(v) {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
-}
-
-function mapReceiptToMatchingRow(receipt, invoiceMap) {
-  const invoices = invoiceMap.has(receipt.name)
-    ? [...invoiceMap.get(receipt.name)]
-    : [];
-  const billed = isReceiptFullyBilled(receipt.per_billed);
-  const linked = billed || invoices.length > 0;
-
-  return {
-    receipt: receipt.name,
-    supplier: receipt.supplier,
-    posting_date: receipt.posting_date,
-    grand_total: receipt.grand_total,
-    per_billed: toNum(receipt.per_billed),
-    billing_status: billingStatusLabel(receipt.per_billed),
-    purchase_invoices: invoices,
-    purchase_invoice: invoices[0] || '',
-    linked,
-  };
 }
 
 export async function getSupplierBalanceOverview(supplierName) {
@@ -134,34 +111,57 @@ export async function getPurchasingAnalytics() {
 
 export async function getPurchaseHistoryReport({ supplier, fromDate, limit = 300 } = {}) {
   const warnings = [];
-  const filters = [['docstatus', '!=', 2]];
-  if (supplier) filters.push(['supplier', '=', supplier]);
-  if (fromDate) filters.push(['posting_date', '>=', fromDate]);
 
-  const { data: invoiceRows } = await safeResourceList(
-    () => listPurchaseInvoices({ limit, filters }),
-    'purchase invoices',
-    warnings
-  );
-  const { data: receiptRows } = await safeResourceList(
-    () => listPurchaseReceipts({ limit, filters }),
-    'purchase receipts',
-    warnings
-  );
+  let combined = [];
+  try {
+    const rows = await getPurchasingWorkspaceHistory({
+      limit,
+      supplier: supplier || undefined,
+      from_date: fromDate || undefined,
+    });
+    combined = (rows || []).map((r) => ({
+      ...r,
+      status:
+        r.doc_type === 'Purchase Receipt'
+          ? purchaseReceiptStatusLabel(r)
+          : r.status || (r.docstatus === 1 ? 'Submitted' : 'Draft'),
+    }));
+  } catch (e) {
+    warnings.push('Purchase history: could not load from ERP. Showing partial data if available.');
+    const filters = [['docstatus', '!=', 2]];
+    if (supplier) filters.push(['supplier', '=', supplier]);
+    if (fromDate) filters.push(['posting_date', '>=', fromDate]);
 
-  const invoices = invoiceRows.map((r) => ({ ...r, doc_type: 'Purchase Invoice' }));
-  const receipts = receiptRows.map((r) => ({
-    ...r,
-    doc_type: 'Purchase Receipt',
-    outstanding_amount: 0,
-  }));
+    const { data: invoiceRows } = await safeResourceList(
+      () => listPurchaseInvoices({ limit, filters }),
+      'purchase invoices',
+      warnings,
+    );
+    const { data: receiptRows } = await safeResourceList(
+      () => listPurchaseReceipts({ limit, filters }),
+      'purchase receipts',
+      warnings,
+    );
 
-  const combined = [...invoices, ...receipts].sort((a, b) =>
-    String(b.posting_date).localeCompare(String(a.posting_date))
-  );
+    const invoices = invoiceRows.map((r) => ({
+      ...r,
+      doc_type: 'Purchase Invoice',
+      status: r.status || (r.docstatus === 1 ? 'Submitted' : 'Draft'),
+    }));
+    const receipts = receiptRows.map((r) => ({
+      ...r,
+      doc_type: 'Purchase Receipt',
+      outstanding_amount: 0,
+      status: purchaseReceiptStatusLabel(r),
+    }));
+    combined = [...invoices, ...receipts];
+  }
+
+  combined.sort((a, b) => String(b.posting_date).localeCompare(String(a.posting_date)));
 
   const costByMonth = new Map();
-  for (const row of invoices) {
+  for (const row of combined) {
+    if (row.doc_type !== 'Purchase Invoice') continue;
     const key = (row.posting_date || '').slice(0, 7);
     if (!key) continue;
     costByMonth.set(key, (costByMonth.get(key) || 0) + toNum(row.grand_total));
@@ -178,25 +178,14 @@ export async function getPurchaseHistoryReport({ supplier, fromDate, limit = 300
 
 export async function getInvoiceMatchingRows({ limit = 150 } = {}) {
   const warnings = [];
-
-  const { data: receipts } = await safeResourceList(
-    () =>
-      listPurchaseReceipts({
-        limit,
-        filters: [['docstatus', '=', 1]],
-      }),
-    'purchase receipts',
-    warnings
-  );
-
-  const { data: piItemLinks } = await safeResourceList(
-    () => listPurchaseInvoiceItemReceiptLinks({ limit: 1000 }),
-    'purchase invoice item links',
-    warnings
-  );
-
-  const invoiceMap = buildReceiptToInvoicesMap(piItemLinks);
-  const rows = receipts.map((r) => mapReceiptToMatchingRow(r, invoiceMap));
-
-  return { rows, warnings };
+  try {
+    const rows = await fetchInvoiceMatchingWorkspace(limit);
+    return { rows: rows || [], warnings };
+  } catch (e) {
+    warnings.push(
+      'Invoice matching workspace unavailable — ' +
+        (e?.message || 'check ERP permissions for Purchase Receipt / Purchase Invoice.'),
+    );
+    return { rows: [], warnings };
+  }
 }

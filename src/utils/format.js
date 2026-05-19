@@ -40,3 +40,27 @@ export function fmtDate(value, style = 'medium') {
   if (Number.isNaN(d.getTime())) return String(value);
   return d.toLocaleDateString(LOCALE, style === 'short' ? { day: '2-digit', month: 'short' } : undefined);
 }
+
+export function fmtDateTime(value) {
+  if (!value) return '—';
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  const now = new Date();
+  const sameDay =
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate();
+  if (sameDay) {
+    return d.toLocaleTimeString(LOCALE, { hour: 'numeric', minute: '2-digit' });
+  }
+  return d.toLocaleString(LOCALE, {
+    day: 'numeric',
+    month: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+export function fmtDateShort(value) {
+  return fmtDate(value, 'short');
+}

@@ -277,43 +277,9 @@ export async function createAndSubmitPurchaseInvoice({
 }
 
 /**
- * Link a submitted Purchase Receipt to a draft Purchase Invoice via
- * Purchase Invoice Item.purchase_receipt (official ERPNext link).
+ * @deprecated Use invoiceMatchingService.linkReceiptToInvoice — server validates all rules.
  */
-export async function linkReceiptToInvoice(receiptName, invoiceName) {
-  const pr = await getPurchaseReceipt(receiptName);
-  const pi = await getPurchaseInvoice(invoiceName);
-  if (!pr) throw new Error('Purchase Receipt not found');
-  if (!pi) throw new Error('Purchase Invoice not found');
-  if (pi.docstatus !== 0) {
-    throw new Error('Purchase Invoice must be a draft to link a receipt. Cancel/amend in ERPNext if needed.');
-  }
-  if (pr.supplier && pi.supplier && pr.supplier !== pi.supplier) {
-    throw new Error('Supplier on receipt and invoice must match.');
-  }
-
-  const existingItems = pi.items || [];
-  const alreadyLinked = existingItems.some((row) => row.purchase_receipt === receiptName);
-  if (alreadyLinked) return pi;
-
-  const prLines = pr.items || [];
-  if (!prLines.length) throw new Error('Purchase Receipt has no line items to link.');
-
-  const newLines = prLines.map((row) => ({
-    item_code: row.item_code,
-    qty: row.qty,
-    rate: row.rate,
-    warehouse: row.warehouse || pr.set_warehouse,
-    purchase_receipt: receiptName,
-    pr_detail: row.name,
-  }));
-
-  const res = await api.put(
-    `/api/resource/Purchase Invoice/${encodeURIComponent(invoiceName)}`,
-    { items: [...existingItems, ...newLines] }
-  );
-  return res?.data?.data;
-}
+export { linkReceiptToInvoice } from './invoiceMatchingService';
 
 export const listSupplierGroups = () =>
   api.get('/api/resource/Supplier Group', {

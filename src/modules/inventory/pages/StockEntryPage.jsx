@@ -4,6 +4,7 @@ import { ApiErrorCard, Btn, PageHeader } from '../../../components/ui';
 import { getItems } from '../../../services/api';
 import { createAndSubmitStockEntry, getBin, listWarehouses } from '../../../services/inventoryApi';
 import { getUserFriendlyMessage } from '../../../utils/errorHandling';
+import { invalidateStockCache } from '../../../utils/stockCache';
 import { availableBinQty } from '../../../utils/inventoryValidation';
 import { useInventoryCapabilities } from '../../../hooks/useInventoryCapabilities';
 
@@ -93,6 +94,7 @@ export default function StockEntryPage() {
       });
 
       setMsg(`Submitted: ${result.name} (stock updated in ERPNext)`);
+      invalidateStockCache({ source: 'stock_entry', name: result.name, warehouse: form.target_warehouse || form.source_warehouse });
       setForm((f) => ({ ...f, item_code: '', qty: '' }));
       setSourceAvail(null);
     } catch (e2) {

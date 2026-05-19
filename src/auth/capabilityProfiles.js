@@ -48,8 +48,39 @@ const INVENTORY_CLERK = inv({
 const PURCHASING_OFFICER = {
   canAccessPurchasing: true,
   canViewSuppliers: true,
+  canApprovePurchasing: false,
+  canApprovePurchasingAccountant: false,
+  canViewPurchaseApprovals: false,
+  canViewApprovalsDashboard: false,
   roleLabel: 'Purchasing Officer',
   operationalPersona: 'purchasing',
+};
+
+/** Future-safe: accountant reviews shift closings without full store manager inventory powers */
+const ACCOUNTANT = {
+  canAccessAdminWorkspace: true,
+  canViewReports: true,
+  canViewShiftReports: true,
+  canApproveShift: true,
+  canApprovePurchasing: false,
+  canApprovePurchasingAccountant: true,
+  canViewPurchaseApprovals: true,
+  canViewApprovalsDashboard: true,
+  canAccessAccountantWorkspace: true,
+  canViewSupplierPayments: true,
+  canManageSupplierPayments: true,
+  canAccessPurchasing: false,
+  canViewInvoices: true,
+  canViewPOS: false,
+  canOperatePOS: false,
+  canOpenShift: false,
+  canCloseShift: false,
+  canAccessInventory: false,
+  canInventoryTransfer: false,
+  canInventoryReconcile: false,
+  canInventoryOperate: false,
+  roleLabel: 'Accountant',
+  operationalPersona: 'accountant',
 };
 
 const STORE_MANAGER = inv({
@@ -62,6 +93,8 @@ const STORE_MANAGER = inv({
   canApproveReturns: true,
   canApproveReconciliation: true,
   canApprovePurchasing: true,
+  canViewPurchaseApprovals: true,
+  canViewApprovalsDashboard: true,
   canViewPOS: true,
   canOperatePOS: false,
   canOpenShift: false,
@@ -89,4 +122,8 @@ export const CAPS_BY_ROLE_PROFILE = {
   [OPERATIONAL_USER_TEMPLATES.inventory_clerk.roleProfileName]: INVENTORY_CLERK,
   [OPERATIONAL_USER_TEMPLATES.purchasing_officer.roleProfileName]: PURCHASING_OFFICER,
   [OPERATIONAL_USER_TEMPLATES.store_manager.roleProfileName]: STORE_MANAGER,
+  [OPERATIONAL_USER_TEMPLATES.accountant.roleProfileName]: ACCOUNTANT,
+  'Elmahdi Accountant': ACCOUNTANT,
+  Accountant: ACCOUNTANT,
+  'Accounts Manager': ACCOUNTANT,
 };

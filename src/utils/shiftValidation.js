@@ -63,12 +63,14 @@ export function validateCloseShift({
   }
 }
 
-export function validateShiftApproval({
+/**
+ * Manager may submit any draft POS Closing Entry (variance review or cashier draft).
+ */
+export function validateManagerShiftSubmit({
   closingEntry,
   approver,
   opener,
   canApprove,
-  varianceSeverity,
 }) {
   if (!canApprove) {
     throw new ShiftValidationError('You do not have permission to approve shift closings.', 'forbidden');
@@ -79,9 +81,23 @@ export function validateShiftApproval({
   if (closingEntry.docstatus === 1) {
     throw new ShiftValidationError('This closing is already submitted.', 'already_submitted');
   }
-  if (approver && opener && approver === opener) {
-    throw new ShiftValidationError('You cannot approve your own shift variance.', 'self_approval');
+  if (closingEntry.docstatus === 2) {
+    throw new ShiftValidationError('This closing was cancelled.', 'cancelled');
   }
+  if (approver && opener && String(approver) === String(opener)) {
+    throw new ShiftValidationError('You cannot approve your own shift closing.', 'self_approval');
+  }
+}
+
+/** @deprecated Use validateManagerShiftSubmit — kept for variance-only callers */
+export function validateShiftApproval({
+  closingEntry,
+  approver,
+  opener,
+  canApprove,
+  varianceSeverity,
+}) {
+  validateManagerShiftSubmit({ closingEntry, approver, opener, canApprove });
   if (varianceSeverity !== 'approval_required') {
     throw new ShiftValidationError('Manager approval is not required for this variance.', 'no_approval_needed');
   }

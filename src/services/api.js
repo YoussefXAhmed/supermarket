@@ -19,7 +19,7 @@ const api = axios.create({
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (!err.config?.silentAuthProbe) {
+    if (!err.config?.silentAuthProbe && !err.config?.silentApi) {
       logApiError(err.config?.url || 'request', err);
     }
     return Promise.reject(normalizeERPError(err));
@@ -27,7 +27,7 @@ api.interceptors.response.use(
 );
 
 function authProbeConfig() {
-  return { silentAuthProbe: true };
+  return { silentAuthProbe: true, silentApi: true };
 }
 
 /* ══════════════════════════════════════
@@ -39,8 +39,37 @@ export const login = (usr, pwd) =>
 export const logout = () =>
   api.get('/api/method/logout');
 
+/** Legacy probe — often 403 for operational users (Purchase User, Accountant, etc.). */
 export const getCurrentUser = () =>
-  api.get('/api/method/frappe.auth.get_logged_user');
+  api.get('/api/method/frappe.auth.get_logged_user', authProbeConfig());
+
+/**
+ * Resolve logged-in username for SPA bootstrap.
+ * Prefers elmahdi.api.auth.get_session_identity (no frappe.auth permission needed).
+ */
+export async function probeLoggedInUser() {
+  try {
+    const res = await getSessionIdentity();
+    const name = res.data?.message?.name;
+    if (name && name !== 'Guest') return name;
+    return null;
+  } catch (e) {
+    const status = e?.status;
+    const code = e?.code;
+    // No session, guest blocked, or network — treat as logged out (no second probe spam).
+    if (status === 401 || status === 403) return null;
+    if (code === 'AuthenticationError') return null;
+  }
+
+  try {
+    const res = await getCurrentUser();
+    const name = res.data?.message;
+    if (name && name !== 'Guest') return name;
+  } catch {
+    /* legacy probe denied */
+  }
+  return null;
+}
 
 export const getUserRoles = (user) =>
   api.get('/api/resource/User/' + encodeURIComponent(user), {
@@ -342,8 +371,10 @@ export const getDashboardStats = async () => {
   const lastMonthStart = getLastMonthStart();
   const warnings = [];
 
+  const silent = { silentApi: true };
   const [invoices, lastMonthInv, items, customers] = await Promise.allSettled([
     api.get('/api/resource/Sales Invoice', {
+      ...silent,
       params: {
         fields: JSON.stringify(['name', 'grand_total', 'status', 'posting_date', 'customer']),
         filters: JSON.stringify([['docstatus', '!=', 2], ['posting_date', '>=', monthStart]]),
@@ -351,6 +382,7 @@ export const getDashboardStats = async () => {
       },
     }),
     api.get('/api/resource/Sales Invoice', {
+      ...silent,
       params: {
         fields: JSON.stringify(['grand_total', 'posting_date']),
         filters: JSON.stringify([
@@ -373,9 +405,29 @@ export const getDashboardStats = async () => {
     }),
   ]);
 
-  if (invoices.status === 'rejected') warnings.push('Could not load sales invoices');
-  const invoiceData = invoices.status === 'fulfilled' ? invoices.value.data.data : [];
-  const lastMonthData = lastMonthInv.status === 'fulfilled' ? lastMonthInv.value.data.data : [];
+  let invoiceData = invoices.status === 'fulfilled' ? invoices.value?.data?.data || [] : [];
+  let lastMonthData = lastMonthInv.status === 'fulfilled' ? lastMonthInv.value?.data?.data || [] : [];
+
+  if (invoices.status === 'rejected') {
+    try {
+      const posRes = await api.get('/api/resource/POS Invoice', {
+        silentApi: true,
+        params: {
+          fields: JSON.stringify(['name', 'grand_total', 'status', 'posting_date', 'customer']),
+          filters: JSON.stringify([
+            ['docstatus', '=', 1],
+            ['is_pos', '=', 1],
+            ['posting_date', '>=', monthStart],
+          ]),
+          limit_page_length: 500,
+        },
+      });
+      invoiceData = posRes?.data?.data || [];
+      warnings.push('Sales invoices unavailable — using POS invoices for overview.');
+    } catch {
+      warnings.push('Could not load sales or POS invoices for dashboard.');
+    }
+  }
   const itemCount = items.status === 'fulfilled' ? (items.value.data.data?.length || 0) : 0;
   const customerCount = customers.status === 'fulfilled' ? (customers.value.data.data?.length || 0) : 0;
 
@@ -437,33 +489,15 @@ async function withResolvedItemPrices(itemsResponse) {
   if (!items.length) return itemsResponse;
 
   try {
-    const itemCodes = [...new Set(items.map(i => i.item_code).filter(Boolean))];
+    const itemCodes = [...new Set(items.map((i) => i.item_code).filter(Boolean))];
     if (!itemCodes.length) return itemsResponse;
 
-    const priceRes = await api.get('/api/resource/Item Price', {
-      params: {
-        fields: JSON.stringify(['item_code', 'price_list_rate', 'selling', 'price_list']),
-        filters: JSON.stringify([
-          ['item_code', 'in', itemCodes],
-          ['selling', '=', 1],
-          ['price_list_rate', '>', 0],
-        ]),
-        order_by: 'price_list_rate desc',
-        limit_page_length: Math.max(200, itemCodes.length * 3),
-      },
-    });
-
-    const prices = priceRes?.data?.data || [];
-    const bestPriceByItem = new Map();
-    for (const row of prices) {
-      if (!bestPriceByItem.has(row.item_code)) {
-        bestPriceByItem.set(row.item_code, Number(row.price_list_rate) || 0);
-      }
-    }
+    const { fetchSellingItemPrices } = await import('./pricingApi');
+    const bestPriceByItem = await fetchSellingItemPrices(itemCodes);
 
     const merged = items.map((item) => {
       const fallback = Number(item.standard_rate) || 0;
-      const resolved = bestPriceByItem.get(item.item_code);
+      const resolved = bestPriceByItem[item.item_code];
       return { ...item, standard_rate: resolved ?? fallback };
     });
 

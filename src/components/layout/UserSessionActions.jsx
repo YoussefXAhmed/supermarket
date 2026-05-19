@@ -1,3 +1,5 @@
+import { UserAvatar } from '../ui';
+
 export default function UserSessionActions({
   user,
   onLogout,
@@ -5,12 +7,11 @@ export default function UserSessionActions({
   compact = false,
 }) {
   const name = user?.full_name || user?.name || 'User';
-  const first = name?.[0]?.toUpperCase() || 'U';
 
   return (
     <div className={`session-actions ${compact ? 'session-actions--compact' : ''}`}>
       <span className="session-actions__identity">
-        <span className="session-actions__avatar">{first}</span>
+        <UserAvatar user={user} size={compact ? 'sm' : 'md'} className="session-actions__avatar" />
         <span className="session-actions__name">{name}</span>
       </span>
 
@@ -37,4 +38,3 @@ export default function UserSessionActions({
     </div>
   );
 }
-

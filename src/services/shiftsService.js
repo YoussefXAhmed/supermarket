@@ -4,6 +4,8 @@
 import api from './api';
 import {
   createPOSOpeningEntry,
+  openPOSShiftOnServer,
+  repairDraftOpeningEntriesOnServer,
   createPOSClosingEntry,
   submitPOSOpeningEntry,
   getPOSOpeningEntryOperational,
@@ -27,10 +29,16 @@ import {
   buildPaymentReconciliationRows,
   roundMoney,
 } from '../utils/shiftCalculations';
+import { buildShiftSessions, needsManagerReview } from '../utils/shiftSessions';
+import {
+  createInvalidShiftSessionError,
+  isInvalidShiftSessionError,
+  INVALID_SHIFT_SESSION_MESSAGE,
+} from '../utils/errorHandling';
 import {
   validateOpenShift,
   validateCloseShift,
-  validateShiftApproval,
+  validateManagerShiftSubmit,
   ShiftValidationError,
 } from '../utils/shiftValidation';
 import { logActivity, ActivityType } from './activityLogService';
@@ -95,6 +103,7 @@ export function normalizeClosingEntry(doc, { includeAudit = false } = {}) {
     expectedCash: roundMoney(cashRow?.expected_amount ?? 0),
     actualCash: roundMoney(cashRow?.closing_amount ?? 0),
     variance: roundMoney(cashRow?.difference ?? 0),
+    grand_total: roundMoney(doc.grand_total ?? 0),
   };
   if (includeAudit && doc.remarks != null) {
     entry.remarks = doc.remarks || '';
@@ -111,6 +120,10 @@ export function buildAuditRemarks({
   severity,
   approvalStatus = 'none',
   approvedBy = '',
+  rejectedBy = '',
+  requestedAt = '',
+  approvedAt = '',
+  rejectedAt = '',
   notes = '',
   summary = {},
 }) {
@@ -126,7 +139,11 @@ export function buildAuditRemarks({
     `returns_count=${summary.returnsCount ?? 0}`,
     `void_count=${summary.voidCount ?? 0}`,
   ];
+  if (requestedAt) parts.push(`requested_at=${encodeURIComponent(requestedAt)}`);
   if (approvedBy) parts.push(`approved_by=${encodeURIComponent(approvedBy)}`);
+  if (approvedAt) parts.push(`approved_at=${encodeURIComponent(approvedAt)}`);
+  if (rejectedBy) parts.push(`rejected_by=${encodeURIComponent(rejectedBy)}`);
+  if (rejectedAt) parts.push(`rejected_at=${encodeURIComponent(rejectedAt)}`);
   if (notes) parts.push(`notes=${encodeURIComponent(notes)}`);
   return parts.join('; ');
 }
@@ -182,6 +199,10 @@ export async function loadShiftSummary(openingEntryName) {
   const opening = normalizeOpeningEntry(docRes?.data?.data);
   if (!opening) throw new Error('Opening entry not found');
 
+  if (opening.docstatus !== 1) {
+    throw createInvalidShiftSessionError();
+  }
+
   try {
     const res = await fetchShiftSummaryFromERP(openingEntryName);
     const data = res?.data?.message || res?.data;
@@ -207,13 +228,18 @@ export async function loadShiftSummary(openingEntryName) {
         source: 'erp',
       };
     }
-  } catch {
-    /* fallback */
+  } catch (e) {
+    if (isInvalidShiftSessionError(e)) {
+      throw createInvalidShiftSessionError(e);
+    }
+    /* fallback to client aggregation */
   }
 
   const client = await loadShiftSummaryClient(docRes?.data?.data);
   return { opening, ...client };
 }
+
+export { repairDraftOpeningEntriesOnServer };
 
 export async function openShift({
   posProfile,
@@ -253,12 +279,37 @@ export async function openShift({
     }),
   };
 
-  const res = await createPOSOpeningEntry(payload);
-  const name = res?.data?.data?.name;
-  if (!name) throw new Error('Failed to create POS Opening Entry');
-  await submitPOSOpeningEntry(name);
-  const docRes = await getPOSOpeningEntryOperational(name);
-  const entry = normalizeOpeningEntry(docRes?.data?.data);
+  const remarks = payload.remarks;
+  let name;
+  let entry;
+
+  try {
+    const serverRes = await openPOSShiftOnServer({
+      pos_profile: posProfile,
+      company,
+      user,
+      opening_amount: openingAmount,
+      mode_of_payment: modeOfPayment,
+      remarks,
+    });
+    const data = serverRes?.data?.message || serverRes?.data;
+    name = data?.name;
+    if (!name || data?.docstatus !== 1) {
+      throw new Error('POS Opening Entry was not submitted');
+    }
+    const docRes = await getPOSOpeningEntryOperational(name);
+    entry = normalizeOpeningEntry(docRes?.data?.data);
+  } catch (serverErr) {
+    const res = await createPOSOpeningEntry(payload);
+    name = res?.data?.data?.name;
+    if (!name) throw new Error('Failed to create POS Opening Entry');
+    await submitPOSOpeningEntry(name);
+    const docRes = await getPOSOpeningEntryOperational(name);
+    entry = normalizeOpeningEntry(docRes?.data?.data);
+    if (entry?.docstatus !== 1) {
+      throw serverErr?.isNormalized ? serverErr : new Error('POS Opening Entry was not submitted');
+    }
+  }
 
   logActivity({
     type: ActivityType.SHIFT,
@@ -297,7 +348,8 @@ export async function closeShift({
     actualCash: varianceResult.actual,
     variance: varianceResult.variance,
     severity: varianceResult.severity,
-    approvalStatus: varianceResult.severity === 'approval_required' ? 'pending' : 'auto',
+    approvalStatus: varianceResult.severity === 'approval_required' ? 'pending' : 'pending',
+    requestedAt: new Date().toISOString(),
     notes,
     summary,
   });
@@ -395,15 +447,16 @@ export async function approveShiftClosing({
   const closing = await loadClosing(closingEntryName, { includeAudit: true });
   if (!closing) throw new Error('Closing entry not found');
 
-  const varianceResult = calculateVariance(closing.expectedCash, closing.actualCash);
-  validateShiftApproval({
+  const openerId = opener || closing.audit?.operator || closing.owner;
+  validateManagerShiftSubmit({
     closingEntry: closing,
     approver,
-    opener: opener || closing.audit?.operator || closing.owner,
+    opener: openerId,
     canApprove,
-    varianceSeverity: varianceResult.severity,
   });
 
+  const varianceResult = calculateVariance(closing.expectedCash, closing.actualCash);
+  const approvedAt = new Date().toISOString();
   const remarks = buildAuditRemarks({
     operator: closing.audit?.operator || closing.owner,
     expectedCash: closing.expectedCash,
@@ -412,6 +465,8 @@ export async function approveShiftClosing({
     severity: varianceResult.severity,
     approvalStatus: 'approved',
     approvedBy: approver,
+    approvedAt,
+    requestedAt: closing.audit?.requested_at || closing.creation || closing.modified,
     notes: notes || closing.audit?.notes,
     summary: {
       salesCount: closing.audit?.sales_count,
@@ -436,6 +491,61 @@ export async function approveShiftClosing({
   return loadClosing(closingEntryName, { includeAudit: true });
 }
 
+/**
+ * Reject a draft closing — updates ERP remarks only (does not submit).
+ */
+export async function rejectShiftClosing({
+  closingEntryName,
+  approver,
+  opener,
+  canApprove = true,
+  reason = '',
+}) {
+  const closing = await loadClosing(closingEntryName, { includeAudit: true });
+  if (!closing) throw new Error('Closing entry not found');
+
+  const openerId = opener || closing.audit?.operator || closing.owner;
+  validateManagerShiftSubmit({
+    closingEntry: closing,
+    approver,
+    opener: openerId,
+    canApprove,
+  });
+
+  const varianceResult = calculateVariance(closing.expectedCash, closing.actualCash);
+  const rejectedAt = new Date().toISOString();
+  const remarks = buildAuditRemarks({
+    operator: closing.audit?.operator || closing.owner,
+    expectedCash: closing.expectedCash,
+    actualCash: closing.actualCash,
+    variance: closing.variance,
+    severity: varianceResult.severity,
+    approvalStatus: 'rejected',
+    rejectedBy: approver,
+    rejectedAt,
+    requestedAt: closing.audit?.requested_at || closing.creation || closing.modified,
+    notes: reason || closing.audit?.notes,
+    summary: {
+      salesCount: closing.audit?.sales_count,
+      returnsCount: closing.audit?.returns_count,
+      voidCount: closing.audit?.void_count,
+    },
+  });
+
+  await api.put(`/api/resource/POS Closing Entry/${encodeURIComponent(closingEntryName)}`, {
+    remarks,
+  });
+
+  logActivity({
+    type: ActivityType.SHIFT,
+    action: 'shift_close_rejected',
+    user: approver,
+    detail: { closing: closingEntryName, variance: closing.variance },
+  });
+
+  return loadClosing(closingEntryName, { includeAudit: true });
+}
+
 export async function getShiftAuditDetail({ openingName, closingName } = {}) {
   if (closingName) {
     const res = await getPOSClosingEntryAudit(closingName);
@@ -446,6 +556,78 @@ export async function getShiftAuditDetail({ openingName, closingName } = {}) {
     return { type: 'opening', doc: normalizeOpeningEntry(res?.data?.data, { includeAudit: true }) };
   }
   return null;
+}
+
+/**
+ * Shift sessions — opening + closing paired for history UI.
+ */
+export async function listShiftSessions({
+  posProfile,
+  user,
+  limit = 80,
+  enrichOpenSummaries = true,
+} = {}) {
+  const filters = [];
+  if (posProfile) filters.push(['pos_profile', '=', posProfile]);
+  if (user) filters.push(['user', '=', user]);
+
+  const [openRes, closeRes] = await Promise.all([
+    listPOSOpeningEntries(filters, limit),
+    listPOSClosingEntries(filters, Math.max(limit, 80)),
+  ]);
+
+  const openings = (openRes?.data?.data || []).map((r) => normalizeOpeningEntry(r));
+
+  const closings = await Promise.all(
+    (closeRes?.data?.data || []).map(async (r) => {
+      try {
+        const resOp = await getPOSClosingEntryOperational(r.name);
+        const doc = resOp?.data?.data || r;
+        try {
+          const resAudit = await getPOSClosingEntryAudit(r.name);
+          return normalizeClosingEntry(resAudit?.data?.data || doc, { includeAudit: true });
+        } catch {
+          return normalizeClosingEntry(doc);
+        }
+      } catch {
+        return normalizeClosingEntry(r);
+      }
+    }),
+  );
+
+  const sessions = buildShiftSessions(openings, closings);
+
+  if (enrichOpenSummaries) {
+    const enrichTargets = sessions.filter(
+      (s) => s.openingName && (s.sessionStatus === 'open' || s.openingDocstatus === 0),
+    );
+    await Promise.all(
+      enrichTargets.map(async (session) => {
+        if (session.openingDocstatus === 0) {
+          session.sessionInvalid = true;
+          session.sessionInvalidMessage = INVALID_SHIFT_SESSION_MESSAGE;
+          return;
+        }
+        try {
+          const summary = await loadShiftSummary(session.openingName);
+          session.invoicesCount = summary.invoiceCount ?? summary.salesCount ?? 0;
+          session.salesTotal = roundMoney(summary.salesTotal ?? 0);
+          session.expectedCash = roundMoney(summary.expectedCash ?? session.expectedCash);
+        } catch (e) {
+          if (isInvalidShiftSessionError(e)) {
+            session.sessionInvalid = true;
+            session.sessionInvalidMessage = INVALID_SHIFT_SESSION_MESSAGE;
+          }
+        }
+      }),
+    );
+  }
+
+  return sessions;
+}
+
+export function getPendingShiftSessions(sessions = []) {
+  return sessions.filter((s) => needsManagerReview(s));
 }
 
 export async function listShiftHistory({ posProfile, user, limit = 50, includeAudit = false } = {}) {
@@ -495,24 +677,8 @@ export async function resolveShiftContext({ preferredProfile, user } = {}) {
   };
 }
 
+/** @deprecated Prefer getPendingShiftSessions(listShiftSessions()) */
 export async function getPendingShiftClosings({ limit = 30 } = {}) {
-  const res = await listPOSClosingEntries([['docstatus', '=', 0]], limit);
-  const rows = res?.data?.data || [];
-  const full = await Promise.all(
-    rows.map(async (r) => {
-      try {
-        const resOp = await getPOSClosingEntryOperational(r.name);
-        const operational = normalizeClosingEntry(resOp?.data?.data);
-        try {
-          const resAudit = await getPOSClosingEntryAudit(r.name);
-          return normalizeClosingEntry(resAudit?.data?.data, { includeAudit: true }) || operational;
-        } catch {
-          return operational;
-        }
-      } catch {
-        return normalizeClosingEntry(r);
-      }
-    }),
-  );
-  return full.filter((c) => c?.docstatus === 0);
+  const sessions = await listShiftSessions({ limit });
+  return getPendingShiftSessions(sessions).map((s) => s.closing).filter(Boolean);
 }

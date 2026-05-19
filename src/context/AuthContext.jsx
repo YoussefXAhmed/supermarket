@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { getCurrentUser, logout as apiLogout } from '../services/api';
+import { probeLoggedInUser, logout as apiLogout } from '../services/api';
 import {
   canAccessPurchasing,
   homePathFromCapabilities,
@@ -27,9 +27,8 @@ export function AuthProvider({ children }) {
 
   const loadUser = useCallback(async () => {
     try {
-      const res = await getCurrentUser();
-      const name = res.data.message;
-      if (!name || name === 'Guest') {
+      const name = await probeLoggedInUser();
+      if (!name) {
         setUser(null);
         setRoles([]);
         setCapabilities(EMPTY_CAPABILITIES);

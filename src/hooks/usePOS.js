@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useMemo } from 'react';
+import { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { getPOSInvoice } from '../services/api';
 import { checkoutPOSInvoice, retrySubmitPOSInvoice } from '../services/posCheckout';
 import {
@@ -23,6 +23,8 @@ import {
   getUserFriendlyMessage,
   normalizeERPError,
 } from '../utils/errorHandling';
+import { bumpStockVersion } from '../services/stockService';
+import { invalidateStockCache, STOCK_INVALIDATE_EVENT } from '../utils/stockCache';
 
 export function usePOS(user) {
   const [profile, setProfile] = useState(null);
@@ -51,10 +53,12 @@ export function usePOS(user) {
   const searchRef = useRef(null);
   const profileRef = useRef(null);
   const shiftRef = useRef(null);
+  const cartRef = useRef([]);
   const checkoutInFlightRef = useRef(false);
 
   profileRef.current = profile;
   shiftRef.current = shift;
+  cartRef.current = cart;
 
   const refreshMetrics = useCallback(async () => {
     const p = profileRef.current;
@@ -142,6 +146,7 @@ export function usePOS(user) {
   const loadItems = useCallback(async (q = '') => {
     const p = profileRef.current;
     if (!p) return;
+    bumpStockVersion();
     setLoading(true);
     setProductsError(null);
     try {
@@ -152,6 +157,12 @@ export function usePOS(user) {
         limit: 80,
       });
       setItems(rows);
+      setCart((prev) => {
+        const byCode = new Map(rows.map((r) => [r.item_code, r.available_qty]));
+        return prev.map((line) =>
+          byCode.has(line.item_code) ? { ...line, available_qty: byCode.get(line.item_code) } : line,
+        );
+      });
     } catch (e) {
       setProductsError(getUserFriendlyMessage(e));
       setItems([]);
@@ -185,14 +196,32 @@ export function usePOS(user) {
     return updated;
   }, []);
 
-  const addToCart = useCallback((item, { qty = 1 } = {}) => {
+  const addToCart = useCallback(async (item, { qty = 1 } = {}) => {
     setCartWarning('');
     setCheckoutError(null);
     const wh = profileRef.current?.warehouse || '';
+    let liveItem = item;
+    if (wh && item.item_code && item.is_stock_item !== false) {
+      try {
+        const freshQty = await refreshItemStock(item.item_code, wh);
+        liveItem = { ...item, available_qty: freshQty, pos_warehouse: wh };
+        setItems((prev) =>
+          prev.map((row) =>
+            row.item_code === item.item_code ? { ...row, available_qty: freshQty } : row
+          )
+        );
+      } catch {
+        /* use last known qty */
+      }
+    }
     setCart((prev) => {
       const existing = prev.find((c) => c.item_code === item.item_code);
       const nextQty = (existing?.qty || 0) + qty;
-      const check = canAddToCart({ ...item, available_qty: item.available_qty }, existing?.qty || 0, wh);
+      const check = canAddToCart(
+        { ...liveItem, available_qty: liveItem.available_qty },
+        existing?.qty || 0,
+        wh
+      );
       if (!check.ok && qty > 0) {
         setCartWarning(check.message);
         return prev;
@@ -200,16 +229,21 @@ export function usePOS(user) {
       if (existing) {
         return prev.map((c) =>
           c.item_code === item.item_code
-            ? { ...c, qty: nextQty, rate: item.standard_rate ?? c.rate, available_qty: item.available_qty }
+            ? {
+                ...c,
+                qty: nextQty,
+                rate: liveItem.standard_rate ?? c.rate,
+                available_qty: liveItem.available_qty,
+              }
             : c
         );
       }
       return [
         ...prev,
         {
-          ...item,
+          ...liveItem,
           qty: Math.max(1, qty),
-          rate: item.standard_rate || 0,
+          rate: liveItem.standard_rate || 0,
         },
       ];
     });
@@ -317,6 +351,7 @@ export function usePOS(user) {
           customer: customer || p.defaultCustomer || 'Walk-in Customer',
           company: p.company,
           pos_profile: p.name,
+          pos_opening_entry: s.name,
           set_warehouse: p.warehouse,
           selling_price_list: p.selling_price_list,
           currency: p.currency,
@@ -337,7 +372,9 @@ export function usePOS(user) {
         setCheckoutError(null);
         setLastInvoice(invoice);
         clearCart();
+        invalidateStockCache({ source: 'pos_checkout', warehouse: p.warehouse });
         await refreshMetrics();
+        await loadItems(query);
         return invoice;
       } catch (e) {
         const normalized = e?.isNormalized ? e : normalizeERPError(e);
@@ -364,7 +401,7 @@ export function usePOS(user) {
         setCheckoutLoading(false);
       }
     },
-    [cart, cartTotal, clearCart, buildPayments, syncCartStock, refreshMetrics, buildCheckoutStockMessage]
+    [cart, cartTotal, clearCart, buildPayments, syncCartStock, refreshMetrics, loadItems, query, buildCheckoutStockMessage]
   );
 
   const recoverPendingInvoice = useCallback(async () => {
@@ -418,8 +455,20 @@ export function usePOS(user) {
     return p;
   }, [loadProfile, refreshShift, loadItems]);
 
+  useEffect(() => {
+    const onInvalidate = () => {
+      loadItems(query);
+      if (cart.length) {
+        syncCartStock(cart).then(setCart);
+      }
+    };
+    window.addEventListener(STOCK_INVALIDATE_EVENT, onInvalidate);
+    return () => window.removeEventListener(STOCK_INVALIDATE_EVENT, onInvalidate);
+  }, [loadItems, query, cart, syncCartStock]);
+
   const shiftOpen = Boolean(
     shift &&
+      !shift.pendingClose &&
       shift.docstatus === 1 &&
       (shift.status === 'Open' || shift.status == null || shift.status === undefined)
   );

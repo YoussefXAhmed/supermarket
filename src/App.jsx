@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import WorkspaceRouteGuard from './components/layout/WorkspaceRouteGuard';
 import ProtectedRoute from './components/layout/ProtectedRoute';
 import CapabilityRoute from './components/layout/CapabilityRoute';
 import InventoryCapabilityRoute from './components/layout/InventoryCapabilityRoute';
@@ -13,6 +14,7 @@ import { PageLoading } from './components/ui';
 const LoginPage = lazy(() => import('./modules/auth/LoginPage'));
 const POSPage = lazy(() => import('./modules/pos/POSPage'));
 const DashboardPage = lazy(() => import('./modules/admin/DashboardPage'));
+const AdminHomePage = lazy(() => import('./modules/admin/AdminHomePage'));
 const ProductsPage = lazy(() => import('./modules/admin/ProductsPage'));
 const InventoryPage = lazy(() => import('./modules/admin/InventoryPage'));
 const InvoicesPage = lazy(() => import('./modules/admin/InvoicesPage'));
@@ -41,6 +43,10 @@ const ReceiveStockPage = lazy(() => import('./modules/purchasing/ReceiveStockPag
 const PurchaseInvoicesPage = lazy(() => import('./modules/purchasing/PurchaseInvoicesPage'));
 const InvoiceMatchingPage = lazy(() => import('./modules/purchasing/InvoiceMatchingPage'));
 const PurchaseReportsPage = lazy(() => import('./modules/purchasing/PurchaseReportsPage'));
+const PurchaseApprovalsPage = lazy(() => import('./modules/purchasing/PurchaseApprovalsPage'));
+const AccountantDashboardPage = lazy(() => import('./modules/accountant/pages/AccountantDashboardPage'));
+const SupplierPaymentsPage = lazy(() => import('./modules/accountant/pages/SupplierPaymentsPage'));
+const ApprovalsDashboardPage = lazy(() => import('./modules/approvals/pages/ApprovalsDashboardPage'));
 const ReturnsPage = lazy(() => import('./modules/returns/ReturnsPage'));
 const ShiftsLayout = lazy(() => import('./components/layout/ShiftsLayout'));
 const ShiftOpenPage = lazy(() => import('./modules/shifts/pages/ShiftOpenPage'));
@@ -55,6 +61,7 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <WorkspaceRouteGuard />
         <Routes>
           <Route path="/login" element={<LazyPage><LoginPage /></LazyPage>} />
 
@@ -160,6 +167,14 @@ export default function App() {
               <Route path="suppliers" element={<LazyPage><SuppliersPage /></LazyPage>} />
               <Route path="suppliers/:id" element={<LazyPage><SupplierDetailPage /></LazyPage>} />
               <Route path="receive" element={<LazyPage><ReceiveStockPage /></LazyPage>} />
+              <Route
+                path="approvals"
+                element={(
+                  <CapabilityRoute cap="canViewPurchaseApprovals">
+                    <LazyPage><PurchaseApprovalsPage /></LazyPage>
+                  </CapabilityRoute>
+                )}
+              />
               <Route path="invoices" element={<LazyPage><PurchaseInvoicesPage /></LazyPage>} />
               <Route path="matching" element={<LazyPage><InvoiceMatchingPage /></LazyPage>} />
               <Route path="reports" element={<LazyPage><PurchaseReportsPage /></LazyPage>} />
@@ -170,11 +185,37 @@ export default function App() {
             path="/admin"
             element={
               <ProtectedRoute require="admin">
-                <AdminLayout />
+                <ErrorBoundary>
+                  <AdminLayout />
+                </ErrorBoundary>
               </ProtectedRoute>
             }
           >
-            <Route index element={<LazyPage><DashboardPage /></LazyPage>} />
+            <Route index element={<LazyPage><AdminHomePage /></LazyPage>} />
+            <Route
+              path="accounting"
+              element={(
+                <CapabilityRoute cap="canAccessAccountantWorkspace">
+                  <LazyPage><AccountantDashboardPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="accounting/payments"
+              element={(
+                <CapabilityRoute cap="canViewSupplierPayments">
+                  <LazyPage><SupplierPaymentsPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="approvals"
+              element={(
+                <CapabilityRoute cap="canViewApprovalsDashboard">
+                  <LazyPage><ApprovalsDashboardPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
             <Route
               path="products"
               element={(

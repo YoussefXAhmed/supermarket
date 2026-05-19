@@ -32,6 +32,13 @@ export const OPERATIONAL_USER_TEMPLATES = {
     warehouseRule: 'one_or_more',
     requiresPriceList: false,
   },
+  accountant: {
+    id: 'accountant',
+    label: 'Accountant',
+    roleProfileName: 'Elmahdi Accountant',
+    warehouseRule: 'none',
+    requiresPriceList: false,
+  },
 };
 
 export const TEMPLATE_IDS = Object.keys(OPERATIONAL_USER_TEMPLATES);
@@ -75,7 +82,7 @@ export function validateProvisioningInput(templateId, input = {}) {
     if (warehouses.length !== 1) {
       return { valid: false, error: `${template.label} requires exactly one warehouse.` };
     }
-  } else if (warehouses.length < 1) {
+  } else if (template.warehouseRule !== 'none' && warehouses.length < 1) {
     return { valid: false, error: `Select at least one warehouse for ${template.label}.` };
   }
 

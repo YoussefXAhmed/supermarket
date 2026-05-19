@@ -6,14 +6,149 @@ import json
 
 import frappe
 from frappe import _
-from frappe.utils import flt
+from frappe.utils import flt, today
 
 
-def _opening_doc(name):
+def _opening_doc(name, *, require_submitted=True):
     doc = frappe.get_doc("POS Opening Entry", name)
-    if doc.docstatus != 1:
+    if require_submitted and doc.docstatus != 1:
         frappe.throw(_("POS Opening Entry must be submitted"), frappe.ValidationError)
     return doc
+
+
+def _can_submit_opening(doc):
+    if doc.docstatus == 1:
+        return False, _("Already submitted")
+    if doc.docstatus == 2:
+        return False, _("Opening entry is cancelled")
+    if not doc.pos_profile or not doc.company:
+        return False, _("Missing POS profile or company")
+    if not doc.get("balance_details"):
+        return False, _("Missing opening balance details")
+    return True, None
+
+
+def _submit_opening_doc(doc):
+    """ERPNext submit workflow — never only set docstatus via REST."""
+    ok, reason = _can_submit_opening(doc)
+    if not ok:
+        frappe.throw(reason, frappe.ValidationError)
+    doc.submit()
+    return doc
+
+
+@frappe.whitelist()
+def open_pos_shift(
+    pos_profile,
+    company,
+    user=None,
+    opening_amount=0,
+    mode_of_payment="Cash",
+    remarks=None,
+):
+    """
+    Create and submit a POS Opening Entry (docstatus=1).
+    Cashiers/managers with create+submit permission on POS Opening Entry.
+    """
+    if not pos_profile or not company:
+        frappe.throw(_("POS profile and company are required"), frappe.ValidationError)
+
+    frappe.has_permission("POS Opening Entry", "create", throw=True)
+
+    amount = flt(opening_amount)
+    if amount < 0:
+        frappe.throw(_("Opening cash cannot be negative"), frappe.ValidationError)
+
+    posting = today()
+    doc = frappe.new_doc("POS Opening Entry")
+    doc.pos_profile = pos_profile
+    doc.company = company
+    doc.period_start_date = posting
+    doc.posting_date = posting
+    if user:
+        doc.user = user
+    doc.append(
+        "balance_details",
+        {
+            "mode_of_payment": mode_of_payment or "Cash",
+            "opening_amount": amount,
+        },
+    )
+    if remarks:
+        doc.remarks = remarks
+
+    doc.insert()
+    _submit_opening_doc(doc)
+
+    return {
+        "name": doc.name,
+        "docstatus": doc.docstatus,
+        "status": doc.status,
+        "pos_profile": doc.pos_profile,
+        "company": doc.company,
+        "user": doc.user or doc.owner,
+    }
+
+
+@frappe.whitelist()
+def submit_pos_opening_entry(name):
+    """Submit a draft POS Opening Entry if valid."""
+    if not name:
+        frappe.throw(_("Opening entry name is required"), frappe.ValidationError)
+    doc = frappe.get_doc("POS Opening Entry", name)
+    frappe.has_permission("POS Opening Entry", "submit", doc=doc, throw=True)
+    _submit_opening_doc(doc)
+    return {"name": doc.name, "docstatus": doc.docstatus, "status": doc.status}
+
+
+@frappe.whitelist()
+def repair_draft_opening_entries(dry_run=1):
+    """
+    Find draft POS Opening Entries (docstatus=0) and submit when valid.
+    Restricted to managers / administrators.
+    """
+    if not (
+        frappe.has_permission("POS Opening Entry", "submit")
+        or "System Manager" in frappe.get_roles()
+        or "Administrator" in frappe.get_roles()
+    ):
+        frappe.throw(_("Not permitted to repair opening entries"), frappe.PermissionError)
+
+    if isinstance(dry_run, str):
+        dry_run = dry_run.lower() in ("1", "true", "yes")
+
+    names = frappe.get_all(
+        "POS Opening Entry",
+        filters={"docstatus": 0},
+        pluck="name",
+        order_by="creation asc",
+    )
+
+    results = []
+    for name in names:
+        row = {"name": name, "action": "skipped"}
+        try:
+            doc = frappe.get_doc("POS Opening Entry", name)
+            ok, reason = _can_submit_opening(doc)
+            if not ok:
+                row["action"] = "skipped"
+                row["message"] = reason
+            elif dry_run:
+                row["action"] = "would_submit"
+            else:
+                _submit_opening_doc(doc)
+                row["action"] = "submitted"
+                row["docstatus"] = doc.docstatus
+        except Exception as exc:
+            row["action"] = "error"
+            row["message"] = str(exc)
+        results.append(row)
+
+    return {
+        "dry_run": bool(dry_run),
+        "found": len(names),
+        "results": results,
+    }
 
 
 def _opening_filters(opening):
@@ -146,8 +281,6 @@ def prepare_closing_entry(pos_opening_entry, actual_cash, notes=None, payment_co
         else:
             counts = payment_counts
 
-    from frappe.utils import today
-
     closing = frappe.new_doc("POS Closing Entry")
     closing.pos_profile = opening.pos_profile
     closing.company = opening.company
@@ -182,7 +315,21 @@ def prepare_closing_entry(pos_opening_entry, actual_cash, notes=None, payment_co
 
     audit_note = notes or ""
     closing.remarks = audit_note
+
+    from elmahdi.api.pos_closing_approval import _cash_variance_pct, _set_audit_fields
+
     closing.insert()
+    _set_audit_fields(closing, pending=True)
+    if frappe.db.has_column("POS Closing Entry", "pending_shift_approval"):
+        frappe.db.set_value(
+            "POS Closing Entry",
+            closing.name,
+            {
+                "pending_shift_approval": 1,
+                "variance_percent": _cash_variance_pct(closing),
+            },
+            update_modified=False,
+        )
 
     return {
         "name": closing.name,

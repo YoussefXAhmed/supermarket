@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { PageHeader, PageLoading, ApiErrorCard, PaginatedTable, Btn, PartialDataBanner, ExportToolbar } from '../../components/ui';
 import { TablePageLayout, LayoutSection } from '../../components/layout/page-layouts';
 import { getPurchaseHistoryReport } from '../../services/purchasingService';
 import { listSuppliers } from '../../services/purchasingApi';
 import { getUserFriendlyMessage } from '../../utils/errorHandling';
+import { useOperationalRefresh } from '../../services/operationalRefresh';
+import StatusPill from '../../components/approvals/StatusPill';
+import { purchaseReceiptApprovalStatus, isPendingPurchaseStatus } from '../../utils/approvalStatuses';
 import { fmtCurrency, fmtCurrencyCompact } from '../../utils/format';
 
 const EXPORT_COLUMNS = [
@@ -31,7 +34,7 @@ export default function PurchaseReportsPage() {
     setFromDate(d.toISOString().slice(0, 10));
   }, []);
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true);
     setError('');
     getPurchaseHistoryReport({
@@ -51,7 +54,13 @@ export default function PurchaseReportsPage() {
         setError(getUserFriendlyMessage(e));
       })
       .finally(() => setLoading(false));
-  };
+  }, [supplier, fromDate]);
+
+  useEffect(() => {
+    if (fromDate) load();
+  }, [fromDate, load]);
+
+  useOperationalRefresh(load, [load]);
 
   const columns = [
     { key: 'doc_type', label: 'Type' },
@@ -59,7 +68,16 @@ export default function PurchaseReportsPage() {
     { key: 'supplier', label: 'Supplier' },
     { key: 'posting_date', label: 'Date' },
     { key: 'grand_total', label: 'Amount', render: (v) => fmtCurrency(v) },
-    { key: 'status', label: 'Status', render: (v) => v || '—' },
+    {
+      key: 'status',
+      label: 'Status',
+      render: (v, row) =>
+        row.doc_type === 'Purchase Receipt' && isPendingPurchaseStatus(purchaseReceiptApprovalStatus(row)) ? (
+          <StatusPill status={purchaseReceiptApprovalStatus(row)} label={v} />
+        ) : (
+          v || '—'
+        ),
+    },
   ];
 
   const sparse = rows.length > 0 && rows.length <= 10;

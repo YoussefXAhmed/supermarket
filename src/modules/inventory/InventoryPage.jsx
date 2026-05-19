@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Btn, PageHeader, PageLoading, ApiErrorCard } from '../../components/ui';
 import { DashboardLayout, LayoutSection } from '../../components/layout/page-layouts';
 import { getERPDeskUrl } from '../../utils/erpLinks';
@@ -7,6 +7,7 @@ import InventoryOverviewCards from '../../components/inventory/InventoryOverview
 import InventoryProductsTable from '../../components/inventory/InventoryProductsTable';
 import { getInventorySnapshot, getWarehousesList } from '../../services/inventoryService';
 import { useInventoryCapabilities } from '../../hooks/useInventoryCapabilities';
+import { useOperationalRefresh } from '../../services/operationalRefresh';
 
 export default function InventoryPage() {
   const { canInventoryViewValuation } = useInventoryCapabilities();
@@ -24,7 +25,7 @@ export default function InventoryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const load = async (wh = warehouse) => {
+  const load = useCallback(async (wh = warehouse) => {
     setLoading(true);
     setError('');
     try {
@@ -39,16 +40,17 @@ export default function InventoryPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [warehouse]);
 
   useEffect(() => {
     getWarehousesList().then(setWarehouseList).catch(() => {});
-    load('all');
   }, []);
 
   useEffect(() => {
     load(warehouse);
-  }, [warehouse]);
+  }, [warehouse, load]);
+
+  useOperationalRefresh(() => load(warehouse), [load, warehouse]);
 
   const filtered = useMemo(() => {
     const text = q.trim().toLowerCase();

@@ -306,6 +306,14 @@ export default function POSPage() {
         </p>
       )}
 
+      {pos.shift?.pendingClose && (
+        <div className="pos-operational-banner" role="status">
+          <p>
+            Shift close is pending manager approval — selling is disabled until the closing is submitted.
+          </p>
+        </div>
+      )}
+
       <POSShiftBar
         profile={pos.profile}
         shift={pos.shift}

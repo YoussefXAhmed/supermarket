@@ -1,16 +1,39 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { PageHeader, Btn, ApiErrorCard } from '../../components/ui';
+import StatusPill from '../../components/approvals/StatusPill';
+import { purchaseReceiptApprovalStatus, purchaseReceiptStatusLabel } from '../../utils/approvalStatuses';
+import { useAuth } from '../../hooks/useAuth';
 import { FormPageLayout, LayoutSection } from '../../components/layout/page-layouts';
-import { createAndSubmitPurchaseReceipt, listSuppliers } from '../../services/purchasingApi';
+import { listSuppliers } from '../../services/purchasingApi';
+import {
+  createPurchaseReceiptWorkflow,
+  getBuyingRateSuggestions,
+} from '../../services/purchasingApprovalApi';
 import { listWarehouses } from '../../services/inventoryApi';
 import { getItems } from '../../services/api';
 import { getCompanies } from '../../services/api';
 import { getUserFriendlyMessage } from '../../utils/errorHandling';
+import {
+  approvalLevelLabel,
+  evaluatePurchaseApproval,
+  pendingReceiptMessage,
+  submitButtonLabel,
+} from '../../utils/purchasingApproval';
+import { fmtCurrency } from '../../utils/format';
 
-const emptyLine = () => ({ item_code: '', qty: '', rate: '', warehouse: '' });
+const emptyLine = () => ({
+  item_code: '',
+  qty: '',
+  rate: '',
+  expected_rate: '',
+  previous_rate: '',
+  warehouse: '',
+  rateTouched: false,
+});
 
 export default function ReceiveStockPage() {
+  const { capabilities } = useAuth();
   const [searchParams] = useSearchParams();
   const [suppliers, setSuppliers] = useState([]);
   const [warehouses, setWarehouses] = useState([]);
@@ -22,6 +45,7 @@ export default function ReceiveStockPage() {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
+  const [lastReceipt, setLastReceipt] = useState(null);
   const submittingRef = useRef(false);
 
   useEffect(() => {
@@ -35,8 +59,81 @@ export default function ReceiveStockPage() {
     getCompanies({ limit: 1 }).then((r) => setCompany(r?.data?.data?.[0]?.name || ''));
   }, []);
 
+  const approvalPreview = useMemo(
+    () =>
+      evaluatePurchaseApproval(
+        lines.map((l) => ({
+          item_code: l.item_code,
+          qty: l.qty,
+          rate: l.rate,
+          expected_rate: l.expected_rate,
+        })),
+      ),
+    [lines],
+  );
+
+  const orderTotal = useMemo(
+    () =>
+      lines.reduce((sum, line) => {
+        const qty = Number(line.qty);
+        const rate = Number(line.rate);
+        if (!Number.isFinite(qty) || !Number.isFinite(rate)) return sum;
+        return sum + qty * rate;
+      }, 0),
+    [lines],
+  );
+
+  const lineAmount = (line) => {
+    const qty = Number(line.qty);
+    const rate = Number(line.rate);
+    if (!Number.isFinite(qty) || !Number.isFinite(rate) || qty <= 0 || rate <= 0) return null;
+    return qty * rate;
+  };
+
   const updateLine = (index, patch) => {
     setLines((prev) => prev.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+  };
+
+  const fillRateForLine = async (index, itemCode) => {
+    const code = (itemCode || '').trim();
+    if (!code) return;
+    try {
+      const suggestions = await getBuyingRateSuggestions([code]);
+      const row = suggestions[code];
+      const expected = row?.expected_rate ?? 0;
+      setLines((prev) =>
+        prev.map((line, i) => {
+          if (i !== index) return line;
+          const next = { ...line, expected_rate: expected };
+          if (!line.rateTouched && (line.rate === '' || line.rate == null)) {
+            next.rate = expected > 0 ? String(expected) : '';
+            next.previous_rate = '';
+          }
+          return next;
+        }),
+      );
+    } catch {
+      /* suggestions optional */
+    }
+  };
+
+  const onItemBlur = (index, itemCode) => {
+    fillRateForLine(index, itemCode);
+  };
+
+  const onRateChange = (index, value) => {
+    setLines((prev) =>
+      prev.map((line, i) => {
+        if (i !== index) return line;
+        const prevRate = line.rate !== '' ? Number(line.rate) : line.expected_rate;
+        return {
+          ...line,
+          rate: value,
+          rateTouched: true,
+          previous_rate: line.previous_rate !== '' ? line.previous_rate : prevRate,
+        };
+      }),
+    );
   };
 
   const onSubmit = async (e) => {
@@ -47,26 +144,74 @@ export default function ReceiveStockPage() {
     setMsg('');
     setSaving(true);
     try {
-      const result = await createAndSubmitPurchaseReceipt({
+      const payloadLines = lines.map((l) => ({
+        item_code: l.item_code,
+        qty: l.qty,
+        rate: l.rate,
+        expected_rate: l.expected_rate,
+        warehouse: l.warehouse || warehouse,
+        previous_rate:
+          l.rateTouched && l.previous_rate !== '' ? l.previous_rate : undefined,
+      }));
+      const result = await createPurchaseReceiptWorkflow({
         supplier,
         company,
         warehouse,
-        lines: lines.map((l) => ({ ...l, warehouse: l.warehouse || warehouse })),
+        lines: payloadLines,
       });
-      setMsg(`Received & submitted: ${result.name} — stock updated in warehouse.`);
+      setLastReceipt(result);
+      if (result.submitted) {
+        setMsg(`Received & submitted: ${result.name} — stock updated in warehouse.`);
+      } else {
+        setMsg(pendingReceiptMessage(result));
+      }
       setLines([emptyLine()]);
     } catch (e2) {
-      setErr(e2.draftName ? `${getUserFriendlyMessage(e2)} Draft: ${e2.draftName}` : getUserFriendlyMessage(e2));
+      setErr(getUserFriendlyMessage(e2));
     } finally {
       setSaving(false);
       submittingRef.current = false;
     }
   };
 
+  const submitLabel = submitButtonLabel(approvalPreview);
+  const isPurchasingOnly =
+    approvalPreview.requiresApproval ||
+    submitLabel === 'Submit for approval';
+
   return (
     <FormPageLayout>
       <PageHeader title="Receive stock" subtitle="Purchase Receipt — increases warehouse stock on submit" dense />
       <LayoutSection variant="raised" flushHead>
+        {lastReceipt && !lastReceipt.submitted && (
+          <div className="receive-pending-banner card panel" role="status">
+            <StatusPill
+              status={purchaseReceiptApprovalStatus({
+                pending_purchase_approval: 1,
+                approval_level: lastReceipt.approval_level,
+                approval_status: lastReceipt.approval_status,
+              })}
+              label={purchaseReceiptStatusLabel({
+                pending_purchase_approval: 1,
+                approval_level: lastReceipt.approval_level,
+                approval_status: lastReceipt.approval_status,
+              })}
+            />
+            <p style={{ margin: '8px 0 0' }}>
+              {pendingReceiptMessage(lastReceipt)}
+            </p>
+            <p className="page-header__sub" style={{ marginTop: 8 }}>
+              Track status in <Link to="/admin/purchasing/reports">purchase history</Link>
+              {capabilities.canViewApprovalsDashboard ? (
+                <>
+                  {' '}
+                  or <Link to="/admin/approvals">Approvals</Link>
+                </>
+              ) : null}
+              .
+            </p>
+          </div>
+        )}
         <form className="inv-form form-region" onSubmit={onSubmit}>
           <label>
             Supplier
@@ -90,15 +235,42 @@ export default function ReceiveStockPage() {
             <Link to="/admin/purchasing/matching">Invoice matching</Link> page (draft invoice required).
           </p>
 
+          {approvalPreview.requiresApproval && (
+            <p className="receive-approval-hint" role="status">
+              Buying rate variance up to {approvalPreview.maxVariancePct}% —{' '}
+              {approvalLevelLabel(approvalPreview.level)} required.
+              {approvalPreview.level === 'accountant'
+                ? ' After you submit, an accountant must approve before stock is updated.'
+                : ' After you submit, a store manager must approve before stock is updated.'}
+            </p>
+          )}
+          {!approvalPreview.requiresApproval && isPurchasingOnly && (
+            <p className="receive-approval-hint" role="status">
+              Rates match expected buying prices — receipt will submit immediately when received.
+            </p>
+          )}
+
           <p className="section-title">Line items</p>
-          {lines.map((line, index) => (
-            <div key={index} className="recon-line">
+          <div className="receive-line receive-line--head" aria-hidden="true">
+            <span>Item</span>
+            <span>Qty</span>
+            <span>Rate</span>
+            <span>Line total</span>
+            <span />
+          </div>
+          {lines.map((line, index) => {
+            const amount = lineAmount(line);
+            const qtyNum = Number(line.qty);
+            const rateNum = Number(line.rate);
+            return (
+            <div key={index} className="receive-line">
               <input
                 className="input"
                 list="receive-items"
                 placeholder="Item code"
                 value={line.item_code}
                 onChange={(e) => updateLine(index, { item_code: e.target.value })}
+                onBlur={(e) => onItemBlur(index, e.target.value)}
                 required
               />
               <input
@@ -111,23 +283,49 @@ export default function ReceiveStockPage() {
                 onChange={(e) => updateLine(index, { qty: e.target.value })}
                 required
               />
-              <input
-                className="input"
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="Rate"
-                value={line.rate}
-                onChange={(e) => updateLine(index, { rate: e.target.value })}
-              />
-              {lines.length > 1 && (
+              <div>
+                <input
+                  className="input"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  placeholder="Buying rate"
+                  value={line.rate}
+                  onChange={(e) => onRateChange(index, e.target.value)}
+                  required
+                />
+                {line.expected_rate !== '' && Number(line.expected_rate) > 0 && (
+                  <p className="receive-line-expected">
+                    Expected {Number(line.expected_rate).toFixed(2)}
+                  </p>
+                )}
+              </div>
+              <div className="receive-line-total" aria-live="polite">
+                {amount != null ? (
+                  <>
+                    <span className="receive-line-total__value">{fmtCurrency(amount)}</span>
+                    <span className="receive-line-total__formula">
+                      {qtyNum} × {rateNum}
+                    </span>
+                  </>
+                ) : (
+                  <span className="receive-line-total__placeholder">—</span>
+                )}
+              </div>
+              {lines.length > 1 ? (
                 <button type="button" className="btn btn--ghost btn--sm" onClick={() => setLines((p) => p.filter((_, i) => i !== index))}>Remove</button>
+              ) : (
+                <span />
               )}
             </div>
-          ))}
+            );
+          })}
+          <p className="receive-order-total">
+            Order total: <strong>{fmtCurrency(orderTotal)}</strong>
+          </p>
           <datalist id="receive-items">{items.map((it) => <option key={it.item_code} value={it.item_code} />)}</datalist>
           <Btn type="button" variant="ghost" size="sm" onClick={() => setLines((p) => [...p, emptyLine()])}>+ Add line</Btn>
-          <Btn type="submit" variant="primary" size="md" loading={saving}>Receive &amp; submit</Btn>
+          <Btn type="submit" variant="primary" size="md" loading={saving}>{submitLabel}</Btn>
         </form>
         {msg && <p className="inv-success">{msg}</p>}
         {err && <ApiErrorCard title="Receive failed" message={err} />}

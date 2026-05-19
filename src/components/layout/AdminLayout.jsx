@@ -4,14 +4,16 @@ import { useAuth } from '../../hooks/useAuth';
 import { hasCapability } from '../../auth/capabilities';
 import UserSessionActions from './UserSessionActions';
 import ErrorBoundary from '../common/ErrorBoundary';
-import { RoleBadge } from '../ui';
+import { RoleBadge, UserAvatar } from '../ui';
 
 const NAV_FULL = [
   { to: '/admin', label: 'Dashboard', icon: '◈', exact: true, cap: 'canAccessAdminWorkspace' },
+  { to: '/admin/accounting', label: 'Finance', icon: '💼', cap: 'canAccessAccountantWorkspace' },
+  { to: '/admin/approvals', label: 'Approvals', icon: '✓', cap: 'canViewApprovalsDashboard' },
   { to: '/admin/products', label: 'Products', icon: '🛒', cap: 'canManageSystem' },
   { to: '/admin/inventory', label: 'Inventory', icon: '📦', cap: 'canAccessInventory' },
   { to: '/admin/purchasing', label: 'Purchasing', icon: '🛍️', cap: 'canAccessPurchasing' },
-  { to: '/admin/invoices', label: 'Invoices', icon: '🧾', cap: 'canViewReports' },
+  { to: '/admin/invoices', label: 'Invoices', icon: '🧾', cap: 'canViewInvoices' },
   { to: '/admin/returns', label: 'Returns', icon: '↩', cap: 'canViewReturns' },
   { to: '/admin/shifts/history', label: 'Shifts', icon: '◷', cap: 'canViewShiftReports' },
   { to: '/admin/customers', label: 'Customers', icon: '👥', cap: 'canViewReports' },
@@ -19,8 +21,17 @@ const NAV_FULL = [
   { to: '/admin/users', label: 'Users', icon: '🧑‍💼', cap: 'canManageUsers' },
   { to: '/admin/warehouses', label: 'Warehouses', icon: '🏬', cap: 'canManageSystem' },
   { to: '/admin/reports', label: 'Reports', icon: '📊', cap: 'canViewReports' },
-  { to: '/pos', label: 'POS', icon: '💳', cap: 'canViewPOS' },
+  { to: '/pos', label: 'POS', icon: '💳', cap: 'canOperatePOS' },
   { to: '/admin/settings', label: 'Settings', icon: '⚙️', cap: 'canManageSettings' },
+];
+
+const NAV_ACCOUNTANT = [
+  { to: '/admin/accounting', label: 'Finance', icon: '💼', exact: true, cap: 'canAccessAccountantWorkspace' },
+  { to: '/admin/approvals', label: 'Approvals', icon: '✓', cap: 'canViewApprovalsDashboard' },
+  { to: '/admin/invoices', label: 'Invoices', icon: '🧾', cap: 'canViewInvoices' },
+  { to: '/admin/reports', label: 'Reports', icon: '📊', cap: 'canViewReports' },
+  { to: '/admin/shifts/history', label: 'Shifts', icon: '◷', cap: 'canViewShiftReports' },
+  { to: '/admin/purchasing/approvals', label: 'Purchase rates', icon: '🛍️', cap: 'canViewPurchaseApprovals' },
 ];
 
 const NAV_PURCHASING_WORKSPACE = [
@@ -39,10 +50,15 @@ export default function AdminLayout({ purchasingWorkspace = false }) {
   };
 
   const navItems = useMemo(() => {
-    const pool =
-      purchasingWorkspace && !hasCapability(capabilities, 'canManageSystem')
-        ? NAV_PURCHASING_WORKSPACE
-        : NAV_FULL;
+    let pool = NAV_FULL;
+    if (purchasingWorkspace && !hasCapability(capabilities, 'canManageSystem')) {
+      pool = NAV_PURCHASING_WORKSPACE;
+    } else if (
+      capabilities.operationalPersona === 'accountant' &&
+      !hasCapability(capabilities, 'canManageSystem')
+    ) {
+      pool = NAV_ACCOUNTANT;
+    }
     return pool.filter((item) => hasCapability(capabilities, item.cap));
   }, [purchasingWorkspace, capabilities]);
 
@@ -88,7 +104,7 @@ export default function AdminLayout({ purchasingWorkspace = false }) {
           {!collapsed && <RoleBadge />}
           {collapsed ? (
             <div className="sidebar__user">
-              <div className="sidebar__avatar">{user?.full_name?.[0]?.toUpperCase() || 'U'}</div>
+              <UserAvatar user={user} size="md" className="sidebar__avatar" />
             </div>
           ) : (
             <UserSessionActions

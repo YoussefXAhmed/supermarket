@@ -9,3 +9,14 @@ app_license = "mit"
 app_version = app_version
 
 required_apps = ["frappe"]
+
+doc_events = {
+    "Purchase Receipt": {
+        "validate": "elmahdi.api.purchasing.validate_purchase_receipt",
+        "before_submit": "elmahdi.api.purchasing.before_submit_purchase_receipt",
+    },
+    "POS Closing Entry": {
+        "before_submit": "elmahdi.api.pos_closing_approval.before_submit_pos_closing",
+        "on_update": "elmahdi.api.pos_closing_approval.on_update_pos_closing",
+    },
+}

@@ -2,6 +2,8 @@
  * ERPNext POS-specific API (profiles, shifts, payments, catalog).
  */
 import api from './api';
+import { binAvailableQty } from '../utils/stockAvailability';
+import { availableFromStockRow, fetchWarehouseStock } from './stockService';
 
 const STORAGE_PROFILE_KEY = 'elmahdi_active_pos_profile';
 
@@ -136,6 +138,7 @@ export async function endPOSShift({ openingEntry }) {
   };
 }
 
+/** @deprecated Prefer stockService.fetchWarehouseStock */
 export const getBinsForWarehouse = (warehouse, itemCodes = []) => {
   const filters = [['warehouse', '=', warehouse]];
   if (itemCodes.length) filters.push(['item_code', 'in', itemCodes]);
@@ -225,23 +228,11 @@ async function attachPrices(items, priceList) {
   if (!items.length) return items;
   const codes = items.map((i) => i.item_code).filter(Boolean);
   try {
-    const filters = [['item_code', 'in', codes], ['selling', '=', 1]];
-    if (priceList) filters.push(['price_list', '=', priceList]);
-    const priceRes = await api.get('/api/resource/Item Price', {
-      params: {
-        fields: JSON.stringify(['item_code', 'price_list_rate', 'price_list']),
-        filters: JSON.stringify(filters),
-        order_by: 'modified desc',
-        limit_page_length: codes.length * 3,
-      },
-    });
-    const map = new Map();
-    for (const row of priceRes?.data?.data || []) {
-      if (!map.has(row.item_code)) map.set(row.item_code, Number(row.price_list_rate) || 0);
-    }
+    const { fetchSellingItemPrices } = await import('./pricingApi');
+    const priceMap = await fetchSellingItemPrices(codes, priceList || undefined);
     return items.map((item) => ({
       ...item,
-      standard_rate: map.get(item.item_code) ?? (Number(item.standard_rate) || 0),
+      standard_rate: priceMap[item.item_code] ?? (Number(item.standard_rate) || 0),
     }));
   } catch {
     return items;
@@ -250,32 +241,32 @@ async function attachPrices(items, priceList) {
 
 async function attachStock(items, warehouse) {
   const codes = items.map((i) => i.item_code).filter(Boolean);
-  if (!codes.length) return items;
+  if (!codes.length || !warehouse) return items;
   try {
-    const binRes = await getBinsForWarehouse(warehouse, codes);
-    const byItem = new Map();
-    for (const bin of binRes?.data?.data || []) {
-      const avail = Math.max(0, Number(bin.actual_qty || 0) - Number(bin.reserved_qty || 0));
-      byItem.set(bin.item_code, (byItem.get(bin.item_code) || 0) + avail);
-    }
+    const { fetchWarehouseStock, availableFromStockRow } = await import('./stockService');
+    const stockMap = await fetchWarehouseStock(warehouse, codes);
     return items.map((item) => {
       const isStock = item.is_stock_item !== 0;
-      const available_qty = isStock ? (byItem.get(item.item_code) ?? 0) : null;
-      return { ...item, available_qty, is_stock_item: isStock };
+      const row = stockMap[item.item_code];
+      const available_qty = isStock ? availableFromStockRow(row) : null;
+      return {
+        ...item,
+        available_qty,
+        actual_qty: row?.actual_qty ?? 0,
+        reserved_qty: row?.reserved_qty ?? 0,
+        is_stock_item: isStock,
+        pos_warehouse: warehouse,
+      };
     });
   } catch {
-    return items.map((item) => ({ ...item, available_qty: null }));
+    return items.map((item) => ({ ...item, available_qty: null, pos_warehouse: warehouse }));
   }
 }
 
 export async function refreshItemStock(itemCode, warehouse) {
-  const binRes = await getBinsForWarehouse(warehouse, [itemCode]);
-  const bins = binRes?.data?.data || [];
-  const available_qty = bins.reduce(
-    (s, b) => s + Math.max(0, Number(b.actual_qty || 0) - Number(b.reserved_qty || 0)),
-    0
-  );
-  return available_qty;
+  const { fetchWarehouseStock, availableFromStockRow } = await import('./stockService');
+  const stockMap = await fetchWarehouseStock(warehouse, [itemCode]);
+  return availableFromStockRow(stockMap[itemCode]);
 }
 
 /** Bins with stock for cart items (all warehouses) — POS alternate-warehouse hints. */
@@ -298,7 +289,7 @@ export async function fetchItemBinsAcrossWarehouses(itemCodes = []) {
     for (const bin of res?.data?.data || []) {
       const code = bin.item_code;
       if (!code) continue;
-      const qty = Math.max(0, Number(bin.actual_qty || 0) - Number(bin.reserved_qty || 0));
+      const qty = binAvailableQty(bin);
       if (qty <= 0) continue;
       if (!map.has(code)) map.set(code, []);
       map.get(code).push({ warehouse: bin.warehouse, qty });

@@ -52,8 +52,9 @@ function resourceGet(doctype, name, fields) {
   });
 }
 
-export const listPOSOpeningEntries = (filters = [], limit = 20) =>
+export const listPOSOpeningEntries = (filters = [], limit = 20, { silent = false } = {}) =>
   api.get('/api/resource/POS Opening Entry', {
+    silentApi: silent,
     params: {
       fields: JSON.stringify(OPENING_LIST_FIELDS),
       filters: JSON.stringify(filters),
@@ -61,6 +62,31 @@ export const listPOSOpeningEntries = (filters = [], limit = 20) =>
       limit_page_length: limit,
     },
   });
+
+export const listPOSClosingEntries = (filters = [], limit = 20, { silent = false } = {}) =>
+  api.get('/api/resource/POS Closing Entry', {
+    silentApi: silent,
+    params: {
+      fields: JSON.stringify(CLOSING_LIST_FIELDS),
+      filters: JSON.stringify(filters),
+      order_by: 'creation desc',
+      limit_page_length: limit,
+    },
+  });
+
+export async function getDraftClosingForOpening(openingName) {
+  if (!openingName) return null;
+  try {
+    const res = await listPOSClosingEntries(
+      [['pos_opening_entry', '=', openingName], ['docstatus', '=', 0]],
+      1,
+      { silent: true },
+    );
+    return res?.data?.data?.[0] || null;
+  } catch {
+    return null;
+  }
+}
 
 export const getPOSOpeningEntryOperational = (name) =>
   resourceGet('POS Opening Entry', name, OPENING_OPERATIONAL_FIELDS);
@@ -71,18 +97,97 @@ export const getPOSOpeningEntryAudit = (name) =>
 export const createPOSOpeningEntry = (payload) =>
   api.post('/api/resource/POS Opening Entry', payload);
 
-export const submitPOSOpeningEntry = (name) =>
-  api.put(`/api/resource/POS Opening Entry/${encodeURIComponent(name)}`, { docstatus: 1 });
-
-export const listPOSClosingEntries = (filters = [], limit = 20) =>
-  api.get('/api/resource/POS Closing Entry', {
-    params: {
-      fields: JSON.stringify(CLOSING_LIST_FIELDS),
-      filters: JSON.stringify(filters),
-      order_by: 'creation desc',
-      limit_page_length: limit,
-    },
+/** Server insert() + submit() — preferred open path */
+export const openPOSShiftOnServer = ({
+  pos_profile,
+  company,
+  user,
+  opening_amount = 0,
+  mode_of_payment = 'Cash',
+  remarks,
+}) =>
+  api.post('/api/method/elmahdi.api.shifts.open_pos_shift', {
+    pos_profile,
+    company,
+    user: user || undefined,
+    opening_amount,
+    mode_of_payment,
+    remarks: remarks || '',
   });
+
+export const submitPOSOpeningEntryOnServer = (name) =>
+  api.post('/api/method/elmahdi.api.shifts.submit_pos_opening_entry', { name });
+
+export const repairDraftOpeningEntriesOnServer = (dryRun = true) =>
+  api.post('/api/method/elmahdi.api.shifts.repair_draft_opening_entries', {
+    dry_run: dryRun ? 1 : 0,
+  });
+
+const SUBMIT_OPENING_RETRIES = 2;
+
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+/**
+ * Submit draft opening via ERP workflow (server method → frappe.client.submit → REST fallback).
+ */
+export async function submitPOSOpeningEntry(name) {
+  if (!name) throw new Error('Opening entry name required');
+
+  const loadDoc = async () => {
+    const res = await getPOSOpeningEntryOperational(name);
+    return res?.data?.data;
+  };
+
+  const existing = await loadDoc().catch(() => null);
+  if (existing?.docstatus === 1) return existing;
+
+  try {
+    const res = await submitPOSOpeningEntryOnServer(name);
+    const msg = res?.data?.message || res?.data;
+    if (msg?.docstatus === 1) return msg;
+    const doc = await loadDoc();
+    if (doc?.docstatus === 1) return doc;
+  } catch {
+    /* fall through */
+  }
+
+  try {
+    await api.post(
+      '/api/method/frappe.client.submit',
+      { doc: { doctype: 'POS Opening Entry', name } },
+      { silentApi: true },
+    );
+    const doc = await loadDoc();
+    if (doc?.docstatus === 1) return doc;
+  } catch {
+    /* fall through */
+  }
+
+  let lastErr;
+  for (let i = 0; i <= SUBMIT_OPENING_RETRIES; i += 1) {
+    try {
+      await api.put(
+        `/api/resource/POS Opening Entry/${encodeURIComponent(name)}`,
+        { docstatus: 1 },
+        { silentApi: true },
+      );
+      const doc = await loadDoc();
+      if (doc?.docstatus === 1) return doc;
+    } catch (e) {
+      lastErr = e;
+      try {
+        const doc = await loadDoc();
+        if (doc?.docstatus === 1) return doc;
+      } catch {
+        /* retry */
+      }
+      if (i < SUBMIT_OPENING_RETRIES) await sleep(400);
+    }
+  }
+  throw lastErr || new Error(`Failed to submit POS Opening Entry ${name}`);
+}
 
 export const getPOSClosingEntryOperational = (name) =>
   resourceGet('POS Closing Entry', name, CLOSING_OPERATIONAL_FIELDS);
@@ -100,6 +205,7 @@ export const submitPOSClosingEntry = (name) =>
 export const fetchShiftSummaryFromERP = (posOpeningEntry) =>
   api.get('/api/method/elmahdi.api.shifts.get_shift_summary', {
     params: { pos_opening_entry: posOpeningEntry },
+    silentApi: true,
   });
 
 /** Server-built closing draft with reconciliation rows. */
@@ -164,7 +270,19 @@ export async function getOpenPOSOpeningEntry(posProfile, user) {
 
   const res = await listPOSOpeningEntries(filters, 15);
   const rows = (res?.data?.data || []).filter((r) => !r.status || r.status === 'Open');
-  return rows[0] || null;
+  const opening = rows[0] || null;
+  if (!opening?.name) return null;
+
+  const draftClosing = await getDraftClosingForOpening(opening.name);
+  if (draftClosing) {
+    return {
+      ...opening,
+      pendingClose: true,
+      draftClosingName: draftClosing.name,
+      status: 'Pending Close',
+    };
+  }
+  return opening;
 }
 
 export async function getActiveShiftForUser({ posProfile, user }) {

@@ -1,12 +1,25 @@
-import { useEffect, useState } from 'react';
-import { ApiErrorCard, Badge, Btn, PageHeader, PageLoading, PartialDataBanner, Table } from '../../components/ui';
-import { TablePageLayout, LayoutSection, TableRegion } from '../../components/layout/page-layouts';
-import { linkReceiptToInvoice } from '../../services/purchasingApi';
-import { getInvoiceMatchingRows } from '../../services/purchasingService';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ApiErrorCard, Btn, EmptyState, PageHeader, PageLoading, PartialDataBanner } from '../../components/ui';
+import { TablePageLayout, LayoutSection } from '../../components/layout/page-layouts';
+import ReceiptMatchingCard from '../../components/purchasing/ReceiptMatchingCard';
+import {
+  fetchInvoiceMatchingWorkspace,
+  linkReceiptToInvoice,
+  fetchReceiptMatchingDetail,
+} from '../../services/invoiceMatchingService';
 import { getUserFriendlyMessage } from '../../utils/errorHandling';
+import { useOperationalRefresh } from '../../services/operationalRefresh';
+import { normalizeBillingStatus, BILLING_STATUS } from '../../utils/billingStatus';
 
-const fmt = (n) =>
-  new Intl.NumberFormat('en-EG', { style: 'currency', currency: 'EGP' }).format(n || 0);
+const STATUS_FILTERS = [
+  { id: 'all', label: 'All' },
+  { id: BILLING_STATUS.UNBILLED, label: 'Unbilled' },
+  { id: BILLING_STATUS.PARTIALLY_BILLED, label: 'Partial' },
+  { id: BILLING_STATUS.FULLY_BILLED, label: 'Fully billed' },
+  { id: BILLING_STATUS.VARIANCE_DETECTED, label: 'Variance' },
+  { id: BILLING_STATUS.OVERBILLED, label: 'Overbilled' },
+];
 
 export default function InvoiceMatchingPage() {
   const [rows, setRows] = useState([]);
@@ -14,36 +27,55 @@ export default function InvoiceMatchingPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [linking, setLinking] = useState('');
-  const [invoiceInputs, setInvoiceInputs] = useState({});
+  const [statusFilter, setStatusFilter] = useState('all');
 
-  const load = () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError('');
-    getInvoiceMatchingRows()
-      .then(({ rows: data, warnings: w }) => {
-        setRows(data);
-        setWarnings(w || []);
-      })
-      .catch((e) => {
-        setRows([]);
-        setWarnings([]);
-        setError(getUserFriendlyMessage(e));
-      })
-      .finally(() => setLoading(false));
-  };
+    try {
+      const data = await fetchInvoiceMatchingWorkspace();
+      setRows(data || []);
+      setWarnings([]);
+    } catch (e) {
+      setRows([]);
+      setError(getUserFriendlyMessage(e));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
-  const handleLink = async (receiptName) => {
-    const invoiceName = (invoiceInputs[receiptName] || '').trim();
-    if (!invoiceName) return;
+  useOperationalRefresh(load, [load]);
+
+  const filtered = useMemo(() => {
+    if (statusFilter === 'all') return rows;
+    return rows.filter((r) => normalizeBillingStatus(r.billing_status) === statusFilter);
+  }, [rows, statusFilter]);
+
+  const counts = useMemo(() => {
+    const c = { all: rows.length };
+    for (const r of rows) {
+      const k = normalizeBillingStatus(r.billing_status);
+      c[k] = (c[k] || 0) + 1;
+    }
+    return c;
+  }, [rows]);
+
+  const handleLink = async (receiptName, invoiceName) => {
     setLinking(receiptName);
     setError('');
     try {
-      await linkReceiptToInvoice(receiptName, invoiceName);
-      await load();
+      const result = await linkReceiptToInvoice(receiptName, invoiceName);
+      if (result?.workspace) {
+        setRows((prev) =>
+          prev.map((r) => (r.receipt === receiptName ? result.workspace : r)),
+        );
+      } else {
+        await load();
+      }
     } catch (e) {
       setError(getUserFriendlyMessage(e));
     } finally {
@@ -51,71 +83,20 @@ export default function InvoiceMatchingPage() {
     }
   };
 
-  const columns = [
-    { key: 'receipt', label: 'Receipt', render: (v) => <span className="mono">{v}</span> },
-    { key: 'supplier', label: 'Supplier' },
-    { key: 'posting_date', label: 'Date' },
-    { key: 'grand_total', label: 'Total', render: (v) => fmt(v) },
-    {
-      key: 'billing_status',
-      label: 'Billing',
-      render: (v) => (
-        <Badge color={v === 'Billed' ? 'green' : v === 'Partly billed' ? 'amber' : 'default'}>
-          {v}
-        </Badge>
-      ),
-    },
-    {
-      key: 'linked',
-      label: 'Invoice link',
-      render: (v, row) =>
-        row.linked ? (
-          <Badge color="green">Linked</Badge>
-        ) : (
-          <Badge color="amber">Unlinked</Badge>
-        ),
-    },
-    {
-      key: 'purchase_invoices',
-      label: 'Purchase invoice(s)',
-      render: (v, row) => {
-        if (row.purchase_invoices?.length) {
-          return <span className="mono">{row.purchase_invoices.join(', ')}</span>;
-        }
-        if (row.linked) {
-          return <span className="page-header__sub">Billed (no line link returned)</span>;
-        }
-        return (
-          <div className="toolbar__group">
-            <input
-              className="input toolbar__input-sm"
-              placeholder="Draft PINV"
-              value={invoiceInputs[row.receipt] || ''}
-              onChange={(e) =>
-                setInvoiceInputs((prev) => ({ ...prev, [row.receipt]: e.target.value }))
-              }
-            />
-            <Btn
-              variant="ghost"
-              size="sm"
-              loading={linking === row.receipt}
-              onClick={() => handleLink(row.receipt)}
-            >
-              Link
-            </Btn>
-          </div>
-        );
-      },
-    },
-  ];
-
-  const sparse = rows.length > 0 && rows.length <= 8;
+  const refreshReceipt = async (receiptName) => {
+    try {
+      const detail = await fetchReceiptMatchingDetail(receiptName);
+      setRows((prev) => prev.map((r) => (r.receipt === receiptName ? detail : r)));
+    } catch {
+      await load();
+    }
+  };
 
   return (
-    <TablePageLayout className="page-layout--list-page" tableConstrain={sparse}>
+    <TablePageLayout className="page-layout--list-page invoice-matching-page">
       <PageHeader
         title="Invoice matching"
-        subtitle="Match receipts to invoices via Purchase Invoice Item links and billing status"
+        subtitle="Link submitted purchase receipts to draft supplier invoices — validated on ERP"
         dense
         actions={
           <Btn variant="ghost" size="sm" onClick={load}>
@@ -124,15 +105,64 @@ export default function InvoiceMatchingPage() {
         }
       />
       <PartialDataBanner warnings={warnings} />
+
+      <div className="ap-workflow-banner" role="note">
+        <strong>Operational flow:</strong> (1) Receive stock → Purchase Receipt · (2) Match supplier
+        invoice here · (3){' '}
+        <Link to="/admin/accounting/payments">Pay supplier</Link> via ERP Payment Entry. Billing %
+        and paid % come from ERP only.
+      </div>
+
+      <div className="invoice-matching-filters" role="tablist" aria-label="Billing status filter">
+        {STATUS_FILTERS.map((f) => (
+          <button
+            key={f.id}
+            type="button"
+            role="tab"
+            aria-selected={statusFilter === f.id}
+            className={`invoice-matching-filters__btn${
+              statusFilter === f.id ? ' invoice-matching-filters__btn--active' : ''
+            }`}
+            onClick={() => setStatusFilter(f.id)}
+          >
+            {f.label}
+            <span className="invoice-matching-filters__count">{counts[f.id] ?? 0}</span>
+          </button>
+        ))}
+      </div>
+
       {loading ? (
         <PageLoading size={26} />
-      ) : error ? (
+      ) : error && !rows.length ? (
         <ApiErrorCard message={error} onRetry={load} />
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          icon="🧾"
+          title="No receipts in this view"
+          desc={
+            statusFilter === 'all'
+              ? 'Submitted purchase receipts will appear here for invoice matching.'
+              : 'Try another filter or receive stock first.'
+          }
+        />
       ) : (
-        <LayoutSection variant="raised" flushHead fit={sparse}>
-          <TableRegion fit={sparse}>
-            <Table columns={columns} data={rows} compact emptyMsg="No submitted purchase receipts" />
-          </TableRegion>
+        <LayoutSection variant="raised" flushHead>
+          {error && (
+            <p className="inv-error" role="alert" style={{ padding: '0.75rem 1rem' }}>
+              {error}
+            </p>
+          )}
+          <div className="invoice-matching-list">
+            {filtered.map((row) => (
+              <ReceiptMatchingCard
+                key={row.receipt}
+                row={row}
+                linking={linking}
+                onLink={handleLink}
+                onRefreshLine={refreshReceipt}
+              />
+            ))}
+          </div>
         </LayoutSection>
       )}
     </TablePageLayout>
