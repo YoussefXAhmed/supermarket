@@ -16,7 +16,8 @@ import {
   listPOSClosingEntries,
   getPOSClosingEntryOperational,
   getPOSClosingEntryAudit,
-  submitPOSClosingEntry,
+  approvePOSClosingEntryOnServer,
+  rejectPOSClosingEntryOnServer,
   fetchShiftSummaryFromERP,
   prepareClosingEntryFromERP,
   listShiftPOSInvoices,
@@ -455,31 +456,12 @@ export async function approveShiftClosing({
     canApprove,
   });
 
-  const varianceResult = calculateVariance(closing.expectedCash, closing.actualCash);
-  const approvedAt = new Date().toISOString();
-  const remarks = buildAuditRemarks({
-    operator: closing.audit?.operator || closing.owner,
-    expectedCash: closing.expectedCash,
-    actualCash: closing.actualCash,
-    variance: closing.variance,
-    severity: varianceResult.severity,
-    approvalStatus: 'approved',
-    approvedBy: approver,
-    approvedAt,
-    requestedAt: closing.audit?.requested_at || closing.creation || closing.modified,
-    notes: notes || closing.audit?.notes,
-    summary: {
-      salesCount: closing.audit?.sales_count,
-      returnsCount: closing.audit?.returns_count,
-      voidCount: closing.audit?.void_count,
-    },
+  // Use server-side approval method; REST docstatus submit often fails with 403
+  // due to DocPerm/field-level restrictions on POS Closing Entry.
+  await approvePOSClosingEntryOnServer({
+    name: closingEntryName,
+    notes: notes || closing.audit?.notes || '',
   });
-
-  await api.put(`/api/resource/POS Closing Entry/${encodeURIComponent(closingEntryName)}`, {
-    remarks,
-  });
-
-  await submitPOSClosingEntry(closingEntryName);
 
   logActivity({
     type: ActivityType.SHIFT,
@@ -512,28 +494,9 @@ export async function rejectShiftClosing({
     canApprove,
   });
 
-  const varianceResult = calculateVariance(closing.expectedCash, closing.actualCash);
-  const rejectedAt = new Date().toISOString();
-  const remarks = buildAuditRemarks({
-    operator: closing.audit?.operator || closing.owner,
-    expectedCash: closing.expectedCash,
-    actualCash: closing.actualCash,
-    variance: closing.variance,
-    severity: varianceResult.severity,
-    approvalStatus: 'rejected',
-    rejectedBy: approver,
-    rejectedAt,
-    requestedAt: closing.audit?.requested_at || closing.creation || closing.modified,
-    notes: reason || closing.audit?.notes,
-    summary: {
-      salesCount: closing.audit?.sales_count,
-      returnsCount: closing.audit?.returns_count,
-      voidCount: closing.audit?.void_count,
-    },
-  });
-
-  await api.put(`/api/resource/POS Closing Entry/${encodeURIComponent(closingEntryName)}`, {
-    remarks,
+  await rejectPOSClosingEntryOnServer({
+    name: closingEntryName,
+    reason: reason || closing.audit?.notes || '',
   });
 
   logActivity({

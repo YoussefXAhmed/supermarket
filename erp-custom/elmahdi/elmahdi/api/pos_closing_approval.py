@@ -139,6 +139,29 @@ def approve_pos_closing_entry(name, notes=""):
 
 
 @frappe.whitelist()
+def reject_pos_closing_entry(name, notes=""):
+	"""Reject a draft closing (keeps it in draft, clears pending flag, records reason)."""
+	if not _can_approve_shift():
+		frappe.throw(_("Not permitted to reject shift closing."), frappe.PermissionError)
+
+	doc = frappe.get_doc("POS Closing Entry", name)
+	if doc.docstatus != 0:
+		frappe.throw(_("Only draft POS Closing Entry can be rejected."), frappe.ValidationError)
+
+	if doc.owner == frappe.session.user and not _is_break_glass():
+		frappe.throw(_("You cannot reject your own shift closing."), frappe.PermissionError)
+
+	_set_audit_fields(doc, pending=False, approved=False, reason=notes or "Shift close rejected")
+	frappe.flags.elmahdi_pos_closing_skip_pending = True
+	try:
+		doc.save(ignore_permissions=True)
+	finally:
+		frappe.flags.elmahdi_pos_closing_skip_pending = False
+
+	return {"name": doc.name, "docstatus": doc.docstatus, "status": "rejected"}
+
+
+@frappe.whitelist()
 def list_pending_shift_closings(limit=50):
 	if not _can_approve_shift():
 		frappe.throw(_("Not permitted to view shift approvals."), frappe.PermissionError)

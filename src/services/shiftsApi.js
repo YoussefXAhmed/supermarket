@@ -201,6 +201,20 @@ export const createPOSClosingEntry = (payload) =>
 export const submitPOSClosingEntry = (name) =>
   api.put(`/api/resource/POS Closing Entry/${encodeURIComponent(name)}`, { docstatus: 1 });
 
+/** Manager/Accountant approval: server sets audit + submits (bypasses REST docstatus perms). */
+export const approvePOSClosingEntryOnServer = ({ name, notes = '' }) =>
+  api.post('/api/method/elmahdi.api.pos_closing_approval.approve_pos_closing_entry', {
+    name,
+    notes: notes || '',
+  });
+
+/** Manager/Accountant reject: server sets audit only (keeps draft). */
+export const rejectPOSClosingEntryOnServer = ({ name, reason = '' }) =>
+  api.post('/api/method/elmahdi.api.pos_closing_approval.reject_pos_closing_entry', {
+    name,
+    notes: reason || '',
+  });
+
 /** Server-side shift aggregates (preferred). */
 export const fetchShiftSummaryFromERP = (posOpeningEntry) =>
   api.get('/api/method/elmahdi.api.shifts.get_shift_summary', {
