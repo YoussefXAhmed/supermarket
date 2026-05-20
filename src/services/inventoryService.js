@@ -1,12 +1,11 @@
 import { getItems } from './api';
 import {
   listBatches,
-  listBins,
   listItemsForInventory,
   listStockLedger,
   listWarehouses,
 } from './inventoryApi';
-import { binAvailableQty } from '../utils/stockAvailability';
+import api from './api';
 
 function toNum(v) {
   const n = Number(v);
@@ -40,7 +39,7 @@ function rowFromBin(bin, itemByCode) {
   if (!code) return null;
 
   const item = itemByCode.get(code) || {};
-  const qty = binAvailableQty(bin);
+  const qty = Math.max(0, Number(bin.sellable_qty ?? 0));
   const standardRate = toNum(item.standard_rate);
   const valuationRate = toNum(bin.valuation_rate);
   const price = standardRate > 0 ? standardRate : valuationRate;
@@ -114,23 +113,16 @@ export async function getInventorySnapshot({ itemLimit = 400, binLimit = 2000, w
   const scopedWarehouse = warehouse && warehouse !== 'all' ? warehouse : null;
   const [itemsRes, binsRes] = await Promise.all([
     listItemsForInventory({ limit: itemLimit }).catch(() => getItems({ limit: itemLimit })),
-    scopedWarehouse
-      ? (async () => {
-          const { fetchWarehouseStock } = await import('./stockService');
-          const stockMap = await fetchWarehouseStock(scopedWarehouse);
-          return {
-            data: {
-              data: Object.entries(stockMap).map(([item_code, row]) => ({
-                item_code,
-                warehouse: scopedWarehouse,
-                actual_qty: row.actual_qty,
-                reserved_qty: row.reserved_qty,
-                valuation_rate: row.valuation_rate,
-              })),
-            },
-          };
-        })()
-      : listBins({ limit: binLimit }),
+    (async () => {
+      // Centralized stock read (never compute client-side).
+      const res = await api.get('/api/method/elmahdi.api.stock.list_sellable_bins', {
+        params: {
+          ...(scopedWarehouse ? { warehouse: scopedWarehouse } : {}),
+          limit: scopedWarehouse ? binLimit : Math.min(binLimit, 2000),
+        },
+      });
+      return { data: { data: res?.data?.message || [] } };
+    })(),
   ]);
 
   const items = itemsRes?.data?.data || [];
@@ -277,11 +269,14 @@ function buildValueTrend(ledger, days) {
 }
 
 export async function getStockBalanceReport({ warehouse, itemSearch, limit = 1000 } = {}) {
-  const filters = [];
-  if (warehouse && warehouse !== 'all') filters.push(['warehouse', '=', warehouse]);
-
-  const binRes = await listBins({ limit, filters });
-  let rows = binRes?.data?.data || [];
+  const scopedWarehouse = warehouse && warehouse !== 'all' ? warehouse : null;
+  const res = await api.get('/api/method/elmahdi.api.stock.list_sellable_bins', {
+    params: {
+      ...(scopedWarehouse ? { warehouse: scopedWarehouse } : {}),
+      limit,
+    },
+  });
+  let rows = res?.data?.message || [];
 
   if (itemSearch?.trim()) {
     const q = itemSearch.trim().toLowerCase();
@@ -294,7 +289,7 @@ export async function getStockBalanceReport({ warehouse, itemSearch, limit = 100
     if (!grouped.has(wh)) grouped.set(wh, []);
     grouped.get(wh).push({
       ...row,
-      available_qty: Math.max(0, toNum(row.actual_qty) - toNum(row.reserved_qty)),
+      available_qty: Math.max(0, toNum(row.sellable_qty)),
       stock_value: toNum(row.actual_qty) * toNum(row.valuation_rate),
     });
   }

@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react';
 import { FormPageLayout, LayoutSection } from '../../../components/layout/page-layouts';
 import { ApiErrorCard, Btn, PageHeader } from '../../../components/ui';
 import { getItems } from '../../../services/api';
-import { createAndSubmitStockEntry, getBin, listWarehouses } from '../../../services/inventoryApi';
+import { createAndSubmitStockEntry, listWarehouses } from '../../../services/inventoryApi';
+import { getSellableStock } from '../../../services/stockService';
 import { getUserFriendlyMessage } from '../../../utils/errorHandling';
 import { invalidateStockCache } from '../../../utils/stockCache';
-import { availableBinQty } from '../../../utils/inventoryValidation';
 import { useInventoryCapabilities } from '../../../hooks/useInventoryCapabilities';
 
 const ENTRY_TYPES = [
@@ -60,8 +60,8 @@ export default function StockEntryPage() {
         return;
       }
       try {
-        const bin = await getBin(form.item_code.trim(), form.source_warehouse);
-        setSourceAvail(bin ? availableBinQty(bin) : 0);
+        const row = await getSellableStock({ itemCode: form.item_code.trim(), warehouse: form.source_warehouse });
+        setSourceAvail(Math.max(0, Number(row?.sellable_qty ?? 0)));
       } catch {
         setSourceAvail(null);
       }

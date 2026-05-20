@@ -2,8 +2,7 @@
  * ERPNext POS-specific API (profiles, shifts, payments, catalog).
  */
 import api from './api';
-import { binAvailableQty } from '../utils/stockAvailability';
-import { availableFromStockRow, fetchWarehouseStock } from './stockService';
+import { getPOSProfileWarehouse, getSellableStockBulk } from './stockService';
 
 const STORAGE_PROFILE_KEY = 'elmahdi_active_pos_profile';
 
@@ -138,19 +137,6 @@ export async function endPOSShift({ openingEntry }) {
   };
 }
 
-/** @deprecated Prefer stockService.fetchWarehouseStock */
-export const getBinsForWarehouse = (warehouse, itemCodes = []) => {
-  const filters = [['warehouse', '=', warehouse]];
-  if (itemCodes.length) filters.push(['item_code', 'in', itemCodes]);
-  return api.get('/api/resource/Bin', {
-    params: {
-      fields: JSON.stringify(['item_code', 'warehouse', 'actual_qty', 'reserved_qty', 'projected_qty']),
-      filters: JSON.stringify(filters),
-      limit_page_length: Math.max(500, itemCodes.length || 500),
-    },
-  });
-};
-
 export async function searchPOSItems({ query, warehouse, priceList, limit = 60 }) {
   const q = String(query || '').trim();
   let items = [];
@@ -243,34 +229,34 @@ async function attachStock(items, warehouse) {
   const codes = items.map((i) => i.item_code).filter(Boolean);
   if (!codes.length || !warehouse) return items;
   try {
-    const { fetchWarehouseStock } = await import('./stockService');
-    const stockMap = await fetchWarehouseStock(warehouse, codes);
+    const stockMap = await getSellableStockBulk({ warehouse, itemCodes: codes });
     return items.map((item) => {
       const isStock = item.is_stock_item !== 0;
       const row = stockMap[item.item_code];
       const actual_qty = isStock ? Number(row?.actual_qty ?? 0) : null;
       const reserved_qty = isStock ? Number(row?.reserved_qty ?? 0) : null;
-      // Supermarket POS: displayed availability = physical stock only (actual_qty).
-      const available_qty = isStock ? Math.max(0, Number(row?.actual_qty ?? 0)) : null;
+      const sellable_qty = isStock ? Number(row?.sellable_qty ?? 0) : null;
       return {
         ...item,
-        available_qty,
+        sellable_qty,
         actual_qty: actual_qty ?? 0,
         reserved_qty: reserved_qty ?? 0,
-        displayed_qty: available_qty,
+        projected_qty: isStock ? Number(row?.projected_qty ?? 0) : null,
+        displayed_qty: sellable_qty,
         is_stock_item: isStock,
         pos_warehouse: warehouse,
       };
     });
   } catch {
-    return items.map((item) => ({ ...item, available_qty: null, pos_warehouse: warehouse }));
+    // Fail-closed: if stock fetch fails, treat stock as unavailable.
+    return items.map((item) => ({ ...item, sellable_qty: 0, pos_warehouse: warehouse }));
   }
 }
 
 export async function refreshItemStock(itemCode, warehouse) {
-  const { fetchWarehouseStock } = await import('./stockService');
-  const stockMap = await fetchWarehouseStock(warehouse, [itemCode]);
-  return Math.max(0, Number(stockMap?.[itemCode]?.actual_qty ?? 0));
+  const { getSellableStock } = await import('./stockService');
+  const row = await getSellableStock({ itemCode, warehouse });
+  return Math.max(0, Number(row?.sellable_qty ?? 0));
 }
 
 /** Bins with stock for cart items (all warehouses) — POS alternate-warehouse hints. */
@@ -279,21 +265,18 @@ export async function fetchItemBinsAcrossWarehouses(itemCodes = []) {
   if (!codes.length) return new Map();
 
   try {
-    const res = await api.get('/api/resource/Bin', {
+    const res = await api.get('/api/method/elmahdi.api.stock.list_sellable_bins', {
       params: {
-        fields: JSON.stringify(['item_code', 'warehouse', 'actual_qty', 'reserved_qty']),
-        filters: JSON.stringify([
-          ['item_code', 'in', codes],
-          ['actual_qty', '>', 0],
-        ]),
+        item_codes: JSON.stringify(codes),
+        min_sellable_qty: 0.000001,
         limit_page_length: Math.max(200, codes.length * 10),
       },
     });
     const map = new Map();
-    for (const bin of res?.data?.data || []) {
+    for (const bin of res?.data?.message || []) {
       const code = bin.item_code;
       if (!code) continue;
-      const qty = binAvailableQty(bin);
+      const qty = Number(bin.sellable_qty) || 0;
       if (qty <= 0) continue;
       if (!map.has(code)) map.set(code, []);
       map.get(code).push({ warehouse: bin.warehouse, qty });

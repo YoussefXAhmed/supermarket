@@ -96,7 +96,8 @@ def _paid_pct(inv: dict) -> float:
 
 
 def _base_invoice_filters(company=None, supplier=None):
-	filters = [["docstatus", "=", 1]]
+	# Finance payables only: submitted + outstanding > 0
+	filters = [["docstatus", "=", 1], ["outstanding_amount", ">", 0]]
 	if company:
 		filters.append(["company", "=", company])
 	if supplier:
@@ -654,6 +655,15 @@ def create_supplier_payment(
 			},
 		)
 
+	# Let ERPNext populate currencies, exchange rates, party account fields, and validate references.
+	# This is critical for correct outstanding updates and allocation behavior.
+	try:
+		pe.set_missing_values()
+	except Exception:
+		# Some ERPNext versions use a different helper; safe to ignore and rely on submit validation.
+		pass
+	pe.validate()
+
 	pe.insert()
 
 	_append_pe_audit(
@@ -677,6 +687,25 @@ def create_supplier_payment(
 	frappe.db.commit()
 
 	pe.reload()
+	# Ensure invoice outstanding/status updated (ERP should do this automatically on submit).
+	# Returning fresh outstanding helps UI verify allocation succeeded.
+	invoices_after = {}
+	for r in pe.references or []:
+		try:
+			inv = frappe.db.get_value(
+				"Purchase Invoice",
+				r.reference_name,
+				["name", "outstanding_amount", "status", "docstatus"],
+				as_dict=True,
+			)
+			if inv:
+				invoices_after[inv.name] = {
+					"outstanding_amount": flt(inv.outstanding_amount),
+					"status": inv.status,
+					"docstatus": inv.docstatus,
+				}
+		except Exception:
+			continue
 	return {
 		"name": pe.name,
 		"docstatus": pe.docstatus,
@@ -684,6 +713,7 @@ def create_supplier_payment(
 		"paid_amount": flt(pe.paid_amount),
 		"party": pe.party,
 		"posting_date": str(pe.posting_date),
+		"invoices_after": invoices_after,
 		"references": [
 			{
 				"invoice": r.reference_name,

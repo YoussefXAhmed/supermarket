@@ -23,8 +23,8 @@ import {
   getUserFriendlyMessage,
   normalizeERPError,
 } from '../utils/errorHandling';
-import { bumpStockVersion } from '../services/stockService';
 import { invalidateStockCache, STOCK_INVALIDATE_EVENT } from '../utils/stockCache';
+import { getPOSProfileWarehouse } from '../services/stockService';
 
 export function usePOS(user) {
   const [profile, setProfile] = useState(null);
@@ -78,6 +78,13 @@ export function usePOS(user) {
     setProfileError(null);
     try {
       const p = await resolveActivePOSProfile();
+      // Warehouse consistency: always resolve warehouse from backend POS Profile warehouse.
+      try {
+        const wh = await getPOSProfileWarehouse(p.name);
+        if (wh) p.warehouse = wh;
+      } catch {
+        // Fail-closed handled later by stock reads returning unavailable.
+      }
       setProfile(p);
       setStoredPOSProfile(p.name);
       const modes = await getPOSPaymentModes(p);
@@ -146,7 +153,6 @@ export function usePOS(user) {
   const loadItems = useCallback(async (q = '') => {
     const p = profileRef.current;
     if (!p) return;
-    bumpStockVersion();
     setLoading(true);
     setProductsError(null);
     try {
@@ -158,9 +164,9 @@ export function usePOS(user) {
       });
       setItems(rows);
       setCart((prev) => {
-        const byCode = new Map(rows.map((r) => [r.item_code, r.available_qty]));
+        const byCode = new Map(rows.map((r) => [r.item_code, r.sellable_qty]));
         return prev.map((line) =>
-          byCode.has(line.item_code) ? { ...line, available_qty: byCode.get(line.item_code) } : line,
+          byCode.has(line.item_code) ? { ...line, sellable_qty: byCode.get(line.item_code) } : line,
         );
       });
     } catch (e) {
@@ -190,7 +196,7 @@ export function usePOS(user) {
       cartLines.map(async (line) => {
         if (line.is_stock_item === false) return line;
         const qty = await refreshItemStock(line.item_code, p.warehouse);
-        return { ...line, available_qty: qty };
+        return { ...line, sellable_qty: qty };
       })
     );
     return updated;
@@ -204,10 +210,10 @@ export function usePOS(user) {
     if (wh && item.item_code && item.is_stock_item !== false) {
       try {
         const freshQty = await refreshItemStock(item.item_code, wh);
-        liveItem = { ...item, available_qty: freshQty, pos_warehouse: wh };
+        liveItem = { ...item, sellable_qty: freshQty, pos_warehouse: wh };
         setItems((prev) =>
           prev.map((row) =>
-            row.item_code === item.item_code ? { ...row, available_qty: freshQty } : row
+            row.item_code === item.item_code ? { ...row, sellable_qty: freshQty } : row
           )
         );
       } catch {
@@ -218,7 +224,7 @@ export function usePOS(user) {
       const existing = prev.find((c) => c.item_code === item.item_code);
       const nextQty = (existing?.qty || 0) + qty;
       const check = canAddToCart(
-        { ...liveItem, available_qty: liveItem.available_qty },
+        { ...liveItem, sellable_qty: liveItem.sellable_qty },
         existing?.qty || 0,
         wh
       );
@@ -233,7 +239,7 @@ export function usePOS(user) {
                 ...c,
                 qty: nextQty,
                 rate: liveItem.standard_rate ?? c.rate,
-                available_qty: liveItem.available_qty,
+                sellable_qty: liveItem.sellable_qty,
               }
             : c
         );
@@ -353,6 +359,8 @@ export function usePOS(user) {
           pos_profile: p.name,
           pos_opening_entry: s.name,
           set_warehouse: p.warehouse,
+          // Critical: stock must be updated by ERP on submit.
+          update_stock: 1,
           selling_price_list: p.selling_price_list,
           currency: p.currency,
           is_pos: 1,

@@ -38,10 +38,10 @@ export function firstCartAlternateHint(cart, binsByItem, posWarehouse) {
 
 export function availableQty(item) {
   if (item?.is_stock_item === 0 || item?.is_stock_item === false) return null;
-  // Supermarket POS: physical sellable stock only (Bin.actual_qty), no reservation math.
-  // We keep reserved_qty for debug display, but do not subtract it for POS.
-  if (item.actual_qty === undefined || item.actual_qty === null) return null;
-  return Math.max(0, Number(item.actual_qty) || 0);
+  // Authoritative: backend sellable_qty = actual_qty - reserved_qty.
+  // Fail-closed: if stock is missing, treat as unavailable (0).
+  if (item.sellable_qty === undefined || item.sellable_qty === null) return 0;
+  return Math.max(0, Number(item.sellable_qty) || 0);
 }
 
 export function validateCartStock(cart, posWarehouse = '', binsByItem = null) {
@@ -69,13 +69,13 @@ export function validateLineStock(item, requestedQty, posWarehouse = '', binsEls
       item_code: item.item_code,
       item_name: item.item_name,
       type: 'out',
-      message: alt || (wh ? `No physical stock in ${wh}` : 'No physical stock'),
+      message: alt || (wh ? `No sellable stock in ${wh}` : 'No sellable stock'),
       available: 0,
     };
   }
   if (qty > avail) {
     const alt = alternateWarehouseHint(item.item_code, binsElsewhere, wh);
-    const base = wh ? `Only ${avail} available in ${wh}` : `Only ${avail} available`;
+    const base = wh ? `Only ${avail} sellable in ${wh}` : `Only ${avail} sellable`;
     return {
       item_code: item.item_code,
       item_name: item.item_name,
@@ -96,7 +96,7 @@ export function canAddToCart(item, currentQtyInCart = 0, posWarehouse = '') {
     return {
       ok: false,
       reason: 'out',
-      message: wh ? `${label} has no physical stock in ${wh}` : `${label} has no physical stock`,
+      message: wh ? `${label} has no sellable stock in ${wh}` : `${label} has no sellable stock`,
     };
   }
   if (currentQtyInCart + 1 > avail) {
@@ -104,8 +104,8 @@ export function canAddToCart(item, currentQtyInCart = 0, posWarehouse = '') {
       ok: false,
       reason: 'insufficient',
       message: wh
-        ? `Only ${avail} of ${label} available in ${wh}`
-        : `Only ${avail} of ${label} available`,
+        ? `Only ${avail} of ${label} sellable in ${wh}`
+        : `Only ${avail} of ${label} sellable`,
     };
   }
   return { ok: true };

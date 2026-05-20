@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { ApiErrorCard, Badge, Btn, EmptyState, PageHeader, PageLoading, Table } from '../../../components/ui';
 import { TablePageLayout, LayoutSection, TableRegion } from '../../../components/layout/page-layouts';
-import { listBins } from '../../../services/inventoryApi';
 import { getReorderSuggestions, getWarehousesList } from '../../../services/inventoryService';
 import { getUserFriendlyMessage } from '../../../utils/errorHandling';
 import { useInventoryCapabilities } from '../../../hooks/useInventoryCapabilities';
+import api from '../../../services/api';
 
 export default function AlertsPage() {
   const { canInventoryViewValuation } = useInventoryCapabilities();
@@ -38,10 +38,15 @@ export default function AlertsPage() {
           })),
         );
       } else {
-        const filters = [['actual_qty', '<=', Number(threshold)]];
-        if (warehouse !== 'all') filters.push(['warehouse', '=', warehouse]);
-        const res = await listBins({ limit: 800, filters });
-        setRows(res?.data?.data || []);
+        // Centralized sellable stock threshold (never infer client-side).
+        const res = await api.get('/api/method/elmahdi.api.stock.list_sellable_bins', {
+          params: {
+            ...(warehouse !== 'all' ? { warehouse } : {}),
+            max_sellable_qty: Number(threshold),
+            limit: 800,
+          },
+        });
+        setRows(res?.data?.message || []);
       }
     } catch (e) {
       setRows([]);
@@ -68,8 +73,8 @@ export default function AlertsPage() {
           { key: 'item_code', label: 'Item', render: (v) => <span className="mono">{v}</span> },
           { key: 'warehouse', label: 'Warehouse' },
           {
-            key: 'actual_qty',
-            label: 'Qty',
+            key: 'sellable_qty',
+            label: 'Sellable',
             render: (v) => (
               <Badge color={Number(v || 0) <= 0 ? 'red' : 'amber'}>
                 {Number(v || 0).toFixed(2)}

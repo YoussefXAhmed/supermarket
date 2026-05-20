@@ -2,10 +2,6 @@
  * Client-side guards for inventory stock movements (ERP remains authoritative).
  */
 
-export function availableBinQty(bin) {
-  return Math.max(0, Number(bin?.actual_qty || 0) - Number(bin?.reserved_qty || 0));
-}
-
 export function validateStockEntry({ stock_entry_type, item_code, qty, source_warehouse, target_warehouse, sourceQty }) {
   const errors = [];
   const quantity = Number(qty);

@@ -2,7 +2,6 @@
  * ERPNext Warehouse DocType — admin CRUD (no ignore_permissions).
  */
 import api from './api';
-import { listBins } from './inventoryApi';
 import { listStockLedger } from './inventoryApi';
 
 export const WAREHOUSE_LIST_FIELDS = [
@@ -66,9 +65,8 @@ export function listChildWarehouses(parentName) {
 }
 
 export function listBinsForWarehouse(warehouseName, { limit = 500 } = {}) {
-  return listBins({
-    limit,
-    filters: [['warehouse', '=', warehouseName]],
+  return api.get('/api/method/elmahdi.api.stock.list_sellable_bins', {
+    params: { warehouse: warehouseName, limit },
   });
 }
 

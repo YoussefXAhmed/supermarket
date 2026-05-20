@@ -21,6 +21,7 @@ import { getERPImageUrl } from '../../utils/erpLinks';
 import { getUserFriendlyMessage } from '../../utils/errorHandling';
 import { useNotify } from '../../context/NotificationContext';
 import { availableQty } from '../../utils/posStock';
+import { IS_DEV } from '../../config/erp';
 import '../../styles/pos.css';
 
 const DEFAULT_PAYMENT = { mode: 'cash', singleMode: 'Cash', cashAmount: '', cardAmount: '', cashMode: 'Cash', cardMode: 'Card' };
@@ -28,7 +29,7 @@ const DEFAULT_PAYMENT = { mode: 'cash', singleMode: 'Cash', cashAmount: '', card
 function stockLabel(item) {
   const avail = availableQty(item);
   if (avail === null) return null;
-  if (avail <= 0) return { text: 'No physical stock', className: 'item-card__stock--out' };
+  if (avail <= 0) return { text: 'Out of stock', className: 'item-card__stock--out' };
   if (avail < 5) return { text: `${avail} left`, className: 'item-card__stock--low' };
   return { text: `In stock: ${avail}`, className: 'item-card__stock--ok' };
 }
@@ -37,7 +38,7 @@ function ItemCard({ item, onAdd, disabled }) {
   const img = getERPImageUrl(item.image);
   const stock = stockLabel(item);
   const out = stock?.className === 'item-card__stock--out';
-  const dev = import.meta.env.DEV;
+  const dev = IS_DEV;
   return (
     <button type="button" className="item-card" onClick={() => onAdd(item)} disabled={disabled || out}>
       <div className="item-card__img">
@@ -50,7 +51,7 @@ function ItemCard({ item, onAdd, disabled }) {
         {dev && item?.is_stock_item !== 0 && (
           <p className="item-card__stock mono" style={{ opacity: 0.75 }}>
             wh: {item.pos_warehouse || '—'} · actual: {Number(item.actual_qty || 0)} · reserved:{' '}
-            {Number(item.reserved_qty || 0)} · displayed: {availableQty(item) ?? '—'}
+            {Number(item.reserved_qty || 0)} · sellable: {Number(item.sellable_qty || 0)}
           </p>
         )}
         <p className="item-card__price">EGP {(item.standard_rate || 0).toFixed(2)}</p>

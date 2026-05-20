@@ -2,10 +2,11 @@ import { useState } from 'react';
 import MovementTimeline from '../../../components/inventory/MovementTimeline';
 import { ApiErrorCard, Badge, Btn, EmptyState, PageHeader, PageLoading, Table } from '../../../components/ui';
 import { AdminPageLayout, LayoutSection, TableRegion } from '../../../components/layout/page-layouts';
-import { getItemDetails, listBatches, listBins } from '../../../services/inventoryApi';
+import { getItemDetails, listBatches } from '../../../services/inventoryApi';
 import { getItemMovementTimeline } from '../../../services/inventoryService';
 import { getUserFriendlyMessage } from '../../../utils/errorHandling';
 import { useInventoryCapabilities } from '../../../hooks/useInventoryCapabilities';
+import api from '../../../services/api';
 
 export default function ItemDetailsPage() {
   const { canInventoryViewValuation } = useInventoryCapabilities();
@@ -25,12 +26,14 @@ export default function ItemDetailsPage() {
     try {
       const [itemRes, binsRes, timelineRows] = await Promise.all([
         getItemDetails(code),
-        listBins({ limit: 500, filters: [['item_code', '=', code]] }),
+        api.get('/api/method/elmahdi.api.stock.list_sellable_bins', {
+          params: { item_codes: JSON.stringify([code]), limit: 5000 },
+        }),
         getItemMovementTimeline(code, { limit: 80 }),
       ]);
       const itemDoc = itemRes?.data?.data || null;
       setItem(itemDoc);
-      setBins(binsRes?.data?.data || []);
+      setBins(binsRes?.data?.message || []);
       setTimeline(timelineRows);
 
       if (itemDoc?.has_batch_no) {

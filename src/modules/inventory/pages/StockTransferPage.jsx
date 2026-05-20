@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { FormPageLayout, LayoutSection } from '../../../components/layout/page-layouts';
 import { ApiErrorCard, Btn, PageHeader } from '../../../components/ui';
 import { getItems } from '../../../services/api';
-import { createAndSubmitStockEntry, getBin, listWarehouses } from '../../../services/inventoryApi';
+import { createAndSubmitStockEntry, listWarehouses } from '../../../services/inventoryApi';
 import { getUserFriendlyMessage } from '../../../utils/errorHandling';
-import { availableBinQty } from '../../../utils/inventoryValidation';
+import { getSellableStock } from '../../../services/stockService';
 
 export default function StockTransferPage() {
   const [warehouses, setWarehouses] = useState([]);
@@ -25,8 +25,8 @@ export default function StockTransferPage() {
       setSourceAvail(null);
       return;
     }
-    getBin(form.item_code.trim(), form.source_warehouse)
-      .then((bin) => setSourceAvail(bin ? availableBinQty(bin) : 0))
+    getSellableStock({ itemCode: form.item_code.trim(), warehouse: form.source_warehouse })
+      .then((row) => setSourceAvail(Math.max(0, Number(row?.sellable_qty ?? 0))))
       .catch(() => setSourceAvail(null));
   }, [form.item_code, form.source_warehouse]);
 

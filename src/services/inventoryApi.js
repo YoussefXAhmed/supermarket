@@ -28,35 +28,6 @@ export const createWarehouse = async ({ warehouse_name, company, warehouse_type,
   });
 };
 
-export const getBin = async (itemCode, warehouse) => {
-  const res = await api.get('/api/resource/Bin', {
-    params: {
-      fields: JSON.stringify(['item_code', 'warehouse', 'actual_qty', 'reserved_qty', 'valuation_rate']),
-      filters: JSON.stringify([['item_code', '=', itemCode], ['warehouse', '=', warehouse]]),
-      limit_page_length: 1,
-    },
-  });
-  return res?.data?.data?.[0] || null;
-};
-
-export const listBins = (params = {}) =>
-  api.get('/api/resource/Bin', {
-    params: {
-      fields: JSON.stringify([
-        'item_code',
-        'warehouse',
-        'actual_qty',
-        'reserved_qty',
-        'ordered_qty',
-        'valuation_rate',
-        'projected_qty',
-      ]),
-      limit_page_length: params.limit || 500,
-      ...(params.filters ? { filters: JSON.stringify(params.filters) } : {}),
-      ...(params.order_by ? { order_by: params.order_by } : {}),
-    },
-  });
-
 export const listStockLedger = (params = {}) =>
   api.get('/api/resource/Stock Ledger Entry', {
     params: {

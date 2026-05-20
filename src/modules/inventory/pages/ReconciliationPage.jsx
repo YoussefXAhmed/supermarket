@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { FormPageLayout, LayoutSection } from '../../../components/layout/page-layouts';
 import { ApiErrorCard, Btn, PageHeader } from '../../../components/ui';
 import { getItems } from '../../../services/api';
-import { createAndSubmitStockReconciliation, getBin, listWarehouses } from '../../../services/inventoryApi';
+import { createAndSubmitStockReconciliation, listWarehouses } from '../../../services/inventoryApi';
+import { getSellableStock } from '../../../services/stockService';
 import { getUserFriendlyMessage } from '../../../utils/errorHandling';
 
 const PURPOSES = [
@@ -32,8 +33,8 @@ export default function ReconciliationPage() {
   const fetchCurrentQty = async (index, itemCode) => {
     if (!itemCode || !warehouse) return;
     try {
-      const bin = await getBin(itemCode.trim(), warehouse);
-      const current = Number(bin?.actual_qty || 0);
+      const row = await getSellableStock({ itemCode: itemCode.trim(), warehouse });
+      const current = Number(row?.actual_qty || 0);
       setLines((prev) => prev.map((row, i) => (i === index ? { ...row, item_code: itemCode, current_qty: current, qty: row.qty || String(current) } : row)));
     } catch {
       setLines((prev) => prev.map((row, i) => (i === index ? { ...row, item_code: itemCode, current_qty: null } : row)));

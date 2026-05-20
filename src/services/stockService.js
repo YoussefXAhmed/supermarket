@@ -1,53 +1,40 @@
 /**
- * Authoritative ERP stock reads — Bin.actual_qty scoped by warehouse.
+ * Authoritative ERP stock reads — always from backend stock API.
  */
 import api from './api';
 
-let stockVersion = 0;
-
-export function bumpStockVersion() {
-  stockVersion += 1;
-  return stockVersion;
+export async function getSellableStock({ itemCode, warehouse }) {
+  if (!itemCode || !warehouse) {
+    return {
+      item_code: String(itemCode || ''),
+      warehouse: String(warehouse || ''),
+      actual_qty: 0,
+      reserved_qty: 0,
+      projected_qty: 0,
+      sellable_qty: 0,
+      has_stock: false,
+    };
+  }
+  const res = await api.get('/api/method/elmahdi.api.stock.get_sellable_stock', {
+    params: { item_code: itemCode, warehouse },
+  });
+  return res?.data?.message || null;
 }
 
-export function getStockVersion() {
-  return stockVersion;
-}
-
-export async function fetchWarehouseStock(warehouse, itemCodes = []) {
+export async function getSellableStockBulk({ warehouse, itemCodes = [] }) {
   if (!warehouse) return {};
   const codes = [...new Set((itemCodes || []).filter(Boolean))];
-  const res = await api.get('/api/method/elmahdi.api.stock.get_warehouse_stock', {
-    params: {
-      warehouse,
-      item_codes: codes.length ? JSON.stringify(codes) : undefined,
-      _v: getStockVersion(),
-    },
+  if (!codes.length) return {};
+  const res = await api.get('/api/method/elmahdi.api.stock.get_sellable_stock_bulk', {
+    params: { warehouse, item_codes: JSON.stringify(codes) },
   });
   return res?.data?.message || {};
 }
 
-export async function fetchPOSProfileStock(posProfile, itemCodes = []) {
-  if (!posProfile) return { warehouse: '', items: {} };
-  const codes = [...new Set((itemCodes || []).filter(Boolean))];
-  const res = await api.get('/api/method/elmahdi.api.stock.get_pos_profile_stock', {
-    params: {
-      pos_profile: posProfile,
-      item_codes: codes.length ? JSON.stringify(codes) : undefined,
-      _v: getStockVersion(),
-    },
+export async function getPOSProfileWarehouse(posProfile) {
+  if (!posProfile) return '';
+  const res = await api.get('/api/method/elmahdi.api.stock.get_pos_profile_warehouse', {
+    params: { pos_profile: posProfile },
   });
-  const msg = res?.data?.message || {};
-  return {
-    warehouse: msg.warehouse || '',
-    items: msg.items || {},
-  };
-}
-
-export function availableFromStockRow(row) {
-  if (!row) return 0;
-  if (row.available_qty != null) return Math.max(0, Number(row.available_qty) || 0);
-  const actual = Number(row.actual_qty) || 0;
-  const reserved = Number(row.reserved_qty) || 0;
-  return Math.max(0, actual - reserved);
+  return res?.data?.message?.warehouse || '';
 }

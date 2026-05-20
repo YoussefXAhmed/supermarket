@@ -12,7 +12,7 @@ import {
   listWarehousesAdmin,
   updateWarehouseDoc,
 } from './warehouseAdminApi';
-import { listBins } from './inventoryApi';
+import api from './api';
 
 function toNum(v) {
   const n = Number(v);
@@ -37,8 +37,10 @@ export function normalizeWarehouse(row) {
 async function buildStockQtyMap() {
   const map = new Map();
   try {
-    const res = await listBins({ limit: 5000 });
-    for (const bin of res?.data?.data || []) {
+    const res = await api.get('/api/method/elmahdi.api.stock.list_sellable_bins', {
+      params: { limit: 5000 },
+    });
+    for (const bin of res?.data?.message || []) {
       const wh = bin.warehouse;
       if (!wh) continue;
       map.set(wh, (map.get(wh) || 0) + toNum(bin.actual_qty));

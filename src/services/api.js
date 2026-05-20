@@ -174,16 +174,6 @@ export const searchItems = async (query) => {
 /* ══════════════════════════════════════
    INVENTORY / STOCK
 ══════════════════════════════════════ */
-export const getStockLedger = (params = {}) =>
-  api.get('/api/resource/Bin', {
-    params: {
-      fields: JSON.stringify(['item_code', 'warehouse', 'actual_qty',
-        'reserved_qty', 'ordered_qty', 'valuation_rate']),
-      limit_page_length: params.limit || 100,
-      limit_start: params.start || 0,
-    },
-  });
-
 export const getWarehouses = () =>
   api.get('/api/resource/Warehouse', {
     params: {

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Badge, EmptyState, PageHeader, PageLoading, Table } from '../../components/ui';
 import { TablePageLayout, LayoutSection, TableRegion } from '../../components/layout/page-layouts';
-import { getStockLedger } from '../../services/api';
+import api from '../../services/api';
 
 export default function InventoryPage() {
   const [bins, setBins] = useState([]);
@@ -9,8 +9,9 @@ export default function InventoryPage() {
   const [filter, setFilter] = useState('');
 
   useEffect(() => {
-    getStockLedger({ limit: 200 })
-      .then((r) => setBins(r.data.data || []))
+    api
+      .get('/api/method/elmahdi.api.stock.list_sellable_bins', { params: { limit: 200 } })
+      .then((r) => setBins(r.data.message || []))
       .catch(() => setBins([]))
       .finally(() => setLoading(false));
   }, []);
@@ -33,14 +34,14 @@ export default function InventoryPage() {
     },
     { key: 'warehouse', label: 'Warehouse' },
     {
-      key: 'actual_qty',
-      label: 'In Stock',
+      key: 'sellable_qty',
+      label: 'Sellable',
       render: (v) => (
         <Badge color={v > 10 ? 'green' : v > 0 ? 'amber' : 'red'}>{v ?? 0}</Badge>
       ),
     },
+    { key: 'actual_qty', label: 'Actual', render: (v) => <span className="mono">{v ?? 0}</span> },
     { key: 'reserved_qty', label: 'Reserved', render: (v) => <span className="mono">{v ?? 0}</span> },
-    { key: 'ordered_qty', label: 'Ordered', render: (v) => <span className="mono">{v ?? 0}</span> },
     {
       key: 'valuation_rate',
       label: 'Val. Rate',
