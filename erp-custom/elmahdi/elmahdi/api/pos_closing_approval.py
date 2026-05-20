@@ -1,5 +1,5 @@
 """
-POS Closing Entry — cashier draft only; manager/accountant submit.
+POS Closing Entry — cashier draft only; manager/accountant finalize via whitelisted methods.
 """
 
 from __future__ import annotations
@@ -8,44 +8,21 @@ import frappe
 from frappe import _
 from frappe.utils import flt, now_datetime
 
+from elmahdi.api.shift_authorization import (
+	CASHIER_ERP_ROLES,
+	assert_may_act_as_pos_closing_approver,
+	assert_not_self_approval,
+	is_break_glass_user,
+	may_act_as_pos_closing_approver,
+	primary_approval_role_label,
+	user_erp_roles,
+)
+
 SHIFT_VARIANCE_APPROVAL_PCT = 1.0  # % of expected cash; above → explicit approval
 
 
 def _has_custom_field(fieldname: str) -> bool:
 	return frappe.db.has_column("POS Closing Entry", fieldname)
-
-
-def _user_roles() -> set[str]:
-	return set(frappe.get_roles(frappe.session.user))
-
-
-def _is_break_glass() -> bool:
-	return bool(_user_roles() & {"Administrator", "System Manager"})
-
-
-def _can_approve_shift() -> bool:
-	if _is_break_glass():
-		return True
-	# Prefer DocPerm truth: if ERP says user can submit POS Closing Entry,
-	# allow approval even if roles differ across sites.
-	try:
-		if frappe.has_permission("POS Closing Entry", "submit"):
-			return True
-	except Exception:
-		# Fall back to role-based checks only
-		pass
-	roles = _user_roles()
-	return bool(
-		roles
-		& {
-			"Accounts Manager",
-			"Accounts User",
-			"Store Manager",
-			"Sales Manager",
-			"Stock Manager",
-			"Purchase Manager",
-		}
-	)
 
 
 def _cash_variance_pct(doc) -> float:
@@ -71,32 +48,34 @@ def _set_audit_fields(doc, *, pending: bool, approved: bool = False, reason: str
 		if _has_custom_field("approved_at"):
 			doc.approved_at = now_datetime()
 		if _has_custom_field("approval_role"):
-			doc.approval_role = role or _primary_approval_role()
+			doc.approval_role = role or primary_approval_role_label()
 		if _has_custom_field("approval_reason") and reason:
 			doc.approval_reason = reason
 
 
-def _primary_approval_role() -> str:
-	roles = _user_roles()
-	if roles & {"Accounts Manager", "Accounts User"}:
-		return "accountant"
-	if roles & {"Store Manager", "Sales Manager", "Stock Manager", "Purchase Manager"}:
-		return "manager"
-	return "admin"
-
-
 def before_submit_pos_closing(doc, method=None):
+	"""ERPNext submit gate — blocks cashier REST submit; managers must not self-approve."""
 	if getattr(frappe.flags, "elmahdi_pos_closing_approval_submit", False):
 		return
-	if _is_break_glass():
+	if is_break_glass_user():
 		return
-	if not _can_approve_shift():
+
+	if may_act_as_pos_closing_approver():
+		if doc.owner == frappe.session.user:
+			frappe.throw(_("You cannot approve your own shift closing."), frappe.PermissionError)
+		return
+
+	roles = user_erp_roles()
+	if roles & CASHIER_ERP_ROLES:
 		frappe.throw(
-			_("Only a store manager or accountant can submit POS Closing Entry."),
+			_("Cashiers cannot submit POS Closing Entry. A store manager must approve the closing."),
 			frappe.PermissionError,
 		)
-	if doc.owner == frappe.session.user and "POS User" in _user_roles():
-		frappe.throw(_("Cashiers cannot submit their own shift closing."), frappe.PermissionError)
+
+	frappe.throw(
+		_("You do not have permission to approve shift closings."),
+		frappe.PermissionError,
+	)
 
 
 def on_update_pos_closing(doc, method=None):
@@ -104,7 +83,7 @@ def on_update_pos_closing(doc, method=None):
 	if doc.docstatus != 0 or getattr(frappe.flags, "elmahdi_pos_closing_skip_pending", False):
 		return
 	pct = _cash_variance_pct(doc)
-	pending = pct > SHIFT_VARIANCE_APPROVAL_PCT or not _can_approve_shift()
+	pending = pct > SHIFT_VARIANCE_APPROVAL_PCT or not may_act_as_pos_closing_approver()
 	_set_audit_fields(doc, pending=pending)
 	if pending and _has_custom_field("pending_shift_approval"):
 		frappe.db.set_value(
@@ -120,15 +99,13 @@ def on_update_pos_closing(doc, method=None):
 
 @frappe.whitelist()
 def approve_pos_closing_entry(name, notes=""):
-	if not _can_approve_shift():
-		frappe.throw(_("Not permitted to approve shift closing."), frappe.PermissionError)
+	assert_may_act_as_pos_closing_approver()
 
 	doc = frappe.get_doc("POS Closing Entry", name)
 	if doc.docstatus != 0:
 		frappe.throw(_("Only draft POS Closing Entry can be approved."), frappe.ValidationError)
 
-	if doc.owner == frappe.session.user and not _is_break_glass():
-		frappe.throw(_("You cannot approve your own shift closing."), frappe.PermissionError)
+	assert_not_self_approval(doc)
 
 	_set_audit_fields(doc, pending=False, approved=True, reason=notes or "Shift close approved")
 	frappe.flags.elmahdi_pos_closing_skip_pending = True
@@ -138,9 +115,12 @@ def approve_pos_closing_entry(name, notes=""):
 		frappe.flags.elmahdi_pos_closing_skip_pending = False
 
 	frappe.flags.elmahdi_pos_closing_approval_submit = True
+	prev_ignore = bool(getattr(frappe.flags, "ignore_permissions", False))
+	frappe.flags.ignore_permissions = True
 	try:
 		doc.submit()
 	finally:
+		frappe.flags.ignore_permissions = prev_ignore
 		frappe.flags.elmahdi_pos_closing_approval_submit = False
 
 	return {"name": doc.name, "docstatus": doc.docstatus, "status": "submitted"}
@@ -149,15 +129,13 @@ def approve_pos_closing_entry(name, notes=""):
 @frappe.whitelist()
 def reject_pos_closing_entry(name, notes=""):
 	"""Reject a draft closing (keeps it in draft, clears pending flag, records reason)."""
-	if not _can_approve_shift():
-		frappe.throw(_("Not permitted to reject shift closing."), frappe.PermissionError)
+	assert_may_act_as_pos_closing_approver()
 
 	doc = frappe.get_doc("POS Closing Entry", name)
 	if doc.docstatus != 0:
 		frappe.throw(_("Only draft POS Closing Entry can be rejected."), frappe.ValidationError)
 
-	if doc.owner == frappe.session.user and not _is_break_glass():
-		frappe.throw(_("You cannot reject your own shift closing."), frappe.PermissionError)
+	assert_not_self_approval(doc)
 
 	_set_audit_fields(doc, pending=False, approved=False, reason=notes or "Shift close rejected")
 	frappe.flags.elmahdi_pos_closing_skip_pending = True
@@ -171,8 +149,7 @@ def reject_pos_closing_entry(name, notes=""):
 
 @frappe.whitelist()
 def list_pending_shift_closings(limit=50):
-	if not _can_approve_shift():
-		frappe.throw(_("Not permitted to view shift approvals."), frappe.PermissionError)
+	assert_may_act_as_pos_closing_approver()
 
 	filters = {"docstatus": 0}
 	if _has_custom_field("pending_shift_approval"):

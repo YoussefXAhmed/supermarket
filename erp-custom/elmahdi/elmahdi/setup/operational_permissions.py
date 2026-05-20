@@ -41,6 +41,15 @@ PERM_MATRIX: dict[str, dict[str, dict[str, int]]] = {
 		"Payment Entry": {"read": 0, "write": 0, "create": 0, "submit": 0},
 		"POS Invoice": {"read": 0, "write": 0, "create": 0, "submit": 0},
 	},
+	"POS Manager": {
+		"POS Opening Entry": {"read": 1, "write": 0, "create": 0, "submit": 0, "cancel": 0},
+		"POS Closing Entry": {"read": 1, "write": 1, "create": 0, "submit": 1, "cancel": 1},
+		"POS Invoice": {"read": 1, "write": 0, "create": 0, "submit": 0},
+		"Sales Invoice": {"read": 1, "write": 0, "create": 0, "submit": 0},
+		"Warehouse": {"read": 1, "write": 0, "create": 0, "submit": 0},
+		"Bin": {"read": 1, "write": 0, "create": 0, "submit": 0},
+		"Payment Entry": {"read": 0, "write": 0, "create": 0, "submit": 0},
+	},
 	"Sales Manager": {
 		"POS Opening Entry": {"read": 1, "write": 0, "create": 0, "submit": 0, "cancel": 0},
 		"POS Closing Entry": {"read": 1, "write": 1, "create": 0, "submit": 1, "cancel": 1},

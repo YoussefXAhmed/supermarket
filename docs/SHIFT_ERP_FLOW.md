@@ -18,13 +18,13 @@
 1. `loadShiftSummary(opening)` — prefers `GET elmahdi.api.shifts.get_shift_summary`
 2. Cashier enters counted cash
 3. `prepare_closing_entry` (server) or client-built `payment_reconciliation` rows
-4. Small variance → `submitPOSClosingEntry`
-5. Large variance → draft (`docstatus: 0`) until manager approves
+4. Small variance (and manager `canSubmitClosing`) → `elmahdi.api.pos_closing_approval.approve_pos_closing_entry` via `approvePOSClosingEntryOnServer` (not REST `docstatus: 1`)
+5. Large variance or cashier path → draft (`docstatus: 0`) until approver runs approve
 
 ## Approval
 
-- Manager: `approveShiftClosing()` → update remarks → submit closing
-- Validation: approver ≠ opening operator
+- Approver: `approveShiftClosing()` → `approve_pos_closing_entry` (audit fields + controlled submit)
+- Server + SPA: approver ≠ closing owner / operator (anti–self-approval); cashiers blocked on submit by `before_submit` hook
 
 ## Fallback
 

@@ -42,7 +42,7 @@ export function listSupplierPaymentHistory(params = {}) {
 
 /**
  * Create and submit ERPNext Payment Entry.
- * @param {{ supplier, company?, paid_from, posting_date?, reference_no?, remarks?, allocations: {invoice, amount}[] }} payload
+ * @param {{ supplier, company?, paid_from, posting_date?, reference_no?, reference_date?, remarks?, allocations: {invoice, amount}[] }} payload
  */
 export async function createSupplierPayment(payload) {
   const result = await callPost('create_supplier_payment', {
@@ -51,6 +51,7 @@ export async function createSupplierPayment(payload) {
     paid_from: payload.paid_from,
     posting_date: payload.posting_date || new Date().toISOString().slice(0, 10),
     reference_no: payload.reference_no || undefined,
+    reference_date: payload.reference_date || undefined,
     remarks: payload.remarks || undefined,
     allocations: JSON.stringify(payload.allocations || []),
     submit: 1,

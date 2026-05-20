@@ -50,6 +50,7 @@ const TEMPLATE_ERP_ROLE_SIGNATURES = {
     'stock manager',
     'purchase manager',
     'sales manager',
+    'pos manager',
   ],
   [OPERATIONAL_USER_TEMPLATES.accountant.roleProfileName]: [
     'accounts user',

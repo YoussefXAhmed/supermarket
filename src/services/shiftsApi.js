@@ -3,6 +3,7 @@
  * Field lists are split so cashiers never query `remarks` (ERP field-level perm).
  */
 import api from './api';
+import { submitPosOpeningEntryOnServer } from './erpSubmitApi';
 
 /** List / compact queries — no remarks, no child tables */
 const OPENING_LIST_FIELDS = [
@@ -115,9 +116,6 @@ export const openPOSShiftOnServer = ({
     remarks: remarks || '',
   });
 
-export const submitPOSOpeningEntryOnServer = (name) =>
-  api.post('/api/method/elmahdi.api.shifts.submit_pos_opening_entry', { name });
-
 export const repairDraftOpeningEntriesOnServer = (dryRun = true) =>
   api.post('/api/method/elmahdi.api.shifts.repair_draft_opening_entries', {
     dry_run: dryRun ? 1 : 0,
@@ -130,7 +128,7 @@ function sleep(ms) {
 }
 
 /**
- * Submit draft opening via ERP workflow (server method → frappe.client.submit → REST fallback).
+ * Submit draft opening via native ERPNext submit (server method only).
  */
 export async function submitPOSOpeningEntry(name) {
   if (!name) throw new Error('Opening entry name required');
@@ -143,46 +141,16 @@ export async function submitPOSOpeningEntry(name) {
   const existing = await loadDoc().catch(() => null);
   if (existing?.docstatus === 1) return existing;
 
-  try {
-    const res = await submitPOSOpeningEntryOnServer(name);
-    const msg = res?.data?.message || res?.data;
-    if (msg?.docstatus === 1) return msg;
-    const doc = await loadDoc();
-    if (doc?.docstatus === 1) return doc;
-  } catch {
-    /* fall through */
-  }
-
-  try {
-    await api.post(
-      '/api/method/frappe.client.submit',
-      { doc: { doctype: 'POS Opening Entry', name } },
-      { silentApi: true },
-    );
-    const doc = await loadDoc();
-    if (doc?.docstatus === 1) return doc;
-  } catch {
-    /* fall through */
-  }
-
   let lastErr;
   for (let i = 0; i <= SUBMIT_OPENING_RETRIES; i += 1) {
     try {
-      await api.put(
-        `/api/resource/POS Opening Entry/${encodeURIComponent(name)}`,
-        { docstatus: 1 },
-        { silentApi: true },
-      );
+      const res = await submitPosOpeningEntryOnServer(name);
+      const msg = res?.data?.message || res?.data;
+      if (msg?.docstatus === 1) return msg;
       const doc = await loadDoc();
       if (doc?.docstatus === 1) return doc;
     } catch (e) {
       lastErr = e;
-      try {
-        const doc = await loadDoc();
-        if (doc?.docstatus === 1) return doc;
-      } catch {
-        /* retry */
-      }
       if (i < SUBMIT_OPENING_RETRIES) await sleep(400);
     }
   }
@@ -198,21 +166,11 @@ export const getPOSClosingEntryAudit = (name) =>
 export const createPOSClosingEntry = (payload) =>
   api.post('/api/resource/POS Closing Entry', payload);
 
-export const submitPOSClosingEntry = (name) =>
-  api.put(`/api/resource/POS Closing Entry/${encodeURIComponent(name)}`, { docstatus: 1 });
-
 /** Manager/Accountant approval: server sets audit + submits (bypasses REST docstatus perms). */
 export const approvePOSClosingEntryOnServer = ({ name, notes = '' }) =>
   api.post('/api/method/elmahdi.api.pos_closing_approval.approve_pos_closing_entry', {
     name,
     notes: notes || '',
-  });
-
-/** Manager/Accountant reject: server sets audit only (keeps draft). */
-export const rejectPOSClosingEntryOnServer = ({ name, reason = '' }) =>
-  api.post('/api/method/elmahdi.api.pos_closing_approval.reject_pos_closing_entry', {
-    name,
-    notes: reason || '',
   });
 
 /** Server-side shift aggregates (preferred). */
@@ -229,6 +187,13 @@ export const prepareClosingEntryFromERP = ({ posOpeningEntry, actualCash, notes,
     actual_cash: actualCash,
     notes: notes || '',
     payment_counts: paymentCounts ? JSON.stringify(paymentCounts) : undefined,
+  });
+
+/** Manager/Accountant reject: server sets audit only (keeps draft). */
+export const rejectPOSClosingEntryOnServer = ({ name, reason = '' }) =>
+  api.post('/api/method/elmahdi.api.pos_closing_approval.reject_pos_closing_entry', {
+    name,
+    notes: reason || '',
   });
 
 export const listShiftPOSInvoices = ({ posProfile, fromDate, owner, limit = 500 }) => {

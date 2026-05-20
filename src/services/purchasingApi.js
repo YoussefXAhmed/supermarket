@@ -1,5 +1,10 @@
 import api, { getCompanies } from './api';
 import {
+  messageFromResponse,
+  submitPurchaseInvoiceOnServer,
+  submitPurchaseReceiptOnServer,
+} from './erpSubmitApi';
+import {
   validateReceiveForm,
   validatePurchaseInvoiceForm,
   validateSupplierForm,
@@ -22,22 +27,24 @@ async function resolveCompany(explicit) {
   return res?.data?.data?.[0]?.name;
 }
 
+const SUBMIT_FN = {
+  'Purchase Receipt': submitPurchaseReceiptOnServer,
+  'Purchase Invoice': submitPurchaseInvoiceOnServer,
+};
+
 async function submitDoc(doctype, name, getDoc) {
-  const encoded = encodeURIComponent(doctype);
+  const submitFn = SUBMIT_FN[doctype];
+  if (!submitFn) throw new Error(`No native submit handler for ${doctype}`);
+
   let lastErr;
   for (let i = 0; i <= SUBMIT_RETRIES; i += 1) {
     try {
-      await api.put(`/api/resource/${encoded}/${encodeURIComponent(name)}`, { docstatus: 1 });
+      const res = await submitFn(name);
+      const server = messageFromResponse(res);
       const doc = await getDoc(name);
-      return { name, doc, submitted: true };
+      return { name, doc, submitted: true, server };
     } catch (e) {
       lastErr = e;
-      try {
-        const check = await getDoc(name);
-        if (check?.docstatus === 1) return { name, doc: check, submitted: true };
-      } catch {
-        /* retry */
-      }
       if (i < SUBMIT_RETRIES) await sleep(400);
     }
   }

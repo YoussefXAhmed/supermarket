@@ -407,7 +407,11 @@ def create_purchase_receipt_workflow(
         frappe.flags.elmahdi_purchase_approval_submit = True
         frappe.flags.ignore_permissions = True
         try:
+            from elmahdi.api.erp_submit import assert_submitted_side_effects
+
             doc.submit()
+            doc.reload()
+            assert_submitted_side_effects(doc)
             submitted = True
             audit_payload["approval_status"] = STATUS_SUBMITTED
             audit_payload["approved_by"] = frappe.session.user
@@ -600,8 +604,12 @@ def approve_purchase_receipt(name, action="approve", notes=""):
     frappe.flags.elmahdi_purchase_approval_submit = True
     frappe.flags.ignore_permissions = True
     try:
+        from elmahdi.api.erp_submit import assert_submitted_side_effects
+
         doc.save(ignore_permissions=True)
         doc.submit()
+        doc.reload()
+        assert_submitted_side_effects(doc)
     finally:
         frappe.flags.elmahdi_purchase_approval_submit = False
         frappe.flags.ignore_permissions = False

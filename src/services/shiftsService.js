@@ -395,7 +395,10 @@ export async function closeShift({
 
   if (canSubmitClosing && !needsVarianceApproval) {
     try {
-      await submitPOSClosingEntry(closingName);
+      await approvePOSClosingEntryOnServer({
+        name: closingName,
+        notes: notes || 'Shift close finalized by manager',
+      });
       submitted = true;
     } catch (e) {
       return {

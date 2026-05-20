@@ -61,6 +61,7 @@ export const SHIFT_APPROVE_ROLES = new Set([
   'accounts manager',
   'accounts user',
   'store manager',
+  'pos manager',
   'sales manager',
   'stock manager',
   'purchase manager',

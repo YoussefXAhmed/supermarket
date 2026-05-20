@@ -77,6 +77,32 @@ export function parseFrappeServerMessages(data) {
 const STOCK_ERROR_RE =
   /no stock in warehouse|insufficient stock|negative stock|not enough stock|qty.*not available|stock validation|cannot be negative/i;
 
+const POS_STOCK_MOVEMENT_RE =
+  /submitted without stock movement|update_stock disabled|was not submitted/i;
+
+const GL_MOVEMENT_RE =
+  /submitted without accounting entries/i;
+
+/**
+ * @param {{ message?: string, status?: number|null, code?: string|null, raw?: object|null }} info
+ */
+export function isPosStockMovementError(info) {
+  const text = [
+    info?.message,
+    info?.code,
+    info?.raw?.exc_type,
+    info?.raw?.exception,
+  ]
+    .filter(Boolean)
+    .join(' ');
+  return POS_STOCK_MOVEMENT_RE.test(text);
+}
+
+export function isGlMovementError(info) {
+  const text = [info?.message, info?.code, info?.raw?.exc_type].filter(Boolean).join(' ');
+  return GL_MOVEMENT_RE.test(text);
+}
+
 /**
  * @param {{ message?: string, status?: number|null, code?: string|null, raw?: object|null }} info
  */
@@ -260,13 +286,28 @@ export function getUserFriendlyMessage(error, fallback = FALLBACK_ERROR_MESSAGE)
   if (info.isInvalidShiftSession || error?.isInvalidShiftSession) {
     return INVALID_SHIFT_SESSION_MESSAGE;
   }
-  if (info.isStockError || error?.isStockError) {
+  // Stock errors should only be formatted as POS stock banners when the caller explicitly
+  // flags the error as POS stock context (posWarehouse/stockHint).
+  if ((info.isStockError || error?.isStockError) && (error?.posWarehouse || error?.stockHint)) {
     return formatPosStockErrorMessage(info, {
       fallbackWarehouse: error?.posWarehouse || '',
       hint: error?.stockHint || '',
     });
   }
-  if (info.isPermissionError) {
+  if (info.isPermissionError || error?.response?.status === 403) {
+    const url = String(error?.config?.url || error?.response?.config?.url || '');
+    const permMsg = String(info.message || '');
+    const combined = `${url} ${permMsg}`.toLowerCase();
+    if (
+      /pos_closing_approval\./i.test(url) ||
+      /approve shift closings|reject shift closings|shift clos/i.test(permMsg) ||
+      /pos closing entry.*submit/i.test(permMsg)
+    ) {
+      return 'You do not have permission to approve shift closings.';
+    }
+    if (/shift/i.test(combined) && /clos/i.test(combined) && /permission|forbidden|not permitted/i.test(combined)) {
+      return 'You do not have permission to approve shift closings.';
+    }
     return PERMISSION_ERROR_MESSAGE;
   }
   const msg = info.message || fallback;

@@ -1,6 +1,11 @@
 import { validateStockEntry } from '../utils/inventoryValidation';
 import { ActivityType, logActivity } from './activityLogService';
 import api, { getCompanies } from './api';
+import {
+  messageFromResponse,
+  submitStockEntryOnServer,
+  submitStockReconciliationOnServer,
+} from './erpSubmitApi';
 
 const SUBMIT_RETRIES = 2;
 
@@ -141,9 +146,6 @@ export const listBatchStock = async (itemCode, warehouse) => {
 export const createStockEntry = (payload) =>
   api.post('/api/resource/Stock Entry', payload);
 
-export const submitStockEntry = (name) =>
-  api.put(`/api/resource/Stock Entry/${encodeURIComponent(name)}`, { docstatus: 1 });
-
 export const getStockEntry = (name) =>
   api.get(`/api/resource/Stock Entry/${encodeURIComponent(name)}`);
 
@@ -191,29 +193,23 @@ export async function createAndSubmitStockEntry({
   let lastErr;
   for (let i = 0; i <= SUBMIT_RETRIES; i += 1) {
     try {
-      await submitStockEntry(name);
+      const submitRes = await submitStockEntryOnServer(name);
+      const serverDoc = messageFromResponse(submitRes);
       const doc = await getStockEntry(name);
       logActivity({
         type: stock_entry_type === 'Stock Reconciliation' ? ActivityType.ADJUSTMENT : ActivityType.STOCK,
         action: `Stock entry: ${stock_entry_type}`,
-        detail: { name, item_code, qty, type: stock_entry_type },
+        detail: {
+          name,
+          item_code,
+          qty,
+          type: stock_entry_type,
+          stock_ledger_entries: serverDoc?.stock_ledger_entries,
+        },
       });
-      return { name, doc: doc?.data?.data, submitted: true };
+      return { name, doc: doc?.data?.data, submitted: true, server: serverDoc };
     } catch (e) {
       lastErr = e;
-      try {
-        const check = await getStockEntry(name);
-        if (check?.data?.data?.docstatus === 1) {
-          logActivity({
-            type: stock_entry_type === 'Stock Reconciliation' ? ActivityType.ADJUSTMENT : ActivityType.STOCK,
-            action: `Stock entry: ${stock_entry_type}`,
-            detail: { name, item_code, qty },
-          });
-          return { name, doc: check.data.data, submitted: true };
-        }
-      } catch {
-        /* retry */
-      }
       if (i < SUBMIT_RETRIES) await sleep(400);
     }
   }
@@ -225,9 +221,6 @@ export async function createAndSubmitStockEntry({
 
 export const createStockReconciliation = (payload) =>
   api.post('/api/resource/Stock Reconciliation', payload);
-
-export const submitStockReconciliation = (name) =>
-  api.put(`/api/resource/Stock Reconciliation/${encodeURIComponent(name)}`, { docstatus: 1 });
 
 export async function createAndSubmitStockReconciliation({
   company,
@@ -253,6 +246,6 @@ export async function createAndSubmitStockReconciliation({
   const name = res?.data?.data?.name;
   if (!name) throw new Error('Stock Reconciliation was not created');
 
-  await submitStockReconciliation(name);
+  await submitStockReconciliationOnServer(name);
   return name;
 }

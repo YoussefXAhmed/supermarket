@@ -3,6 +3,7 @@
  * No client-side stock math; ERP submit reverses stock.
  */
 import api from './api';
+import { submitPosInvoiceReturnOnServer } from './erpSubmitApi';
 
 const POS_INVOICE = 'POS Invoice';
 
@@ -110,8 +111,9 @@ export function updatePOSInvoiceReturn(name, payload) {
   return api.put(`/api/resource/${POS_INVOICE}/${encodeURIComponent(name)}`, payload);
 }
 
+/** Native ERPNext submit — reverses stock via SLE hooks. */
 export function submitPOSInvoiceReturn(name) {
-  return api.put(`/api/resource/${POS_INVOICE}/${encodeURIComponent(name)}`, { docstatus: 1 });
+  return submitPosInvoiceReturnOnServer(name);
 }
 
 export function getPOSInvoiceReturn(name) {

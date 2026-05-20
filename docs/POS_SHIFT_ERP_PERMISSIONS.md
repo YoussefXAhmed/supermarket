@@ -2,7 +2,7 @@
 
 **Principle:** ERPNext is authoritative. The SPA only calls APIs the user’s role is allowed to run. Cashiers must **not** receive Submit on POS Closing Entry.
 
-**Related:** `docs/ERP_PERMISSION_ALIGNMENT.md`, `docs/SHIFT_CAPABILITY_MATRIX.md`
+**Related:** `docs/SHIFT_PERMISSION_MODEL.md` (policy summary), `docs/ERP_PERMISSION_ALIGNMENT.md`, `docs/SHIFT_CAPABILITY_MATRIX.md`
 
 ---
 
@@ -96,9 +96,12 @@ Align with existing POS Profile / warehouse User Permissions.
 ### Elmahdi API methods (whitelist + role)
 
 | Method | Cashier | Manager | Notes |
-|--------|---------|---------|--------|
-| `elmahdi.api.shifts.get_shift_summary` | ✅ | ✅ | Read-only aggregate |
-| `elmahdi.api.shifts.prepare_closing_entry` | ✅* | ✅ | *Requires Create+Write on POS Closing Entry |
+|--------|---------|---------|-------|
+| `elmahdi.api.shifts.get_shift_summary` | ✅* | ✅ | *Session gate: opening `user`/`owner`, approver profile/role, or break-glass; plus Read on opening |
+| `elmahdi.api.shifts.prepare_closing_entry` | ✅* | ✅ | *Same session gate + Create on POS Closing Entry |
+| `elmahdi.api.pos_closing_approval.approve_pos_closing_entry` | — | ✅ | Finalize: audit fields + controlled submit |
+| `elmahdi.api.pos_closing_approval.reject_pos_closing_entry` | — | ✅ | Keeps draft; records rejection |
+| `elmahdi.api.pos_closing_approval.list_pending_shift_closings` | — | ✅ | Approver queue |
 
 Configure via **Role** access to whitelisted methods (Frappe v15: role must be able to execute; document perms still apply on `insert()`).
 
@@ -115,9 +118,10 @@ Configure via **Role** access to whitelisted methods (Frappe v15: role must be a
 
 **Frontend rules (implemented):**
 
-- `closeShift({ canSubmitClosing })` calls `submitPOSClosingEntry` **only** when `canSubmitClosing === true` (managers).
-- Cashiers always end with draft closing + message: manager must submit.
-- Large variance → draft even for managers until explicit approve action.
+- **Never** use REST `PUT …/POS Closing Entry/… { docstatus: 1 }` for cashier finalize. Managers use `approvePOSClosingEntryOnServer` → `elmahdi.api.pos_closing_approval.approve_pos_closing_entry`.
+- `closeShift({ canSubmitClosing })` when the manager may auto-finalize calls **`approve_pos_closing_entry`** (not raw REST submit).
+- Cashiers always end with draft closing until an approver runs approve (or manager path above).
+- Large variance → draft until explicit approve action.
 
 ---
 

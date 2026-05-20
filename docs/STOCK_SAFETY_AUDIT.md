@@ -67,8 +67,8 @@
 
 | Item | Assessment |
 |------|------------|
-| **Files** | `usePOS.js`, `posCheckout.js`, `posStock.js` |
-| **ERP effect** | POS Invoice submit → SLE negative qty |
+| **Files** | `usePOS.js`, `posCheckout.js`, `elmahdi.api.pos_checkout` |
+| **ERP effect** | POS Invoice native `submit()` → SLE negative qty |
 | **Pre-validation** | Cart stock check at checkout |
 | **Warehouse** | Fixed to POS Profile warehouse — **correct** |
 | **Concurrent sales** | **Medium** — two registers same SKU |

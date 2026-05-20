@@ -2,7 +2,7 @@
 
 **Audit date:** May 2026  
 **Scope:** Purchase Receipt, Purchase Invoice, Stock Entry, POS checkout, Reconciliation, inventory adjustments, returns (absence).  
-**Principle:** ERPNext is the system of record; this SPA creates drafts and submits via `docstatus: 1`. UI guards are not sufficient alone.
+**Principle:** ERPNext is the system of record; stock/accounting documents submit via **native `doc.submit()`** (`elmahdi.api.erp_submit`). Never REST `PUT { docstatus: 1 }`. See `docs/ERP_NATIVE_SUBMIT.md`.
 
 ---
 
@@ -110,8 +110,8 @@ Supplier → Purchase Receipt (receive, stock+) → Purchase Invoice (payable, l
 
 1. Shift must be open (`usePOS.checkout`).
 2. Cart stock validation.
-3. `createPOSInvoice(payload)` — `is_pos: 1`, items, payments, `set_warehouse`.
-4. `submitPOSInvoice` with retries.
+3. `createAndSubmitPOSInvoiceOnServer(payload)` — `elmahdi.api.pos_checkout.create_and_submit_pos_invoice` (ERPNext `insert()` + `submit()`, not REST docstatus PUT).
+4. Server verifies Stock Ledger Entry rows when stock items were sold.
 5. `logActivity` local sale entry.
 
 ### Failure recovery

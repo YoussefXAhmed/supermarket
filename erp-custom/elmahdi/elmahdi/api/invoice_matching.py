@@ -809,7 +809,11 @@ def auto_create_and_submit_purchase_invoice_for_receipt(
 				"from_receipt": receipt_name,
 			},
 		)
+		from elmahdi.api.erp_submit import assert_submitted_side_effects
+
 		pi.submit()
+		pi.reload()
+		assert_submitted_side_effects(pi)
 		_append_matching_audit(
 			receipt_name,
 			{"action": "invoice_auto_submitted", "invoice": invoice_name},
@@ -970,7 +974,11 @@ def create_purchase_invoice_from_receipt(receipt_name, submit=0):
 
 	submitted = False
 	if cint(submit):
+		from elmahdi.api.erp_submit import assert_submitted_side_effects
+
 		pi.submit()
+		pi.reload()
+		assert_submitted_side_effects(pi)
 		submitted = True
 		_append_matching_audit(
 			receipt_name,

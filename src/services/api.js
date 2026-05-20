@@ -200,20 +200,20 @@ export const getSalesInvoices = (params = {}) =>
 export const createSalesInvoice = (payload) =>
   api.post('/api/resource/Sales Invoice', payload);
 
-export const submitSalesInvoice = (name) =>
-  api.put(`/api/resource/Sales Invoice/${encodeURIComponent(name)}`, { docstatus: 1 });
-
 export const getSalesInvoice = (name) =>
   api.get(`/api/resource/Sales Invoice/${encodeURIComponent(name)}`);
 
-export const createPOSInvoice = (payload) =>
-  api.post('/api/resource/POS Invoice', payload);
-
-export const submitPOSInvoice = (name) =>
-  api.put(`/api/resource/POS Invoice/${encodeURIComponent(name)}`, { docstatus: 1 });
-
 export const getPOSInvoice = (name) =>
   api.get(`/api/resource/POS Invoice/${encodeURIComponent(name)}`);
+
+/** Authoritative checkout: ERPNext insert() + submit() + SLE verification. */
+export const createAndSubmitPOSInvoiceOnServer = (payload) =>
+  api.post('/api/method/elmahdi.api.pos_checkout.create_and_submit_pos_invoice', {
+    payload: typeof payload === 'string' ? payload : JSON.stringify(payload),
+  });
+
+/** @deprecated Use erpSubmitApi.submitPosInvoiceOnServer or pos_checkout.submit_pos_invoice */
+export { submitPosInvoiceOnServer as submitPOSInvoiceOnServer } from './erpSubmitApi';
 
 export const getMyPOSInvoices = (owner, params = {}) =>
   api.get('/api/resource/POS Invoice', {

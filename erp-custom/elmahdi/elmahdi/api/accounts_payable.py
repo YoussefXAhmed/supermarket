@@ -583,6 +583,7 @@ def create_supplier_payment(
 	paid_from=None,
 	posting_date=None,
 	reference_no=None,
+	reference_date=None,
 	remarks=None,
 	allocations=None,
 	submit=1,
@@ -639,6 +640,8 @@ def create_supplier_payment(
 	pe.source_exchange_rate = 1
 	if reference_no:
 		pe.reference_no = reference_no
+	if reference_date:
+		pe.reference_date = reference_date
 	if remarks:
 		pe.remarks = remarks
 
@@ -679,8 +682,12 @@ def create_supplier_payment(
 
 	submitted = False
 	if cint(submit):
+		from elmahdi.api.erp_submit import assert_submitted_side_effects
+
 		frappe.has_permission("Payment Entry", "submit", doc=pe, throw=True)
 		pe.submit()
+		pe.reload()
+		assert_submitted_side_effects(pe)
 		submitted = True
 		_append_pe_audit(pe.name, {"action": "submitted", "paid_amount": total_paid})
 

@@ -1,25 +1,21 @@
-import { createPOSInvoice, submitPOSInvoice, getPOSInvoice } from './api';
+import { createAndSubmitPOSInvoiceOnServer, getPOSInvoice } from './api';
+import { submitPosInvoiceOnServer } from './erpSubmitApi';
 import { logActivity, ActivityType } from './activityLogService';
 import {
   extractERPError,
   isStockValidationError,
+  isPosStockMovementError,
+  isGlMovementError,
   normalizeERPError,
 } from '../utils/errorHandling';
 
-const SUBMIT_RETRIES = 3;
-const SUBMIT_DELAY_MS = 400;
-
-/** Invoices that failed stock submit — block repeat submit/poll for this session. */
+/** Invoices that failed stock submit — block repeat submit for this session. */
 const stockFailedInvoices = new Set();
-
-function sleep(ms) {
-  return new Promise((r) => setTimeout(r, ms));
-}
 
 function classifySubmitError(error, posWarehouse) {
   const info = extractERPError(error);
   const normalized = normalizeERPError(error);
-  if (isStockValidationError(info)) {
+  if (isStockValidationError(info) || isPosStockMovementError(info) || isGlMovementError(info)) {
     normalized.isStockError = true;
     normalized.recoverable = false;
     normalized.posWarehouse = posWarehouse;
@@ -41,85 +37,56 @@ export function clearStockBlockedInvoice(name) {
   if (name) stockFailedInvoices.delete(name);
 }
 
+function invoiceFromServerMessage(message) {
+  const doc = message?.data?.message ?? message?.message ?? message;
+  if (doc && typeof doc === 'object' && doc.name) return doc;
+  return null;
+}
+
+function logCheckout(payload, doc) {
+  logActivity({
+    type: ActivityType.SALE,
+    action: 'POS checkout',
+    user: payload?.owner || payload?.cashier || 'pos',
+    detail: { name: doc.name, amount: doc.grand_total, customer: payload?.customer },
+  });
+}
+
 /**
- * Create and submit POS Invoice with submit recovery (non-stock failures only).
+ * Create and submit POS Invoice via server-side ERPNext submit() (authoritative stock posting).
  */
 export async function checkoutPOSInvoice(payload) {
   const posWarehouse = payload?.set_warehouse || '';
-  const res = await createPOSInvoice(payload);
-  const name = res?.data?.data?.name;
-  if (!name) throw new Error('Invoice was not created');
 
-  if (isStockBlockedInvoice(name)) {
-    const err = classifySubmitError(
+  if (isStockBlockedInvoice(payload?.retryInvoiceName)) {
+    throw classifySubmitError(
       { response: { status: 417, data: { message: 'Insufficient stock' } } },
       posWarehouse,
     );
-    markStockBlockedInvoice(name);
-    throw err;
   }
 
-  let lastErr;
-  let stockFailure = false;
-
-  for (let attempt = 0; attempt < SUBMIT_RETRIES; attempt += 1) {
-    if (stockFailure) break;
-
-    try {
-      await submitPOSInvoice(name);
-      clearStockBlockedInvoice(name);
-      const invoiceRes = await getPOSInvoice(name);
-      const doc = invoiceRes?.data?.data || { name, ...payload };
-      logActivity({
-        type: ActivityType.SALE,
-        action: 'POS checkout',
-        user: payload?.owner || payload?.cashier || 'pos',
-        detail: { name: doc.name, amount: doc.grand_total, customer: payload?.customer },
-      });
-      return doc;
-    } catch (e) {
-      const classified = classifySubmitError(e, posWarehouse);
-      lastErr = classified;
-
-      if (classified.isStockError) {
-        stockFailure = true;
-        markStockBlockedInvoice(name);
-        break;
-      }
-
-      try {
-        const check = await getPOSInvoice(name);
-        const doc = check?.data?.data;
-        if (doc?.docstatus === 1) {
-          clearStockBlockedInvoice(name);
-          logActivity({
-            type: ActivityType.SALE,
-            action: 'POS checkout',
-            user: payload?.owner || payload?.cashier || 'pos',
-            detail: { name: doc.name, amount: doc.grand_total, customer: payload?.customer },
-          });
-          return doc;
-        }
-      } catch {
-        /* retry submit */
-      }
-      if (attempt < SUBMIT_RETRIES - 1) await sleep(SUBMIT_DELAY_MS * (attempt + 1));
+  try {
+    const res = await createAndSubmitPOSInvoiceOnServer(payload);
+    const doc = invoiceFromServerMessage(res) || res?.data?.data;
+    if (!doc?.name) throw new Error('Invoice was not created');
+    if (doc.docstatus !== 1) {
+      throw new Error(`POS Invoice ${doc.name} was not submitted`);
     }
+    clearStockBlockedInvoice(doc.name);
+    logCheckout(payload, doc);
+    return doc;
+  } catch (e) {
+    const classified = classifySubmitError(e, posWarehouse);
+    if (classified.isStockError) {
+      markStockBlockedInvoice(classified.invoiceName);
+    }
+    throw classified;
   }
-
-  if (lastErr?.isStockError) {
-    throw lastErr;
-  }
-
-  const err = lastErr || normalizeERPError(new Error('Failed to submit invoice'));
-  if (!err.isStockError) {
-    err.invoiceName = name;
-    err.recoverable = true;
-  }
-  throw err;
 }
 
+/** Retry submit for a draft POS Invoice (legacy drafts only). */
 export async function retrySubmitPOSInvoice(name, { posWarehouse = '' } = {}) {
+  if (!name) throw new Error('Invoice name required');
   if (isStockBlockedInvoice(name)) {
     throw classifySubmitError(
       { response: { status: 417, data: { message: 'Insufficient stock' } } },
@@ -128,10 +95,14 @@ export async function retrySubmitPOSInvoice(name, { posWarehouse = '' } = {}) {
   }
 
   try {
-    await submitPOSInvoice(name);
+    const res = await submitPosInvoiceOnServer(name);
+    const doc = invoiceFromServerMessage(res);
+    if (!doc?.name) {
+      const invoiceRes = await getPOSInvoice(name);
+      return invoiceRes?.data?.data;
+    }
     clearStockBlockedInvoice(name);
-    const invoiceRes = await getPOSInvoice(name);
-    return invoiceRes?.data?.data;
+    return doc;
   } catch (e) {
     const classified = classifySubmitError(e, posWarehouse);
     if (classified.isStockError) {

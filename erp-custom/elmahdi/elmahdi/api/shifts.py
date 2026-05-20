@@ -8,6 +8,12 @@ import frappe
 from frappe import _
 from frappe.utils import flt, today
 
+from elmahdi.api.erp_submit import native_submit
+from elmahdi.api.shift_authorization import (
+	assert_may_access_pos_opening_session,
+	is_break_glass_user,
+)
+
 
 def _opening_doc(name, *, require_submitted=True):
     doc = frappe.get_doc("POS Opening Entry", name)
@@ -33,8 +39,7 @@ def _submit_opening_doc(doc):
     ok, reason = _can_submit_opening(doc)
     if not ok:
         frappe.throw(reason, frappe.ValidationError)
-    doc.submit()
-    return doc
+    return native_submit(doc)
 
 
 @frappe.whitelist()
@@ -92,12 +97,12 @@ def open_pos_shift(
 
 @frappe.whitelist()
 def submit_pos_opening_entry(name):
-    """Submit a draft POS Opening Entry if valid."""
+    """Submit a draft POS Opening Entry if valid (native submit)."""
     if not name:
         frappe.throw(_("Opening entry name is required"), frappe.ValidationError)
     doc = frappe.get_doc("POS Opening Entry", name)
     frappe.has_permission("POS Opening Entry", "submit", doc=doc, throw=True)
-    _submit_opening_doc(doc)
+    doc = _submit_opening_doc(doc)
     return {"name": doc.name, "docstatus": doc.docstatus, "status": doc.status}
 
 
@@ -107,11 +112,7 @@ def repair_draft_opening_entries(dry_run=1):
     Find draft POS Opening Entries (docstatus=0) and submit when valid.
     Restricted to managers / administrators.
     """
-    if not (
-        frappe.has_permission("POS Opening Entry", "submit")
-        or "System Manager" in frappe.get_roles()
-        or "Administrator" in frappe.get_roles()
-    ):
+    if not (frappe.has_permission("POS Opening Entry", "submit") or is_break_glass_user()):
         frappe.throw(_("Not permitted to repair opening entries"), frappe.PermissionError)
 
     if isinstance(dry_run, str):
@@ -182,6 +183,8 @@ def _payment_rows_for_invoice(invoice_name):
 def get_shift_summary(pos_opening_entry):
     """Aggregated sales/returns/payment mix for an open shift."""
     opening = _opening_doc(pos_opening_entry)
+    frappe.has_permission("POS Opening Entry", "read", doc=opening, throw=True)
+    assert_may_access_pos_opening_session(opening)
     filters = _opening_filters(opening)
 
     invoices = frappe.get_all(
@@ -269,6 +272,9 @@ def prepare_closing_entry(pos_opening_entry, actual_cash, notes=None, payment_co
     payment_counts: optional JSON map {mode: closing_amount}
     """
     opening = _opening_doc(pos_opening_entry)
+    frappe.has_permission("POS Opening Entry", "read", doc=opening, throw=True)
+    assert_may_access_pos_opening_session(opening)
+    frappe.has_permission("POS Closing Entry", "create", throw=True)
     summary = get_shift_summary(pos_opening_entry)
     actual_cash = flt(actual_cash)
     if actual_cash < 0:

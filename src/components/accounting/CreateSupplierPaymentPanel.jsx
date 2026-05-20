@@ -23,6 +23,7 @@ export default function CreateSupplierPaymentPanel({ onSuccess, onCancel, presel
   const [paidFrom, setPaidFrom] = useState('');
   const [postingDate, setPostingDate] = useState(new Date().toISOString().slice(0, 10));
   const [referenceNo, setReferenceNo] = useState('');
+  const [referenceDate, setReferenceDate] = useState(new Date().toISOString().slice(0, 10));
   const [remarks, setRemarks] = useState('');
   const [openInvoices, setOpenInvoices] = useState([]);
   const [selected, setSelected] = useState({});
@@ -31,6 +32,11 @@ export default function CreateSupplierPaymentPanel({ onSuccess, onCancel, presel
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const [allocationHint, setAllocationHint] = useState(null);
+
+  const selectedAccount = useMemo(() => accounts.find((a) => a.name === paidFrom) || null, [accounts, paidFrom]);
+  const accountType = selectedAccount?.account_type || '';
+  const isBankPayment = accountType === 'Bank';
+  const isCashPayment = accountType === 'Cash';
 
   useEffect(() => {
     getCompanies({ limit: 1 }).then((r) => setCompany(r?.data?.data?.[0]?.name || ''));
@@ -95,6 +101,18 @@ export default function CreateSupplierPaymentPanel({ onSuccess, onCancel, presel
   const onSubmit = async (e) => {
     e.preventDefault();
     setErr('');
+
+    if (isBankPayment) {
+      if (!String(referenceNo || '').trim()) {
+        setErr('Reference No is required for Bank payments.');
+        return;
+      }
+      if (!String(referenceDate || '').trim()) {
+        setErr('Reference Date is required for Bank payments.');
+        return;
+      }
+    }
+
     const allocations = Object.entries(selected)
       .filter(([, on]) => on)
       .map(([invoice, ]) => ({
@@ -116,6 +134,7 @@ export default function CreateSupplierPaymentPanel({ onSuccess, onCancel, presel
         paid_from: paidFrom,
         posting_date: postingDate,
         reference_no: referenceNo,
+        reference_date: isBankPayment ? referenceDate : undefined,
         remarks,
         allocations,
       });
@@ -165,6 +184,9 @@ export default function CreateSupplierPaymentPanel({ onSuccess, onCancel, presel
               </option>
             ))}
           </select>
+          {isBankPayment && (
+            <span className="inv-hint">Bank payments require transfer/cheque reference and date.</span>
+          )}
         </label>
         <label>
           Posting date
@@ -177,12 +199,25 @@ export default function CreateSupplierPaymentPanel({ onSuccess, onCancel, presel
           />
         </label>
         <label>
-          Reference no.
+          Reference no.{isBankPayment ? ' *' : ''}
           <input
             className="input"
             value={referenceNo}
             onChange={(e) => setReferenceNo(e.target.value)}
             placeholder="Cheque / transfer ref"
+            required={isBankPayment}
+          />
+        </label>
+        <label>
+          Reference date{isBankPayment ? ' *' : ''}
+          <input
+            className="input"
+            type="date"
+            value={referenceDate}
+            onChange={(e) => setReferenceDate(e.target.value)}
+            required={isBankPayment}
+            disabled={isCashPayment}
+            title={isCashPayment ? 'Optional for Cash payments' : 'Required for Bank payments'}
           />
         </label>
       </div>

@@ -22,6 +22,7 @@ ROLE_PROFILES = {
 		"Stock Manager",
 		"Purchase Manager",
 		"Sales Manager",
+		"POS Manager",
 	],
 	"Elmahdi Accountant": ["Accounts User", "Accounts Manager"],
 }
