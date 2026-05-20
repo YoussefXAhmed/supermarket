@@ -201,6 +201,14 @@ export default function App() {
               )}
             />
             <Route
+              path="accounting/matching"
+              element={(
+                <CapabilityRoute cap="canAccessInvoiceMatching">
+                  <LazyPage><InvoiceMatchingPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
               path="accounting/payments"
               element={(
                 <CapabilityRoute cap="canViewSupplierPayments">

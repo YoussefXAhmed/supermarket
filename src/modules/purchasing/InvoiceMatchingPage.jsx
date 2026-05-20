@@ -27,6 +27,7 @@ export default function InvoiceMatchingPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [linking, setLinking] = useState('');
+  const [creating, setCreating] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
   const load = useCallback(async () => {
@@ -92,11 +93,32 @@ export default function InvoiceMatchingPage() {
     }
   };
 
+  const applyWorkspaceUpdate = (result) => {
+    const ws = result?.workspace;
+    const receipt = result?.receipt || ws?.receipt;
+    if (ws && receipt) {
+      setRows((prev) => prev.map((r) => (r.receipt === receipt ? ws : r)));
+    } else if (receipt) {
+      refreshReceipt(receipt);
+    } else {
+      load();
+    }
+  };
+
+  const handleInvoiceCreated = async (result) => {
+    setCreating(result?.receipt || '');
+    try {
+      applyWorkspaceUpdate(result);
+    } finally {
+      setCreating('');
+    }
+  };
+
   return (
     <TablePageLayout className="page-layout--list-page invoice-matching-page">
       <PageHeader
         title="Invoice matching"
-        subtitle="Link submitted purchase receipts to draft supplier invoices — validated on ERP"
+        subtitle="Approved receipts become submitted payables automatically — pay in Finance"
         dense
         actions={
           <Btn variant="ghost" size="sm" onClick={load}>
@@ -107,10 +129,10 @@ export default function InvoiceMatchingPage() {
       <PartialDataBanner warnings={warnings} />
 
       <div className="ap-workflow-banner" role="note">
-        <strong>Operational flow:</strong> (1) Receive stock → Purchase Receipt · (2) Match supplier
-        invoice here · (3){' '}
-        <Link to="/admin/accounting/payments">Pay supplier</Link> via ERP Payment Entry. Billing %
-        and paid % come from ERP only.
+        <strong>Operational flow:</strong> (1) Receive stock → Purchase Receipt · (2) Store manager
+        approves → ERP creates and submits Purchase Invoice automatically · (3){' '}
+        <Link to="/admin/accounting/payments">Record payment</Link> in Finance. Use this page only
+        for variance, partial billing, or retry when auto-payable failed.
       </div>
 
       <div className="invoice-matching-filters" role="tablist" aria-label="Billing status filter">
@@ -158,8 +180,10 @@ export default function InvoiceMatchingPage() {
                 key={row.receipt}
                 row={row}
                 linking={linking}
+                creating={creating}
                 onLink={handleLink}
                 onRefreshLine={refreshReceipt}
+                onInvoiceCreated={handleInvoiceCreated}
               />
             ))}
           </div>

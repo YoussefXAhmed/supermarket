@@ -19,6 +19,7 @@ import {
   validateSourceInvoiceEligible,
 } from '../utils/returnsValidation';
 import { logActivity, ActivityType } from './activityLogService';
+import { invalidateStockCache } from '../utils/stockCache';
 
 const AUDIT_PREFIX = 'Elmahdi-Return-Audit';
 
@@ -353,6 +354,13 @@ export async function approveAndSubmitReturn({
       erp_grand_total: submitted.grand_total,
       approved_by: approver,
     },
+  });
+
+  // ERP submit reverses stock — refresh POS/inventory immediately.
+  invalidateStockCache({
+    source: 'return',
+    name: submitted.name,
+    return_against: submitted.return_against,
   });
 
   return {

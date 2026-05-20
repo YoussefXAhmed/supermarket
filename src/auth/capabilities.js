@@ -60,6 +60,7 @@ export const PURCHASING_ACCOUNTANT_APPROVE_ROLES = new Set([
 export const SHIFT_APPROVE_ROLES = new Set([
   'accounts manager',
   'accounts user',
+  'store manager',
   'sales manager',
   'stock manager',
   'purchase manager',
@@ -156,6 +157,13 @@ function finalizeCapabilities(caps) {
   if (c.canManageSystem) {
     c.canManageSupplierPayments = true;
   }
+
+  c.canAccessInvoiceMatching = Boolean(
+    c.canAccessInvoiceMatching ||
+      c.canAccessPurchasing ||
+      c.canAccessAccountantWorkspace ||
+      c.canManageSystem,
+  );
 
   return c;
 }

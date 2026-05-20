@@ -424,6 +424,20 @@ def create_purchase_receipt_workflow(
             frappe.flags.elmahdi_purchase_approval_submit = False
             frappe.flags.ignore_permissions = False
 
+        if submitted:
+            try:
+                from elmahdi.api.invoice_matching import auto_create_and_submit_purchase_invoice_for_receipt
+
+                auto_create_and_submit_purchase_invoice_for_receipt(
+                    doc.name,
+                    ignore_permissions=True,
+                )
+            except Exception:
+                frappe.log_error(
+                    message=frappe.get_traceback(),
+                    title=f"Auto PI after low-variance PR {doc.name}",
+                )
+
     return {
         "name": doc.name,
         "docstatus": doc.docstatus,
@@ -595,11 +609,30 @@ def approve_purchase_receipt(name, action="approve", notes=""):
     if _has_custom_field("approval_status"):
         frappe.db.set_value("Purchase Receipt", doc.name, "approval_status", STATUS_SUBMITTED, update_modified=False)
 
+    pi_result = {}
+    try:
+        from elmahdi.api.invoice_matching import auto_create_and_submit_purchase_invoice_for_receipt
+
+        pi_result = auto_create_and_submit_purchase_invoice_for_receipt(
+            doc.name,
+            ignore_permissions=True,
+        )
+    except Exception as exc:
+        frappe.log_error(
+            message=frappe.get_traceback(),
+            title=f"Auto PI after PR approval {doc.name}",
+        )
+        pi_result = {"error": str(exc)[:200]}
+
     return {
         "name": doc.name,
         "status": STATUS_SUBMITTED,
         "approval_status": STATUS_SUBMITTED,
         "docstatus": doc.docstatus,
+        "purchase_invoice": pi_result.get("name"),
+        "purchase_invoice_outstanding": pi_result.get("outstanding_amount"),
+        "purchase_invoice_auto": not pi_result.get("skipped", True) and not pi_result.get("error"),
+        "purchase_invoice_message": pi_result.get("message") or pi_result.get("error"),
     }
 
 

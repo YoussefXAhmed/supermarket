@@ -7,10 +7,11 @@ from __future__ import annotations
 
 import json
 from datetime import date, datetime
+from typing import Optional
 
 import frappe
 from frappe import _
-from frappe.utils import flt, now_datetime
+from frappe.utils import cint, flt, now_datetime
 
 # Billing statuses returned to SPA (display mapping lives in frontend billingStatus.js)
 BILLING_UNBILLED = "unbilled"
@@ -356,21 +357,54 @@ def _build_receipt_workspace_row(pr_doc, limit_suggestions: int = 5) -> dict:
 		ln["remaining_qty"] > QTY_EPSILON for ln in billing["lines"]
 	)
 
-	ap_stage = "payment_pending"
-	if not linked:
+	submitted_invoices = [i for i in linked if i.get("docstatus") == 1]
+	primary_invoice = submitted_invoices[0] if submitted_invoices else None
+	is_exceptional = bool(
+		billing["has_variance"]
+		or billing["billing_status"] in (BILLING_PARTIALLY_BILLED, BILLING_OVERBILLED)
+	)
+	can_retry_auto_invoice = bool(
+		pr_doc.docstatus == 1
+		and not primary_invoice
+		and not is_exceptional
+		and billing["billing_status"] not in (BILLING_FULLY_BILLED, BILLING_OVERBILLED)
+	)
+	auto_invoiced = bool(primary_invoice) and not is_exceptional
+
+	ap_stage = "invoice_pending"
+	if primary_invoice:
+		pay = primary_invoice.get("payment_status") or ""
+		if pay == "paid":
+			ap_stage = "settled"
+		elif pay == "partially_paid":
+			ap_stage = "partially_paid"
+		else:
+			ap_stage = "payment_pending"
+	elif not linked and pr_doc.docstatus == 1:
 		ap_stage = "invoice_pending"
-	elif all((i.get("payment_status") == "paid") for i in linked):
-		ap_stage = "settled"
-	elif any((i.get("payment_status") in ("unpaid", "overdue", "partially_paid")) for i in linked):
-		ap_stage = "payment_pending"
 
 	lifecycle_hint = (
-		"Goods received — create or link a supplier purchase invoice."
+		"Approved — supplier payable is created automatically after manager approval."
+		if ap_stage == "invoice_pending" and pr_doc.docstatus == 1
+		else "Goods received — awaiting manager approval and automatic payable creation."
 		if ap_stage == "invoice_pending"
-		else "Invoice linked — record supplier payment in Finance → Supplier payments."
+		else "Supplier bill submitted — record payment in Finance → Supplier payments."
 		if ap_stage == "payment_pending"
+		else "Partial supplier payment recorded — remaining balance in Finance → Supplier payments."
+		if ap_stage == "partially_paid"
 		else "Receipt billed and supplier invoices paid."
 	)
+
+	can_create_pi = frappe.has_permission("Purchase Invoice", "create")
+	has_draft_for_receipt = False
+	draft_invoice_name = None
+	can_create_invoice = (
+		is_exceptional
+		and can_link
+		and can_create_pi
+		and billing["billing_status"] not in (BILLING_FULLY_BILLED, BILLING_OVERBILLED)
+	)
+	can_link = bool(is_exceptional and can_link)
 
 	return {
 		"receipt": pr_doc.name,
@@ -390,8 +424,18 @@ def _build_receipt_workspace_row(pr_doc, limit_suggestions: int = 5) -> dict:
 		"suggested_invoices": suggestions,
 		"audit_events": events[-20:],
 		"can_link": can_link,
+		"can_create_invoice": can_create_invoice,
+		"has_draft_invoice": has_draft_for_receipt,
+		"draft_invoice": draft_invoice_name,
+		"can_create_pi_permission": can_create_pi,
 		"ap_stage": ap_stage,
 		"lifecycle_hint": lifecycle_hint,
+		"auto_invoiced": auto_invoiced,
+		"show_manual_billing": is_exceptional,
+		"can_retry_auto_invoice": can_retry_auto_invoice,
+		"primary_invoice": primary_invoice.get("name") if primary_invoice else None,
+		"primary_invoice_outstanding": flt(primary_invoice.get("outstanding_amount")) if primary_invoice else 0,
+		"primary_invoice_payment_status": primary_invoice.get("payment_status") if primary_invoice else "",
 	}
 
 
@@ -668,3 +712,288 @@ def get_receipt_matching_detail(receipt_name):
 	"""Single receipt workspace row (after link or for expand)."""
 	pr = _validate_receipt_for_matching(receipt_name)
 	return _build_receipt_workspace_row(pr)
+
+
+def _draft_invoice_name_for_receipt(receipt_name: str) -> Optional[str]:
+	row = frappe.db.sql(
+		"""
+		SELECT DISTINCT pi.name
+		FROM `tabPurchase Invoice` pi
+		INNER JOIN `tabPurchase Invoice Item` pii ON pii.parent = pi.name
+		WHERE pii.purchase_receipt = %s AND pi.docstatus = 0
+		ORDER BY pi.modified DESC
+		LIMIT 1
+		""",
+		receipt_name,
+	)
+	return row[0][0] if row else None
+
+
+def _receipt_action_state(workspace: dict) -> str:
+	stage = workspace.get("ap_stage")
+	if stage == "settled":
+		return "settled"
+	if stage == "partially_paid":
+		return "partially_paid"
+	if stage == "payment_pending":
+		return "payment_pending"
+	if workspace.get("billing_status") in (BILLING_FULLY_BILLED, BILLING_OVERBILLED):
+		return "fully_billed"
+	if workspace.get("show_manual_billing") and workspace.get("can_create_invoice"):
+		return "exceptional"
+	if workspace.get("show_manual_billing"):
+		return "exceptional_review"
+	return "invoice_pending"
+
+
+def _submitted_invoice_name_for_receipt(receipt_name: str) -> Optional[str]:
+	row = frappe.db.sql(
+		"""
+		SELECT DISTINCT pi.name
+		FROM `tabPurchase Invoice` pi
+		INNER JOIN `tabPurchase Invoice Item` pii ON pii.parent = pi.name
+		WHERE pii.purchase_receipt = %s AND pi.docstatus = 1
+		ORDER BY pi.modified DESC
+		LIMIT 1
+		""",
+		receipt_name,
+	)
+	return row[0][0] if row else None
+
+
+def auto_create_and_submit_purchase_invoice_for_receipt(
+	receipt_name: str,
+	*,
+	ignore_permissions: bool = False,
+) -> dict:
+	"""
+	Post-approval payable creation: ERPNext make_purchase_invoice → insert → submit.
+	Idempotent when a submitted PI already exists for this receipt.
+	"""
+	if not frappe.db.exists("Purchase Receipt", receipt_name):
+		frappe.throw(_("Purchase Receipt {0} not found.").format(receipt_name), frappe.DoesNotExistError)
+
+	pr = frappe.get_doc("Purchase Receipt", receipt_name)
+	if pr.docstatus != 1:
+		return {"skipped": True, "reason": "receipt_not_submitted", "receipt": receipt_name}
+
+	existing = _submitted_invoice_name_for_receipt(receipt_name)
+	if existing:
+		pi = frappe.get_doc("Purchase Invoice", existing)
+		return {
+			"skipped": True,
+			"reason": "already_invoiced",
+			"name": existing,
+			"docstatus": pi.docstatus,
+			"outstanding_amount": flt(pi.outstanding_amount),
+			"receipt": receipt_name,
+		}
+
+	prev_ignore = frappe.flags.ignore_permissions
+	if ignore_permissions:
+		frappe.flags.ignore_permissions = True
+
+	try:
+		draft_name = _draft_invoice_name_for_receipt(receipt_name)
+		if draft_name:
+			frappe.delete_doc("Purchase Invoice", draft_name, force=1)
+
+		pi = _make_pi_from_receipt(receipt_name)
+		pi.insert()
+		invoice_name = pi.name
+		_append_matching_audit(
+			receipt_name,
+			{
+				"action": "invoice_auto_created",
+				"invoice": invoice_name,
+				"from_receipt": receipt_name,
+			},
+		)
+		pi.submit()
+		_append_matching_audit(
+			receipt_name,
+			{"action": "invoice_auto_submitted", "invoice": invoice_name},
+		)
+
+		frappe.db.commit()
+		pi.reload()
+		pr.reload()
+		workspace = _build_receipt_workspace_row(pr)
+
+		return {
+			"skipped": False,
+			"name": invoice_name,
+			"submitted": True,
+			"docstatus": pi.docstatus,
+			"grand_total": flt(pi.grand_total),
+			"outstanding_amount": flt(pi.outstanding_amount),
+			"billed_pct": workspace.get("billed_pct"),
+			"per_billed": workspace.get("per_billed"),
+			"receipt": receipt_name,
+			"workspace": workspace,
+			"message": _("Purchase Invoice {0} created and submitted.").format(invoice_name),
+		}
+	except frappe.ValidationError:
+		raise
+	except Exception as exc:
+		frappe.log_error(message=frappe.get_traceback(), title="auto_create_and_submit_purchase_invoice")
+		frappe.throw(
+			_("Could not create payable from receipt: {0}").format(str(exc)[:200]),
+			frappe.ValidationError,
+		)
+	finally:
+		frappe.flags.ignore_permissions = prev_ignore
+
+
+def _serialize_receipt_for_billing(pr_doc) -> dict:
+	"""Row shape for Purchase Invoices → From receipt tab."""
+	ws = _build_receipt_workspace_row(pr_doc, limit_suggestions=0)
+	action_state = _receipt_action_state(ws)
+	return {
+		"receipt": ws["receipt"],
+		"supplier": ws["supplier"],
+		"company": ws["company"],
+		"posting_date": ws["posting_date"],
+		"grand_total": ws["grand_total"],
+		"billed_amount": ws["billed_amount"],
+		"remaining_amount": ws["remaining_amount"],
+		"billed_pct": ws["billed_pct"],
+		"per_billed": ws["per_billed"],
+		"billing_status": ws["billing_status"],
+		"can_create_invoice": action_state == "exceptional",
+		"has_draft_invoice": False,
+		"draft_invoice": None,
+		"action_state": action_state,
+		"action_label": {
+			"payment_pending": _("Pending payment"),
+			"partially_paid": _("Partially paid"),
+			"settled": _("Settled"),
+			"fully_billed": _("Fully billed"),
+			"exceptional": _("Manual billing required"),
+			"exceptional_review": _("Exception — review billing"),
+			"invoice_pending": _("Awaiting payable"),
+		}.get(action_state, action_state),
+		"auto_invoiced": ws.get("auto_invoiced"),
+		"show_manual_billing": ws.get("show_manual_billing"),
+		"primary_invoice": ws.get("primary_invoice"),
+		"primary_invoice_outstanding": ws.get("primary_invoice_outstanding"),
+	}
+
+
+def _make_pi_from_receipt(receipt_name: str):
+	"""ERPNext official mapper — buying module path (stock path is legacy alias)."""
+	last_error = None
+	for import_path in (
+		"erpnext.buying.doctype.purchase_receipt.purchase_receipt",
+		"erpnext.stock.doctype.purchase_receipt.purchase_receipt",
+	):
+		try:
+			module = frappe.get_module(import_path)
+			make_fn = getattr(module, "make_purchase_invoice", None)
+			if make_fn:
+				return make_fn(receipt_name)
+		except Exception as exc:
+			last_error = exc
+	frappe.throw(
+		_("Could not load ERPNext purchase invoice mapper: {0}").format(last_error or "unknown"),
+		frappe.ValidationError,
+	)
+
+
+@frappe.whitelist()
+def get_receipts_ready_for_billing(company=None, supplier=None, limit=50):
+	"""Submitted purchase receipts with billing eligibility for the From receipt tab."""
+	frappe.has_permission("Purchase Receipt", "read", throw=True)
+	limit = int(limit or 50)
+	company = company or frappe.defaults.get_user_default("Company")
+	filters = {"docstatus": 1}
+	if company:
+		filters["company"] = company
+	if supplier:
+		filters["supplier"] = supplier
+
+	receipts = frappe.get_all(
+		"Purchase Receipt",
+		filters=filters,
+		fields=["name"],
+		order_by="posting_date desc",
+		limit_page_length=limit,
+	)
+	rows = [
+		_serialize_receipt_for_billing(frappe.get_doc("Purchase Receipt", row.name))
+		for row in receipts
+	]
+	return [r for r in rows if r.get("show_manual_billing")]
+
+
+@frappe.whitelist()
+def list_receipts_pending_invoice(company=None, supplier=None, limit=50):
+	"""Backward-compatible alias for get_receipts_ready_for_billing."""
+	return get_receipts_ready_for_billing(company=company, supplier=supplier, limit=limit)
+
+
+@frappe.whitelist()
+def retry_auto_payable_for_receipt(receipt_name):
+	"""Retry payable creation when auto-invoice failed after approval."""
+	return auto_create_and_submit_purchase_invoice_for_receipt(receipt_name)
+
+
+@frappe.whitelist()
+def create_purchase_invoice_from_receipt(receipt_name, submit=0):
+	"""Manual billing for exceptional cases; normal receipts use auto_create on approval."""
+	pr = _validate_receipt_for_matching(receipt_name)
+	frappe.has_permission("Purchase Invoice", "create", throw=True)
+	ws_before = _build_receipt_workspace_row(pr)
+
+	if not ws_before.get("show_manual_billing"):
+		return auto_create_and_submit_purchase_invoice_for_receipt(receipt_name)
+
+	if ws_before["billing_status"] in (BILLING_FULLY_BILLED, BILLING_OVERBILLED):
+		frappe.throw(
+			_("Purchase Receipt {0} is already fully billed.").format(receipt_name),
+			frappe.ValidationError,
+		)
+
+	if _submitted_invoice_name_for_receipt(receipt_name):
+		frappe.throw(
+			_("A submitted purchase invoice already exists for this receipt."),
+			frappe.ValidationError,
+		)
+
+	pi = _make_pi_from_receipt(receipt_name)
+	pi.insert()
+	invoice_name = pi.name
+	_append_matching_audit(
+		receipt_name,
+		{"action": "invoice_created_manual", "invoice": invoice_name, "from_receipt": receipt_name},
+	)
+
+	submitted = False
+	if cint(submit):
+		pi.submit()
+		submitted = True
+		_append_matching_audit(
+			receipt_name,
+			{"action": "invoice_submitted", "invoice": invoice_name},
+		)
+
+	frappe.db.commit()
+	pi.reload()
+	pr.reload()
+	workspace = _build_receipt_workspace_row(pr)
+	return {
+		"name": invoice_name,
+		"submitted": submitted,
+		"docstatus": pi.docstatus,
+		"grand_total": flt(pi.grand_total),
+		"outstanding_amount": flt(pi.outstanding_amount),
+		"billed_pct": workspace.get("billed_pct"),
+		"per_billed": workspace.get("per_billed"),
+		"receipt": receipt_name,
+		"workspace": workspace,
+		"message": (
+			_("Purchase Invoice {0} submitted successfully.").format(invoice_name)
+			if submitted
+			else _("Purchase Invoice {0} created (submit in ERP).").format(invoice_name)
+		),
+	}

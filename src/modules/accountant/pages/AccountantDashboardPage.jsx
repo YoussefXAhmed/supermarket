@@ -6,6 +6,7 @@ import { useApprovalQueues } from '../../approvals/hooks/useApprovalQueues';
 import { RoleBadge } from '../../../components/ui';
 
 const LINKS = [
+  { to: '/admin/accounting/matching', label: 'Invoice matching', desc: 'Create bills from receipts', icon: '🧾', cap: 'canAccessInvoiceMatching' },
   { to: '/admin/accounting/payments', label: 'Supplier payments', desc: 'AP, aging, ERP Payment Entry', icon: '💳', cap: 'canViewSupplierPayments' },
   { to: '/admin/approvals', label: 'Approvals hub', desc: 'Purchases, shifts, variance, history', icon: '✓' },
   { to: '/admin/invoices', label: 'Sales invoices', desc: 'Customer sales invoices', icon: '🧾', cap: 'canViewInvoices' },

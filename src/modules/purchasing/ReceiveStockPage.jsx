@@ -231,8 +231,8 @@ export default function ReceiveStockPage() {
             </select>
           </label>
           <p className="page-header__sub" style={{ marginBottom: 12 }}>
-            Link receipts to purchase invoices on the{' '}
-            <Link to="/admin/purchasing/matching">Invoice matching</Link> page (draft invoice required).
+            After manager approval, supplier payables are created automatically. Use{' '}
+            <Link to="/admin/purchasing/matching">Invoice matching</Link> only for variance or partial billing.
           </p>
 
           {approvalPreview.requiresApproval && (

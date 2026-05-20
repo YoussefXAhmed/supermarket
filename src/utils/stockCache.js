@@ -7,6 +7,7 @@ export const STOCK_INVALIDATE_EVENT = 'elmahdi:stock-invalidate';
 
 const SOURCE_TO_REASON = {
   pos_checkout: OperationalRefreshReason.CHECKOUT,
+  return: OperationalRefreshReason.CHECKOUT,
   purchase_receipt: OperationalRefreshReason.PURCHASE_RECEIPT,
   purchase_approval: OperationalRefreshReason.PURCHASE_APPROVAL,
   stock_entry: OperationalRefreshReason.STOCK_ENTRY,

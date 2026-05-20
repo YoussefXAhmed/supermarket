@@ -69,6 +69,7 @@ const ACCOUNTANT = {
   canAccessAccountantWorkspace: true,
   canViewSupplierPayments: true,
   canManageSupplierPayments: true,
+  canAccessInvoiceMatching: true,
   canAccessPurchasing: false,
   canViewInvoices: true,
   canViewPOS: false,

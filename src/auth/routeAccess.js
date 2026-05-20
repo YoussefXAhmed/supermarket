@@ -22,6 +22,7 @@ export const ROUTE_ACCESS = [
   { prefix: '/admin/purchasing/receive', anyOf: ['canAccessPurchasing'] },
   { prefix: '/admin/purchasing', anyOf: ['canAccessPurchasing', 'canManageSystem'] },
   { prefix: '/admin/approvals', anyOf: ['canViewApprovalsDashboard'] },
+  { prefix: '/admin/accounting/matching', anyOf: ['canAccessInvoiceMatching', 'canManageSystem'] },
   { prefix: '/admin/accounting/payments', anyOf: ['canViewSupplierPayments', 'canManageSystem'] },
   { prefix: '/admin/accounting', anyOf: ['canAccessAccountantWorkspace', 'canManageSystem'] },
   { prefix: '/admin/products', anyOf: ['canManageSystem'] },

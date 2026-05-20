@@ -252,6 +252,9 @@ export function normalizeERPError(error) {
 /**
  * User-friendly message for UI (never exposes stack traces).
  */
+const PI_FROM_RECEIPT_RE =
+  /draft purchase invoice|already exists for this receipt|already fully billed|could not create purchase invoice|could not be submitted|purchase invoice mapper/i;
+
 export function getUserFriendlyMessage(error, fallback = FALLBACK_ERROR_MESSAGE) {
   const info = extractERPError(error);
   if (info.isInvalidShiftSession || error?.isInvalidShiftSession) {
@@ -263,7 +266,17 @@ export function getUserFriendlyMessage(error, fallback = FALLBACK_ERROR_MESSAGE)
       hint: error?.stockHint || '',
     });
   }
-  return info.message || fallback;
+  if (info.isPermissionError) {
+    return PERMISSION_ERROR_MESSAGE;
+  }
+  const msg = info.message || fallback;
+  if (PI_FROM_RECEIPT_RE.test(msg)) {
+    return msg.replace(/^frappe\.exceptions\.\w+:\s*/i, '').trim();
+  }
+  if (/Traceback|File ".*\.py"/i.test(msg)) {
+    return 'ERP could not complete this purchase invoice action. Check the receipt and try again.';
+  }
+  return msg;
 }
 
 /**

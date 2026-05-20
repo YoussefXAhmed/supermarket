@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { fmtCurrency } from '../../utils/format';
 import {
   ApiErrorCard,
   Btn,
@@ -24,6 +25,7 @@ export default function PurchaseApprovalsPage() {
   const [error, setError] = useState('');
   const [actionId, setActionId] = useState('');
   const [actionError, setActionError] = useState('');
+  const [approveSuccess, setApproveSuccess] = useState(null);
   const [notes, setNotes] = useState('');
 
   const load = useCallback(async () => {
@@ -48,7 +50,8 @@ export default function PurchaseApprovalsPage() {
     setActionId(name);
     setActionError('');
     try {
-      await approvePurchaseReceipt(name, { notes });
+      const result = await approvePurchaseReceipt(name, { notes });
+      setApproveSuccess(result);
       setNotes('');
       await load();
     } catch (e) {
@@ -97,6 +100,23 @@ export default function PurchaseApprovalsPage() {
             placeholder="Reason or reference"
           />
         </label>
+        {approveSuccess?.purchase_invoice && (
+          <div className="inv-success" role="status">
+            Receipt submitted. Payable{' '}
+            <span className="mono">{approveSuccess.purchase_invoice}</span>
+            {approveSuccess.purchase_invoice_outstanding != null && (
+              <> · {fmtCurrency(approveSuccess.purchase_invoice_outstanding)} outstanding</>
+            )}
+            .{' '}
+            <Link to="/admin/accounting/payments">Record payment →</Link>
+          </div>
+        )}
+        {approveSuccess && !approveSuccess.purchase_invoice && approveSuccess.purchase_invoice_message && (
+          <p className="inv-error" role="alert">
+            Receipt approved but payable was not created: {approveSuccess.purchase_invoice_message}. Check{' '}
+            <Link to="/admin/purchasing/matching">Invoice matching</Link> to retry.
+          </p>
+        )}
         {loading && <PageLoading />}
         {!loading && error && <ApiErrorCard title="Could not load approvals" message={error} />}
         {!loading && actionError && (

@@ -127,6 +127,16 @@ export async function approvePurchaseReceipt(name, { notes = '' } = {}) {
     detail: { name, status: result?.status },
   });
   invalidateStockCache({ source: 'purchase_approval', name });
+  dispatchOperationalRefresh(OperationalRefreshReason.PURCHASE_RECEIPT, {
+    name,
+    action: 'approve',
+    purchase_invoice: result?.purchase_invoice,
+  });
+  dispatchOperationalRefresh(OperationalRefreshReason.PURCHASE_INVOICE, {
+    receipt: name,
+    invoice: result?.purchase_invoice,
+    action: 'auto_after_approval',
+  });
   return result;
 }
 

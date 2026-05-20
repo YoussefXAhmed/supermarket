@@ -71,6 +71,11 @@
   margin-right: 0.5rem;
 }
 
+.receipt-matching-card__lifecycle,
+.ap-lifecycle-pill {
+  color: var(--text-2);
+}
+
 .receipt-matching-card__lifecycle {
   font-size: 0.875rem;
   margin: 0 0 0.75rem;

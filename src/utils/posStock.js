@@ -38,8 +38,10 @@ export function firstCartAlternateHint(cart, binsByItem, posWarehouse) {
 
 export function availableQty(item) {
   if (item?.is_stock_item === 0 || item?.is_stock_item === false) return null;
-  if (item.available_qty === undefined || item.available_qty === null) return null;
-  return Math.max(0, Number(item.available_qty) || 0);
+  // Supermarket POS: physical sellable stock only (Bin.actual_qty), no reservation math.
+  // We keep reserved_qty for debug display, but do not subtract it for POS.
+  if (item.actual_qty === undefined || item.actual_qty === null) return null;
+  return Math.max(0, Number(item.actual_qty) || 0);
 }
 
 export function validateCartStock(cart, posWarehouse = '', binsByItem = null) {
@@ -67,7 +69,7 @@ export function validateLineStock(item, requestedQty, posWarehouse = '', binsEls
       item_code: item.item_code,
       item_name: item.item_name,
       type: 'out',
-      message: alt || (wh ? `Out of stock in ${wh}` : 'Out of stock'),
+      message: alt || (wh ? `No physical stock in ${wh}` : 'No physical stock'),
       available: 0,
     };
   }
@@ -94,7 +96,7 @@ export function canAddToCart(item, currentQtyInCart = 0, posWarehouse = '') {
     return {
       ok: false,
       reason: 'out',
-      message: wh ? `${label} is out of stock in ${wh}` : `${label} is out of stock`,
+      message: wh ? `${label} has no physical stock in ${wh}` : `${label} has no physical stock`,
     };
   }
   if (currentQtyInCart + 1 > avail) {

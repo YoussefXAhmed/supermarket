@@ -48,7 +48,8 @@ export function payStatusTone(status) {
 }
 
 export const AP_STAGE_LABELS = {
-  invoice_pending: 'Invoice pending',
+  invoice_pending: 'Payable pending',
   payment_pending: 'Payment pending',
+  partially_paid: 'Partially paid',
   settled: 'Settled',
 };

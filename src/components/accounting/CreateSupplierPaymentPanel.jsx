@@ -10,8 +10,12 @@ import {
 import { listSuppliers } from '../../services/purchasingApi';
 import { getCompanies } from '../../services/api';
 import { getUserFriendlyMessage } from '../../utils/errorHandling';
+import { useAuth } from '../../hooks/useAuth';
+import { invoiceMatchingPath } from '../../utils/workspacePaths';
 
 export default function CreateSupplierPaymentPanel({ onSuccess, onCancel, preselectSupplier = '' }) {
+  const { capabilities } = useAuth();
+  const matchingTo = invoiceMatchingPath(capabilities);
   const [company, setCompany] = useState('');
   const [supplier, setSupplier] = useState(preselectSupplier);
   const [suppliers, setSuppliers] = useState([]);
@@ -203,18 +207,12 @@ export default function CreateSupplierPaymentPanel({ onSuccess, onCancel, presel
           <p className="page-header__sub">
             No submitted purchase invoices with an outstanding balance for this supplier.
           </p>
-          {allocationHint?.unbilled_receipt_count > 0 && (
+          {allocationHint?.awaiting_payable_count > 0 && (
             <p className="page-header__sub">
-              {allocationHint.unbilled_receipt_count} purchase receipt(s) are received but not fully
-              billed. Open{' '}
-              <a href="/admin/purchasing/matching">Invoice matching</a>, create a supplier bill from
-              the receipt, and <strong>submit</strong> it in ERP — then return here to pay.
-            </p>
-          )}
-          {allocationHint?.draft_invoice_count > 0 && (
-            <p className="page-header__sub">
-              {allocationHint.draft_invoice_count} draft purchase invoice(s) exist — submit them in
-              ERP before payment can be allocated.
+              {allocationHint.awaiting_payable_count} approved receipt(s) are waiting for a
+              submitted payable (auto-created on manager approval). Check{' '}
+              <a href={matchingTo}>Invoice matching</a> and use <strong>Retry create payable</strong>{' '}
+              if needed.
             </p>
           )}
           {allocationHint?.paid_invoice_count > 0 && (
@@ -226,8 +224,7 @@ export default function CreateSupplierPaymentPanel({ onSuccess, onCancel, presel
               .
             </p>
           )}
-          {!allocationHint?.unbilled_receipt_count &&
-            !allocationHint?.draft_invoice_count &&
+          {!allocationHint?.awaiting_payable_count &&
             !allocationHint?.paid_invoice_count &&
             !allocationHint?.invoice_count && (
               <p className="page-header__sub">

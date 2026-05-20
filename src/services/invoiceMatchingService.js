@@ -1,5 +1,6 @@
 import api from './api';
 import { logActivity, ActivityType } from './activityLogService';
+import { dispatchOperationalRefresh, OperationalRefreshReason } from './operationalRefresh';
 
 const BASE = '/api/method/elmahdi.api.invoice_matching';
 
@@ -63,6 +64,66 @@ export async function linkReceiptToInvoice(receiptName, invoiceName, lines = nul
       invoice: invoiceName,
       lines: result?.linked_lines?.length ?? 0,
     },
+  });
+  return result;
+}
+
+export function getReceiptsReadyForBilling({ company, supplier, limit = 50 } = {}) {
+  return callGet('get_receipts_ready_for_billing', {
+    company: company || undefined,
+    supplier: supplier || undefined,
+    limit,
+  });
+}
+
+/** @deprecated Use getReceiptsReadyForBilling */
+export function listReceiptsPendingInvoice(params = {}) {
+  return getReceiptsReadyForBilling(params);
+}
+
+export async function retryAutoPayableForReceipt(receiptName) {
+  const result = await callPost('retry_auto_payable_for_receipt', {
+    receipt_name: receiptName,
+  });
+  logActivity({
+    type: ActivityType.PURCHASE,
+    action: 'Retry auto payable',
+    detail: { receipt: receiptName, invoice: result?.name },
+  });
+  dispatchOperationalRefresh(OperationalRefreshReason.PURCHASE_INVOICE, {
+    receipt: receiptName,
+    invoice: result?.name,
+    action: 'retry_auto_payable',
+    submitted: result?.submitted,
+  });
+  dispatchOperationalRefresh(OperationalRefreshReason.PURCHASE_RECEIPT, {
+    receipt: receiptName,
+    invoice: result?.name,
+    action: 'retry_auto_payable',
+  });
+  return result;
+}
+
+export async function createPurchaseInvoiceFromReceipt(receiptName, { submit = false } = {}) {
+  const result = await callPost('create_purchase_invoice_from_receipt', {
+    receipt_name: receiptName,
+    submit: submit ? 1 : 0,
+  });
+  logActivity({
+    type: ActivityType.PURCHASE,
+    action: submit ? 'Purchase invoice created and submitted' : 'Purchase invoice created from receipt',
+    detail: { receipt: receiptName, invoice: result?.name },
+  });
+  dispatchOperationalRefresh(OperationalRefreshReason.PURCHASE_INVOICE, {
+    receipt: receiptName,
+    invoice: result?.name,
+    action: 'create_invoice',
+    submitted: result?.submitted,
+  });
+  dispatchOperationalRefresh(OperationalRefreshReason.PURCHASE_RECEIPT, {
+    receipt: receiptName,
+    invoice: result?.name,
+    action: 'create_invoice',
   });
   return result;
 }

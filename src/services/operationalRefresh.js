@@ -7,6 +7,7 @@ export const OperationalRefreshReason = {
   PURCHASE_APPROVAL: 'purchase_approval',
   STOCK_ENTRY: 'stock_entry',
   PURCHASE_RECEIPT: 'purchase_receipt',
+  PURCHASE_INVOICE: 'purchase_invoice',
   INVENTORY: 'inventory',
 };
 

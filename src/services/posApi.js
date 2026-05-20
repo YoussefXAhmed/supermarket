@@ -243,17 +243,21 @@ async function attachStock(items, warehouse) {
   const codes = items.map((i) => i.item_code).filter(Boolean);
   if (!codes.length || !warehouse) return items;
   try {
-    const { fetchWarehouseStock, availableFromStockRow } = await import('./stockService');
+    const { fetchWarehouseStock } = await import('./stockService');
     const stockMap = await fetchWarehouseStock(warehouse, codes);
     return items.map((item) => {
       const isStock = item.is_stock_item !== 0;
       const row = stockMap[item.item_code];
-      const available_qty = isStock ? availableFromStockRow(row) : null;
+      const actual_qty = isStock ? Number(row?.actual_qty ?? 0) : null;
+      const reserved_qty = isStock ? Number(row?.reserved_qty ?? 0) : null;
+      // Supermarket POS: displayed availability = physical stock only (actual_qty).
+      const available_qty = isStock ? Math.max(0, Number(row?.actual_qty ?? 0)) : null;
       return {
         ...item,
         available_qty,
-        actual_qty: row?.actual_qty ?? 0,
-        reserved_qty: row?.reserved_qty ?? 0,
+        actual_qty: actual_qty ?? 0,
+        reserved_qty: reserved_qty ?? 0,
+        displayed_qty: available_qty,
         is_stock_item: isStock,
         pos_warehouse: warehouse,
       };
@@ -264,9 +268,9 @@ async function attachStock(items, warehouse) {
 }
 
 export async function refreshItemStock(itemCode, warehouse) {
-  const { fetchWarehouseStock, availableFromStockRow } = await import('./stockService');
+  const { fetchWarehouseStock } = await import('./stockService');
   const stockMap = await fetchWarehouseStock(warehouse, [itemCode]);
-  return availableFromStockRow(stockMap[itemCode]);
+  return Math.max(0, Number(stockMap?.[itemCode]?.actual_qty ?? 0));
 }
 
 /** Bins with stock for cart items (all warehouses) — POS alternate-warehouse hints. */

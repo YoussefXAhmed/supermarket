@@ -10,6 +10,7 @@ import {
 import { getCompanies, getItems } from '../../services/api';
 import { createAndSubmitPurchaseInvoice, listPurchaseInvoices, listSuppliers } from '../../services/purchasingApi';
 import { getUserFriendlyMessage } from '../../utils/errorHandling';
+import CreateInvoiceFromReceiptPanel from '../../components/purchasing/CreateInvoiceFromReceiptPanel';
 
 const fmt = (n) =>
   new Intl.NumberFormat('en-EG', { style: 'currency', currency: 'EGP' }).format(n || 0);
@@ -121,6 +122,13 @@ export default function PurchaseInvoicesPage() {
           >
             New invoice
           </button>
+          <button
+            type="button"
+            className={`pos-view-toggle__btn ${tab === 'from-receipt' ? 'pos-view-toggle__btn--active' : ''}`}
+            onClick={() => setTab('from-receipt')}
+          >
+            Exceptional billing
+          </button>
         </div>
       </LayoutSection>
 
@@ -134,6 +142,10 @@ export default function PurchaseInvoicesPage() {
             </TableRegion>
           </LayoutSection>
         )
+      ) : tab === 'from-receipt' ? (
+        <LayoutSection variant="raised" title="Exceptional billing">
+          <CreateInvoiceFromReceiptPanel onSuccess={() => loadList()} />
+        </LayoutSection>
       ) : (
         <LayoutSection variant="raised" title="New purchase invoice">
           <form className="inv-form form-region" onSubmit={onSubmit}>

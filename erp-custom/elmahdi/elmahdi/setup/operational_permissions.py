@@ -26,8 +26,8 @@ PERM_MATRIX: dict[str, dict[str, dict[str, int]]] = {
 	"Purchase User": {
 		"Purchase Receipt": {"read": 1, "write": 1, "create": 1, "submit": 0, "cancel": 0},
 		"Purchase Receipt Item": {"read": 1, "write": 1, "create": 1, "submit": 0},
-		"Purchase Invoice": {"read": 1, "write": 0, "create": 0, "submit": 0},
-		"Purchase Invoice Item": {"read": 1, "write": 0, "create": 0, "submit": 0},
+		"Purchase Invoice": {"read": 1, "write": 1, "create": 1, "submit": 1, "cancel": 0},
+		"Purchase Invoice Item": {"read": 1, "write": 1, "create": 1, "submit": 0},
 		"Bin": {"read": 1, "write": 0, "create": 0, "submit": 0},
 		"Payment Entry": {"read": 0, "write": 0, "create": 0, "submit": 0},
 		"Stock Entry": {"read": 1, "write": 0, "create": 0, "submit": 0},
@@ -54,6 +54,18 @@ PERM_MATRIX: dict[str, dict[str, dict[str, int]]] = {
 		"POS Invoice": {"read": 1, "write": 0, "create": 0, "submit": 0},
 		"Sales Invoice": {"read": 1, "write": 0, "create": 0, "submit": 0},
 		"Payment Entry": {"read": 0, "write": 0, "create": 0, "submit": 0},
+	},
+	# Optional role for sites that use a dedicated "Store Manager" role
+	# instead of inheriting Sales/Stock/Purchase Manager roles via Role Profile.
+	"Store Manager": {
+		"POS Opening Entry": {"read": 1, "write": 0, "create": 0, "submit": 0, "cancel": 0},
+		"POS Closing Entry": {"read": 1, "write": 1, "create": 0, "submit": 1, "cancel": 1},
+		"Purchase Receipt": {"read": 1, "write": 1, "create": 1, "submit": 1, "cancel": 1},
+		"Purchase Receipt Item": {"read": 1, "write": 1, "create": 1, "submit": 0},
+		"Bin": {"read": 1, "write": 0, "create": 0, "submit": 0},
+		"Warehouse": {"read": 1, "write": 0, "create": 0, "submit": 0},
+		"POS Invoice": {"read": 1, "write": 0, "create": 0, "submit": 0},
+		"Sales Invoice": {"read": 1, "write": 0, "create": 0, "submit": 0},
 	},
 	"Stock Manager": {
 		"POS Opening Entry": {"read": 1, "write": 0, "create": 0, "submit": 0, "cancel": 0},
@@ -88,9 +100,9 @@ PERM_MATRIX: dict[str, dict[str, dict[str, int]]] = {
 		"POS Closing Entry": {"read": 1, "write": 1, "create": 0, "submit": 1, "cancel": 0},
 		"Purchase Receipt": {"read": 1, "write": 1, "create": 0, "submit": 1, "cancel": 0},
 		"Purchase Receipt Item": {"read": 1, "write": 0, "create": 0, "submit": 0},
-		"Purchase Invoice Item": {"read": 1, "write": 0, "create": 0, "submit": 0},
+		"Purchase Invoice Item": {"read": 1, "write": 1, "create": 1, "submit": 0},
 		"Payment Entry": {"read": 1, "write": 1, "create": 1, "submit": 1, "cancel": 1},
-		"Purchase Invoice": {"read": 1, "write": 0, "create": 0, "submit": 0},
+		"Purchase Invoice": {"read": 1, "write": 1, "create": 1, "submit": 1, "cancel": 1},
 		"Sales Invoice": {"read": 1, "write": 0, "create": 0, "submit": 0},
 		"POS Invoice": {"read": 1, "write": 0, "create": 0, "submit": 0},
 		"Item Price": {"read": 1, "write": 0, "create": 0, "submit": 0},

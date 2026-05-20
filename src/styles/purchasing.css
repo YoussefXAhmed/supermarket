@@ -241,11 +241,198 @@
   padding: 1rem;
 }
 
-.receipt-matching-card {
-  border: 1px solid var(--border, #e2e8f0);
-  border-radius: 8px;
+/* ── From receipt / matching cards (dark theme) ── */
+.pi-from-receipt__intro,
+.pi-from-receipt__summary,
+.pi-from-receipt__empty {
+  color: var(--text-2);
+  font-size: 0.875rem;
+  margin-bottom: 0.75rem;
+}
+
+.pi-from-receipt__intro a,
+.pi-from-receipt__summary a {
+  color: var(--accent);
+}
+
+.pi-from-receipt__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  align-items: flex-end;
+}
+
+.pi-from-receipt__submit-flag {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+
+.pi-from-receipt__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.pi-from-receipt__row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.75rem 1.25rem;
   padding: 1rem;
-  background: var(--surface, #fff);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-3);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.pi-from-receipt__main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.pi-from-receipt__id {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 1rem;
+}
+
+.pi-from-receipt__receipt {
+  font-weight: 700;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.pi-from-receipt__supplier,
+.pi-from-receipt__date {
+  color: var(--text-2);
+  font-size: 0.85rem;
+}
+
+.pi-from-receipt__amounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  grid-column: 1 / -1;
+}
+
+.pi-from-receipt__label {
+  display: block;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-3);
+  margin-bottom: 0.15rem;
+}
+
+.pi-from-receipt__amounts strong {
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.pi-from-receipt__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  justify-content: flex-end;
+}
+
+.pi-from-receipt__state {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  width: fit-content;
+}
+
+.pi-from-receipt__state--ready {
+  background: var(--green-bg);
+  color: var(--green);
+}
+
+.pi-from-receipt__state--draft_exists {
+  background: var(--amber-bg);
+  color: var(--amber);
+}
+
+.pi-from-receipt__state--fully_billed {
+  background: var(--bg-4);
+  color: var(--text-2);
+}
+
+.pi-from-receipt__state--no_permission {
+  background: var(--red-bg);
+  color: var(--red);
+}
+
+.pi-from-receipt__status-msg {
+  font-size: 0.85rem;
+  color: var(--text-2);
+}
+
+.pi-from-receipt__status-msg--warn {
+  color: var(--amber);
+}
+
+.pi-from-receipt__success {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border-radius: var(--radius);
+  background: var(--green-bg);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+}
+
+.pi-from-receipt__success-title {
+  font-weight: 700;
+  color: var(--green);
+  margin-bottom: 0.35rem;
+}
+
+.pi-from-receipt__success-detail {
+  color: var(--text);
+  font-size: 0.875rem;
+  margin-bottom: 0.75rem;
+}
+
+.pi-from-receipt__success-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.receipt-matching-card__create {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  margin: 0.75rem 0;
+  padding: 0.75rem;
+  border-radius: var(--radius-sm);
+  background: var(--bg-4);
+  border: 1px dashed var(--border-light);
+}
+
+.receipt-matching-card__create .page-header__sub {
+  color: var(--text-2);
+}
+
+.receipt-matching-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  background: var(--bg-3);
+  color: var(--text);
+  box-shadow: var(--shadow);
 }
 
 .receipt-matching-card__head {
@@ -276,9 +463,44 @@
 
 .receipt-matching-card__label {
   display: block;
-  font-size: 0.75rem;
-  color: var(--text-muted, #64748b);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-3);
   margin-bottom: 0.15rem;
+}
+
+.receipt-matching-card__supplier,
+.receipt-matching-card__date {
+  color: var(--text-2);
+}
+
+.receipt-matching-card__amounts strong {
+  color: var(--text);
+}
+
+.receipt-matching-card__history li {
+  color: var(--text-2);
+}
+
+.receipt-matching-card__draft-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+.receipt-matching-card__lifecycle {
+  color: var(--text-2);
+}
+
+.receipt-matching-card__lifecycle a {
+  color: var(--accent);
+}
+
+.invoice-matching-list {
+  background: transparent;
 }
 
 .receipt-matching-card__history ul {

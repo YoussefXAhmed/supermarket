@@ -32,6 +32,7 @@ def _can_approve_shift() -> bool:
 		& {
 			"Accounts Manager",
 			"Accounts User",
+			"Store Manager",
 			"Sales Manager",
 			"Stock Manager",
 			"Purchase Manager",
@@ -71,7 +72,7 @@ def _primary_approval_role() -> str:
 	roles = _user_roles()
 	if roles & {"Accounts Manager", "Accounts User"}:
 		return "accountant"
-	if roles & {"Sales Manager", "Stock Manager", "Purchase Manager"}:
+	if roles & {"Store Manager", "Sales Manager", "Stock Manager", "Purchase Manager"}:
 		return "manager"
 	return "admin"
 

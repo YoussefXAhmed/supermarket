@@ -27,6 +27,8 @@ const NAV_FULL = [
 
 const NAV_ACCOUNTANT = [
   { to: '/admin/accounting', label: 'Finance', icon: '💼', exact: true, cap: 'canAccessAccountantWorkspace' },
+  { to: '/admin/accounting/matching', label: 'Invoice matching', icon: '🧾', cap: 'canAccessInvoiceMatching' },
+  { to: '/admin/accounting/payments', label: 'Supplier payments', icon: '💳', cap: 'canViewSupplierPayments' },
   { to: '/admin/approvals', label: 'Approvals', icon: '✓', cap: 'canViewApprovalsDashboard' },
   { to: '/admin/invoices', label: 'Invoices', icon: '🧾', cap: 'canViewInvoices' },
   { to: '/admin/reports', label: 'Reports', icon: '📊', cap: 'canViewReports' },

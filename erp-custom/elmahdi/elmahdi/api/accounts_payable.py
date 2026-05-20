@@ -384,19 +384,23 @@ def get_supplier_ap_summary(supplier, company=None):
 		limit_page_length=25,
 	)
 
-	draft_invoice_count = frappe.db.count(
-		"Purchase Invoice",
-		{"supplier": supplier, "company": company, "docstatus": 0},
-	)
-	unbilled_receipt_count = frappe.db.count(
-		"Purchase Receipt",
-		{
-			"docstatus": 1,
-			"supplier": supplier,
-			"company": company,
-			"per_billed": ("<", 100),
-		},
-	)
+	awaiting_payable_count = frappe.db.sql(
+		"""
+		SELECT COUNT(DISTINCT pr.name)
+		FROM `tabPurchase Receipt` pr
+		WHERE pr.docstatus = 1
+			AND pr.supplier = %s
+			AND pr.company = %s
+			AND IFNULL(pr.per_billed, 0) < 99.99
+			AND NOT EXISTS (
+				SELECT 1
+				FROM `tabPurchase Invoice Item` pii
+				INNER JOIN `tabPurchase Invoice` pi ON pi.name = pii.parent
+				WHERE pii.purchase_receipt = pr.name AND pi.docstatus = 1
+			)
+		""",
+		(supplier, company),
+	)[0][0]
 	paid_invoice_count = len([i for i in invoices if flt(i["outstanding_amount"]) <= 0.009])
 	paid_invoice_names = [
 		i["name"] for i in invoices if flt(i["outstanding_amount"]) <= 0.009
@@ -409,10 +413,9 @@ def get_supplier_ap_summary(supplier, company=None):
 		"overdue_amount": overdue,
 		"invoice_count": len(invoices),
 		"open_invoice_count": len([i for i in invoices if flt(i["outstanding_amount"]) > 0.009]),
-		"draft_invoice_count": draft_invoice_count,
+		"awaiting_payable_count": int(awaiting_payable_count or 0),
 		"paid_invoice_count": paid_invoice_count,
 		"paid_invoice_names": paid_invoice_names,
-		"unbilled_receipt_count": unbilled_receipt_count,
 		"last_payment": last_payment[0] if last_payment else None,
 		"recent_payments": payments,
 		"aging": _aging_buckets(invoices),

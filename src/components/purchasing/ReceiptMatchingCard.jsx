@@ -7,19 +7,64 @@ import InvoiceMatchSelector from './InvoiceMatchSelector';
 import { fmtCurrency } from '../../utils/format';
 import { canLinkReceipt, normalizeBillingStatus, BILLING_STATUS } from '../../utils/billingStatus';
 import { AP_STAGE_LABELS } from '../../utils/apPaymentStatus';
+import {
+  createPurchaseInvoiceFromReceipt,
+  retryAutoPayableForReceipt,
+} from '../../services/invoiceMatchingService';
+import { getUserFriendlyMessage } from '../../utils/errorHandling';
+import { openERPDesk } from '../../utils/erpLinks';
 
 export default function ReceiptMatchingCard({
   row,
   linking,
+  creating,
   onLink,
   onRefreshLine,
+  onInvoiceCreated,
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [localErr, setLocalErr] = useState('');
+  const [retrying, setRetrying] = useState(false);
   const status = normalizeBillingStatus(row.billing_status);
-  const linkable = canLinkReceipt(row);
+  const exceptional = Boolean(row.show_manual_billing);
+  const linkable = exceptional && canLinkReceipt(row);
+  const showPaymentActions =
+    row.auto_invoiced ||
+    row.ap_stage === 'payment_pending' ||
+    row.ap_stage === 'partially_paid' ||
+    Boolean(row.primary_invoice);
 
   const handleLink = async (invoiceName) => {
     await onLink(row.receipt, invoiceName);
+  };
+
+  const handleCreatePayable = async () => {
+    setLocalErr('');
+    try {
+      const result = await createPurchaseInvoiceFromReceipt(row.receipt, { submit: true });
+      onInvoiceCreated?.({ workspace: result.workspace, receipt: row.receipt, result });
+      if (!result?.workspace) {
+        await onRefreshLine?.(row.receipt);
+      }
+    } catch (e) {
+      setLocalErr(getUserFriendlyMessage(e));
+    }
+  };
+
+  const handleRetryAutoPayable = async () => {
+    setLocalErr('');
+    setRetrying(true);
+    try {
+      const result = await retryAutoPayableForReceipt(row.receipt);
+      onInvoiceCreated?.({ workspace: result.workspace, receipt: row.receipt, result });
+      if (!result?.workspace) {
+        await onRefreshLine?.(row.receipt);
+      }
+    } catch (e) {
+      setLocalErr(getUserFriendlyMessage(e));
+    } finally {
+      setRetrying(false);
+    }
   };
 
   return (
@@ -35,9 +80,11 @@ export default function ReceiptMatchingCard({
 
       {row.ap_stage && (
         <p className="receipt-matching-card__lifecycle" role="status">
-          <span className="ap-lifecycle-pill">{AP_STAGE_LABELS[row.ap_stage] || row.ap_stage}</span>
+          <span className={`ap-lifecycle-pill ap-lifecycle-pill--${row.ap_stage}`}>
+            {AP_STAGE_LABELS[row.ap_stage] || row.ap_stage}
+          </span>
           {row.lifecycle_hint}
-          {row.ap_stage === 'payment_pending' && (
+          {(row.ap_stage === 'payment_pending' || row.ap_stage === 'partially_paid') && (
             <>
               {' '}
               <Link to="/admin/accounting/payments">Record payment →</Link>
@@ -65,6 +112,29 @@ export default function ReceiptMatchingCard({
         </div>
       </div>
 
+      {showPaymentActions && row.primary_invoice && (
+        <div className="receipt-matching-card__payable">
+          <span className="receipt-matching-card__label">Supplier bill (ERP)</span>
+          <div className="receipt-matching-card__payable-row">
+            <button
+              type="button"
+              className="mono receipt-matching-card__invoice-link"
+              onClick={() => openERPDesk(`purchase-invoice/${row.primary_invoice}`)}
+            >
+              {row.primary_invoice}
+            </button>
+            {row.primary_invoice_payment_status && (
+              <ApPaymentStatusPill status={row.primary_invoice_payment_status} />
+            )}
+            {row.primary_invoice_outstanding > 0.009 && (
+              <span className="receipt-matching-card__outstanding">
+                {fmtCurrency(row.primary_invoice_outstanding)} outstanding
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       {row.linked_invoices?.length > 0 && (
         <div className="receipt-matching-card__history">
           <span className="receipt-matching-card__label">Linked invoices</span>
@@ -74,15 +144,10 @@ export default function ReceiptMatchingCard({
                 <span className="mono">{inv.name}</span>
                 <span>
                   {fmtCurrency(inv.grand_total)} · {inv.posting_date}
-                  {inv.docstatus === 0 ? ' (draft)' : ''}
+                  {inv.docstatus === 1 ? ' · Submitted' : ''}
                 </span>
                 {inv.payment_status && (
                   <ApPaymentStatusPill status={inv.payment_status} paidPct={inv.paid_pct} />
-                )}
-                {inv.outstanding_amount > 0 && (
-                  <span className="receipt-matching-card__outstanding">
-                    {fmtCurrency(inv.outstanding_amount)} outstanding
-                  </span>
                 )}
               </li>
             ))}
@@ -92,12 +157,45 @@ export default function ReceiptMatchingCard({
 
       {status === BILLING_STATUS.VARIANCE_DETECTED && (
         <p className="receipt-matching-card__warn" role="status">
-          Rate variance detected between receipt and linked invoice lines. Review in ERP before
-          submitting the invoice.
+          Rate variance — use manual line matching below or review in ERP.
         </p>
       )}
 
-      {linkable && (
+      {localErr && <p className="inv-error">{localErr}</p>}
+
+      {row.can_retry_auto_invoice && (
+        <div className="receipt-matching-card__create">
+          <Btn
+            variant="primary"
+            size="sm"
+            loading={retrying}
+            onClick={handleRetryAutoPayable}
+          >
+            Retry create payable
+          </Btn>
+          <span className="page-header__sub">
+            Payable auto-creation failed after approval — retry or contact support.
+          </span>
+        </div>
+      )}
+
+      {exceptional && row.can_create_invoice && (
+        <div className="receipt-matching-card__create">
+          <Btn
+            variant="primary"
+            size="sm"
+            loading={creating === row.receipt}
+            onClick={handleCreatePayable}
+          >
+            Create &amp; submit invoice (exceptional)
+          </Btn>
+          <span className="page-header__sub">
+            Exceptional billing only — normal receipts are invoiced automatically on approval.
+          </span>
+        </div>
+      )}
+
+      {exceptional && linkable && (
         <InvoiceMatchSelector
           receiptName={row.receipt}
           suggested={row.suggested_invoices}
@@ -151,20 +249,6 @@ export default function ReceiptMatchingCard({
             ))}
           </tbody>
         </table>
-      )}
-
-      {expanded && row.audit_events?.length > 0 && (
-        <details className="receipt-matching-card__audit">
-          <summary>Matching audit ({row.audit_events.length})</summary>
-          <ul>
-            {[...row.audit_events].reverse().map((ev, i) => (
-              <li key={`${ev.at}-${i}`}>
-                <span className="mono">{ev.action}</span> — {ev.invoice || '—'} by {ev.user} at{' '}
-                {ev.at}
-              </li>
-            ))}
-          </ul>
-        </details>
       )}
     </article>
   );
