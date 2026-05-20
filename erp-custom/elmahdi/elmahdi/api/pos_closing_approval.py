@@ -26,6 +26,14 @@ def _is_break_glass() -> bool:
 def _can_approve_shift() -> bool:
 	if _is_break_glass():
 		return True
+	# Prefer DocPerm truth: if ERP says user can submit POS Closing Entry,
+	# allow approval even if roles differ across sites.
+	try:
+		if frappe.has_permission("POS Closing Entry", "submit"):
+			return True
+	except Exception:
+		# Fall back to role-based checks only
+		pass
 	roles = _user_roles()
 	return bool(
 		roles
