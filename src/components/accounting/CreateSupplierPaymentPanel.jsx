@@ -3,6 +3,7 @@ import { Btn } from '../ui';
 import { fmtCurrency } from '../../utils/format';
 import {
   createSupplierPayment,
+  fetchSupplierApSummary,
   listApInvoices,
   listPaymentAccounts,
 } from '../../services/accountsPayableService';
@@ -25,6 +26,7 @@ export default function CreateSupplierPaymentPanel({ onSuccess, onCancel, presel
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
+  const [allocationHint, setAllocationHint] = useState(null);
 
   useEffect(() => {
     getCompanies({ limit: 1 }).then((r) => setCompany(r?.data?.data?.[0]?.name || ''));
@@ -42,13 +44,18 @@ export default function CreateSupplierPaymentPanel({ onSuccess, onCancel, presel
   useEffect(() => {
     if (!supplier || !company) {
       setOpenInvoices([]);
+      setAllocationHint(null);
       return;
     }
     setLoading(true);
-    listApInvoices({ supplier, company, status: 'all', limit: 100 })
-      .then((rows) => {
+    Promise.all([
+      listApInvoices({ supplier, company, status: 'all', limit: 100 }),
+      fetchSupplierApSummary(supplier, company),
+    ])
+      .then(([rows, summary]) => {
         const open = (rows || []).filter((r) => Number(r.outstanding_amount) > 0.009);
         setOpenInvoices(open);
+        setAllocationHint(summary);
         const sel = {};
         const amt = {};
         open.forEach((inv) => {
@@ -58,6 +65,7 @@ export default function CreateSupplierPaymentPanel({ onSuccess, onCancel, presel
         setSelected(sel);
         setAmounts(amt);
       })
+      .catch(() => setAllocationHint(null))
       .finally(() => setLoading(false));
   }, [supplier, company]);
 
@@ -191,7 +199,42 @@ export default function CreateSupplierPaymentPanel({ onSuccess, onCancel, presel
       ) : !supplier ? (
         <p className="page-header__sub">Select a supplier to see unpaid invoices.</p>
       ) : openInvoices.length === 0 ? (
-        <p className="page-header__sub">No outstanding invoices for this supplier.</p>
+        <div className="ap-payment-form__empty-invoices">
+          <p className="page-header__sub">
+            No submitted purchase invoices with an outstanding balance for this supplier.
+          </p>
+          {allocationHint?.unbilled_receipt_count > 0 && (
+            <p className="page-header__sub">
+              {allocationHint.unbilled_receipt_count} purchase receipt(s) are received but not fully
+              billed. Open{' '}
+              <a href="/admin/purchasing/matching">Invoice matching</a>, create a supplier bill from
+              the receipt, and <strong>submit</strong> it in ERP — then return here to pay.
+            </p>
+          )}
+          {allocationHint?.draft_invoice_count > 0 && (
+            <p className="page-header__sub">
+              {allocationHint.draft_invoice_count} draft purchase invoice(s) exist — submit them in
+              ERP before payment can be allocated.
+            </p>
+          )}
+          {allocationHint?.paid_invoice_count > 0 && (
+            <p className="page-header__sub">
+              {allocationHint.paid_invoice_count} submitted invoice(s) are already fully paid
+              {allocationHint.paid_invoice_names?.length
+                ? ` (e.g. ${allocationHint.paid_invoice_names.join(', ')})`
+                : ''}
+              .
+            </p>
+          )}
+          {!allocationHint?.unbilled_receipt_count &&
+            !allocationHint?.draft_invoice_count &&
+            !allocationHint?.paid_invoice_count &&
+            !allocationHint?.invoice_count && (
+              <p className="page-header__sub">
+                No purchase invoices exist for this supplier yet.
+              </p>
+            )}
+        </div>
       ) : (
         <ul className="ap-payment-form__invoice-list">
           {openInvoices.map((inv) => (

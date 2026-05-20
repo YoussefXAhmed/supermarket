@@ -384,13 +384,35 @@ def get_supplier_ap_summary(supplier, company=None):
 		limit_page_length=25,
 	)
 
+	draft_invoice_count = frappe.db.count(
+		"Purchase Invoice",
+		{"supplier": supplier, "company": company, "docstatus": 0},
+	)
+	unbilled_receipt_count = frappe.db.count(
+		"Purchase Receipt",
+		{
+			"docstatus": 1,
+			"supplier": supplier,
+			"company": company,
+			"per_billed": ("<", 100),
+		},
+	)
+	paid_invoice_count = len([i for i in invoices if flt(i["outstanding_amount"]) <= 0.009])
+	paid_invoice_names = [
+		i["name"] for i in invoices if flt(i["outstanding_amount"]) <= 0.009
+	][:5]
+
 	return {
 		"supplier": supplier,
 		"company": company,
 		"outstanding": outstanding,
 		"overdue_amount": overdue,
 		"invoice_count": len(invoices),
-		"open_invoice_count": len([i for i in invoices if flt(i["outstanding_amount"]) > 0]),
+		"open_invoice_count": len([i for i in invoices if flt(i["outstanding_amount"]) > 0.009]),
+		"draft_invoice_count": draft_invoice_count,
+		"paid_invoice_count": paid_invoice_count,
+		"paid_invoice_names": paid_invoice_names,
+		"unbilled_receipt_count": unbilled_receipt_count,
 		"last_payment": last_payment[0] if last_payment else None,
 		"recent_payments": payments,
 		"aging": _aging_buckets(invoices),
