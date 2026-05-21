@@ -1,6 +1,9 @@
+import { useTranslation } from 'react-i18next';
+
 const fmt = (n) => Number(n || 0).toFixed(2);
 
 export default function POSPaymentPanel({ paymentModes, total, value, onChange, disabled }) {
+  const { t } = useTranslation();
   const modes = paymentModes?.length ? paymentModes : [{ name: 'Cash' }, { name: 'Card' }];
   const cashName = modes.find((m) => /cash/i.test(m.name))?.name || 'Cash';
   const cardName = modes.find((m) => /card|bank|visa/i.test(m.name))?.name || modes[1]?.name || 'Card';
@@ -14,9 +17,9 @@ export default function POSPaymentPanel({ paymentModes, total, value, onChange, 
     return (
       <div className="pos-payment">
         <div className="pos-payment__tabs">
-          <button type="button" className="pos-payment__tab" disabled={disabled} onClick={() => set({ mode: 'cash', singleMode: cashName })}>Cash</button>
-          <button type="button" className="pos-payment__tab" disabled={disabled} onClick={() => set({ mode: 'card', singleMode: cardName })}>Card</button>
-          <button type="button" className="pos-payment__tab pos-payment__tab--active" disabled={disabled}>Split</button>
+          <button type="button" className="pos-payment__tab" disabled={disabled} onClick={() => set({ mode: 'cash', singleMode: cashName })}>{t('pos.cash')}</button>
+          <button type="button" className="pos-payment__tab" disabled={disabled} onClick={() => set({ mode: 'card', singleMode: cardName })}>{t('pos.card')}</button>
+          <button type="button" className="pos-payment__tab pos-payment__tab--active" disabled={disabled}>{t('pos.split')}</button>
         </div>
         <div className="pos-payment__split">
           <label>
@@ -61,7 +64,7 @@ export default function POSPaymentPanel({ paymentModes, total, value, onChange, 
           disabled={disabled}
           onClick={() => set({ mode: 'cash', singleMode: cashName })}
         >
-          Cash
+          {t('pos.cash')}
         </button>
         <button
           type="button"
@@ -69,7 +72,7 @@ export default function POSPaymentPanel({ paymentModes, total, value, onChange, 
           disabled={disabled}
           onClick={() => set({ mode: 'card', singleMode: cardName })}
         >
-          Card
+          {t('pos.card')}
         </button>
         <button
           type="button"
@@ -83,7 +86,7 @@ export default function POSPaymentPanel({ paymentModes, total, value, onChange, 
             cardMode: cardName,
           })}
         >
-          Split
+          {t('pos.split')}
         </button>
       </div>
       <p className="pos-payment__hint">Pay full amount via {isCard ? cardName : cashName}</p>

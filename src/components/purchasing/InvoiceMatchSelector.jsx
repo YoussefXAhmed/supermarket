@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Btn } from '../ui';
 import { fmtCurrency } from '../../utils/format';
 import { searchMatchableDraftInvoices } from '../../services/invoiceMatchingService';
@@ -10,6 +11,7 @@ export default function InvoiceMatchSelector({
   onSelect,
   linking = false,
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [options, setOptions] = useState([]);
@@ -70,7 +72,7 @@ export default function InvoiceMatchSelector({
     <div className="invoice-match-selector" ref={wrapRef}>
       {suggested?.length > 0 && !selected && (
         <div className="invoice-match-selector__suggestions">
-          <span className="invoice-match-selector__hint">Suggested:</span>
+          <span className="invoice-match-selector__hint">{t('ui.selector.suggested')}:</span>
           {suggested.slice(0, 3).map((s) => (
             <button
               key={s.name}
@@ -80,7 +82,7 @@ export default function InvoiceMatchSelector({
               disabled={disabled || linking}
             >
               {s.name}
-              <span className="invoice-match-selector__chip-score">score {s.match_score}</span>
+              <span className="invoice-match-selector__chip-score">{t('ui.selector.score')} {s.match_score}</span>
             </button>
           ))}
         </div>
@@ -93,7 +95,7 @@ export default function InvoiceMatchSelector({
           onClick={() => !disabled && setOpen((v) => !v)}
           disabled={disabled || linking}
         >
-          {selected || 'Select draft invoice…'}
+          {selected || t('purchasing.matching.selectDraftInvoice')}
         </button>
         <Btn
           variant="primary"
@@ -102,7 +104,7 @@ export default function InvoiceMatchSelector({
           disabled={!selected || disabled}
           onClick={handleLink}
         >
-          Link
+          {t('purchasing.matching.link')}
         </Btn>
       </div>
 
@@ -110,16 +112,16 @@ export default function InvoiceMatchSelector({
         <div className="invoice-match-selector__panel">
           <input
             className="input"
-            placeholder="Search draft PINV…"
+            placeholder={t('purchasing.matching.searchDraftInvoice')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             autoFocus
           />
           {loading ? (
-            <p className="invoice-match-selector__empty">Loading…</p>
+            <p className="invoice-match-selector__empty">{t('ui.loading')}</p>
           ) : merged.length === 0 ? (
             <p className="invoice-match-selector__empty">
-              No draft invoices for this supplier and company.
+              {t('purchasing.matching.noDraftInvoices')}
             </p>
           ) : (
             <ul className="invoice-match-selector__list">
@@ -135,7 +137,7 @@ export default function InvoiceMatchSelector({
                     <span className="mono">{row.name}</span>
                     <span className="invoice-match-selector__option-meta">
                       {fmtCurrency(row.grand_total)} · {row.posting_date}
-                      {row.already_linked ? ' · linked' : ''}
+                      {row.already_linked ? ` · ${t('purchasing.matching.linked')}` : ''}
                     </span>
                   </button>
                 </li>

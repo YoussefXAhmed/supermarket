@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FormPageLayout, LayoutSection } from '../../../components/layout/page-layouts';
 import { ApiErrorCard, Btn, PageHeader } from '../../../components/ui';
 import { getItems } from '../../../services/api';
@@ -15,6 +16,7 @@ const ENTRY_TYPES = [
 ];
 
 export default function StockEntryPage() {
+  const { t } = useTranslation();
   const {
     canInventoryReceipt,
     canInventoryIssueTransfer,
@@ -113,19 +115,19 @@ export default function StockEntryPage() {
 
   return (
     <FormPageLayout>
-      <PageHeader title="Stock Entry" subtitle="Create and submit stock movements" dense />
+      <PageHeader title={t('inventory.stockEntry.title')} subtitle={t('inventory.stockEntry.subtitle')} dense />
 
       <LayoutSection variant="raised" flushHead>
         <form className="inv-form form-region" onSubmit={onSubmit}>
           <label>
-            Entry Type
+            {t('inventory.stockEntry.entryType')}
             <select className="input" value={form.stock_entry_type} onChange={(e) => setForm((f) => ({ ...f, stock_entry_type: e.target.value }))}>
               {allowedTypes.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </label>
 
           <label>
-            Item Code
+            {t('inventory.stockEntry.itemCode')}
             <input
               className="input"
               list="stock-entry-items"
@@ -141,39 +143,39 @@ export default function StockEntryPage() {
           </label>
 
           <label>
-            Quantity
+            {t('inventory.stockEntry.quantity')}
             <input className="input" type="number" min="0.001" step="any" value={form.qty} onChange={(e) => setForm((f) => ({ ...f, qty: e.target.value }))} required />
           </label>
 
           {needsSource && (
             <label>
-              Source Warehouse
+              {t('inventory.stockEntry.sourceWarehouse')}
               <select className="input" value={form.source_warehouse} onChange={(e) => setForm((f) => ({ ...f, source_warehouse: e.target.value }))} required>
-                <option value="">Select source</option>
+                <option value="">{t('inventory.stockEntry.selectSource')}</option>
                 {warehouses.map((w) => <option key={w.name} value={w.name}>{w.warehouse_name || w.name}</option>)}
               </select>
               {sourceAvail != null && (
-                <span className="inv-hint">Available: {sourceAvail.toFixed(2)}</span>
+                <span className="inv-hint">{t('inventory.available')}: {sourceAvail.toFixed(2)}</span>
               )}
             </label>
           )}
 
           {needsTarget && (
             <label>
-              Target Warehouse
+              {t('inventory.stockEntry.targetWarehouse')}
               <select className="input" value={form.target_warehouse} onChange={(e) => setForm((f) => ({ ...f, target_warehouse: e.target.value }))} required>
-                <option value="">Select target</option>
+                <option value="">{t('inventory.stockEntry.selectTarget')}</option>
                 {warehouses.map((w) => <option key={w.name} value={w.name}>{w.warehouse_name || w.name}</option>)}
               </select>
             </label>
           )}
 
           <Btn type="submit" variant="primary" size="md" loading={saving}>
-            Create &amp; Submit
+            {t('inventory.stockEntry.createSubmit')}
           </Btn>
         </form>
         {msg && <p className="inv-success">{msg}</p>}
-        {err && <ApiErrorCard title="Stock entry failed" message={err} />}
+        {err && <ApiErrorCard title={t('inventory.stockEntry.failed')} message={err} />}
       </LayoutSection>
     </FormPageLayout>
   );

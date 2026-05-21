@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Btn, PageHeader, PageLoading, ApiErrorCard } from '../../components/ui';
 import { DashboardLayout, LayoutSection } from '../../components/layout/page-layouts';
 import { getERPDeskUrl } from '../../utils/erpLinks';
@@ -10,6 +11,7 @@ import { useInventoryCapabilities } from '../../hooks/useInventoryCapabilities';
 import { useOperationalRefresh } from '../../services/operationalRefresh';
 
 export default function InventoryPage() {
+  const { t } = useTranslation();
   const { canInventoryViewValuation } = useInventoryCapabilities();
   const [rows, setRows] = useState([]);
   const [metrics, setMetrics] = useState({
@@ -67,10 +69,10 @@ export default function InventoryPage() {
   return (
     <DashboardLayout>
       <PageHeader
-        title="Inventory"
-        subtitle="Stock snapshot from ERPNext"
+        title={t('nav.inventory')}
+        subtitle={t('inventory.subtitle')}
         dense
-        actions={<Btn variant="ghost" size="sm" onClick={() => load()}>Refresh</Btn>}
+        actions={<Btn variant="ghost" size="sm" onClick={() => load()}>{t('common.refresh')}</Btn>}
       />
 
       <InventoryOverviewCards metrics={metrics} showValuation={canInventoryViewValuation} />
@@ -82,21 +84,21 @@ export default function InventoryPage() {
               className="input toolbar__input-md"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search items"
+              placeholder={t('inventory.searchItems')}
             />
             <select
               className="input toolbar__input-fixed"
               value={warehouse}
               onChange={(e) => setWarehouse(e.target.value)}
             >
-              <option value="all">All warehouses</option>
+              <option value="all">{t('inventory.allWarehouses')}</option>
               {warehouseList.map((w) => (
                 <option key={w.name} value={w.name}>{w.warehouse_name || w.name}</option>
               ))}
             </select>
           </div>
           <a className="btn btn--ghost btn--sm" href={getERPDeskUrl('item')} target="_blank" rel="noreferrer">
-            + New item
+            + {t('inventory.newItem')}
           </a>
         </div>
       </LayoutSection>
@@ -106,11 +108,11 @@ export default function InventoryPage() {
       ) : error ? (
         <ApiErrorCard message={error} onRetry={() => load()} />
       ) : filtered.length === 0 ? (
-        <p className="empty-inline">No inventory rows match your filters.</p>
+        <p className="empty-inline">{t('inventory.emptyFiltered')}</p>
       ) : (
         <LayoutSection
-          title="Products"
-          subtitle={`${filtered.length} items`}
+          title={t('nav.products')}
+          subtitle={t('inventory.itemsCount', { count: filtered.length })}
           variant="raised"
           flushHead
         >

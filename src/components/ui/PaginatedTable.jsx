@@ -1,14 +1,18 @@
 import { useMemo, useState, useCallback, memo } from 'react';
+import { useTranslation } from 'react-i18next';
+
 function TableEmpty({ title }) {
+  const { t } = useTranslation();
   return (
     <div className="empty-state">
       <span className="empty-state__icon">📭</span>
-      <p className="empty-state__title">{title}</p>
+      <p className="empty-state__title">{title || t('ui.table.noData')}</p>
     </div>
   );
 }
 
-function PaginatedTableInner({ columns, data = [], pageSize = 25, emptyMsg = 'No data', rowKey, compact = false, className = '' }) {
+function PaginatedTableInner({ columns, data = [], pageSize = 25, emptyMsg, rowKey, compact = false, className = '' }) {
+  const { t } = useTranslation();
   const [page, setPage] = useState(0);
 
   const pageCount = Math.max(1, Math.ceil(data.length / pageSize));
@@ -47,17 +51,21 @@ function PaginatedTableInner({ columns, data = [], pageSize = 25, emptyMsg = 'No
       {data.length > pageSize && (
         <div className="pagination">
           <span>
-            {safePage * pageSize + 1}–{Math.min((safePage + 1) * pageSize, data.length)} of {data.length}
+            {t('ui.pagination.range', {
+              start: safePage * pageSize + 1,
+              end: Math.min((safePage + 1) * pageSize, data.length),
+              total: data.length,
+            })}
           </span>
           <div className="pagination__controls">
             <button type="button" className="btn btn--ghost btn--sm" disabled={safePage === 0} onClick={() => go(safePage - 1)}>
-              Previous
+              {t('ui.pagination.previous')}
             </button>
             <span>
-              Page {safePage + 1} / {pageCount}
+              {t('ui.pagination.page', { page: safePage + 1, pageCount })}
             </span>
             <button type="button" className="btn btn--ghost btn--sm" disabled={safePage >= pageCount - 1} onClick={() => go(safePage + 1)}>
-              Next
+              {t('ui.pagination.next')}
             </button>
           </div>
         </div>

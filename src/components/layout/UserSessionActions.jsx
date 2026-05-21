@@ -1,4 +1,6 @@
 import { UserAvatar } from '../ui';
+import LanguageSwitcher from '../common/LanguageSwitcher';
+import { useTranslation } from 'react-i18next';
 
 export default function UserSessionActions({
   user,
@@ -6,6 +8,7 @@ export default function UserSessionActions({
   links = [],
   compact = false,
 }) {
+  const { t } = useTranslation();
   const name = user?.full_name || user?.name || 'User';
 
   return (
@@ -16,6 +19,7 @@ export default function UserSessionActions({
       </span>
 
       <div className="session-actions__buttons">
+        <LanguageSwitcher className="session-actions__language" />
         {links.map((link) => (
           <button
             key={link.label}
@@ -32,7 +36,7 @@ export default function UserSessionActions({
           className="btn btn--danger btn--sm"
           onClick={onLogout}
         >
-          Log out
+          {t('common.logout')}
         </button>
       </div>
     </div>

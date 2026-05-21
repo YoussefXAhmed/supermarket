@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Btn, Badge } from '../ui';
 
 export default function POSShiftBar({
@@ -12,6 +13,7 @@ export default function POSShiftBar({
   onRefresh,
   readOnly = false,
 }) {
+  const { t } = useTranslation();
   const [showStart, setShowStart] = useState(false);
   const [openingAmount, setOpeningAmount] = useState('0');
   const [openingMode, setOpeningMode] = useState('Cash');
@@ -27,15 +29,15 @@ export default function POSShiftBar({
   return (
     <div className="pos-shift-bar">
       <div className="pos-shift-bar__info">
-        <span className="pos-shift-bar__label">Profile</span>
+        <span className="pos-shift-bar__label">{t('pos.profileLabel')}</span>
         <strong>{profile?.name || '—'}</strong>
         {profile?.warehouse && (
           <span className="pos-shift-bar__entry mono">WH: {profile.warehouse}</span>
         )}
         {shiftOpen ? (
-          <Badge color="green">Shift open</Badge>
+          <Badge color="green">{t('pos.shiftOpen')}</Badge>
         ) : (
-          <Badge color="red">No shift</Badge>
+          <Badge color="red">{t('pos.noShift')}</Badge>
         )}
         {shift?.name && (
           <span className="pos-shift-bar__entry mono">{shift.name}</span>
@@ -45,25 +47,25 @@ export default function POSShiftBar({
       <div className="pos-shift-bar__actions">
         {!readOnly && !shiftOpen && !showStart && (
           <Btn variant="primary" size="sm" loading={shiftLoading} onClick={() => setShowStart(true)}>
-            Start shift
+            {t('pos.startShift')}
           </Btn>
         )}
         {!readOnly && shiftOpen && (
           <Btn variant="danger" size="sm" loading={shiftLoading} onClick={onEndShift}>
-            End shift
+            {t('pos.endShift')}
           </Btn>
         )}
         <Btn variant="ghost" size="sm" onClick={onRefresh} disabled={shiftLoading}>
-          Refresh
+          {t('common.refresh')}
         </Btn>
       </div>
 
       {!readOnly && showStart && !shiftOpen && (
         <div className="pos-shift-bar__form card">
-          <p className="pos-shift-bar__form-title">Opening balance</p>
+          <p className="pos-shift-bar__form-title">{t('pos.openingBalance')}</p>
           <div className="pos-shift-bar__form-row">
             <label>
-              Amount (EGP)
+              {t('pos.openingAmountLabel')}
               <input
                 className="input"
                 type="number"
@@ -74,18 +76,18 @@ export default function POSShiftBar({
               />
             </label>
             <label>
-              Mode
+              {t('pos.modeLabel')}
               <select className="input" value={openingMode} onChange={(e) => setOpeningMode(e.target.value)}>
-                <option value="Cash">Cash</option>
-                <option value="Card">Card</option>
+                <option value="Cash">{t('pos.cash')}</option>
+                <option value="Card">{t('pos.card')}</option>
               </select>
             </label>
           </div>
           <div className="pos-shift-bar__form-actions">
             <Btn variant="primary" size="sm" loading={shiftLoading} onClick={handleStart}>
-              Confirm & open shift
+              {t('pos.confirmOpenShift')}
             </Btn>
-            <Btn variant="ghost" size="sm" onClick={() => setShowStart(false)}>Cancel</Btn>
+            <Btn variant="ghost" size="sm" onClick={() => setShowStart(false)}>{t('common.cancel')}</Btn>
           </div>
         </div>
       )}

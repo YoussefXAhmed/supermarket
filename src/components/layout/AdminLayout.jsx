@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../hooks/useAuth';
 import { hasCapability } from '../../auth/capabilities';
 import UserSessionActions from './UserSessionActions';
@@ -7,40 +8,41 @@ import ErrorBoundary from '../common/ErrorBoundary';
 import { RoleBadge, UserAvatar } from '../ui';
 
 const NAV_FULL = [
-  { to: '/admin', label: 'Dashboard', icon: '◈', exact: true, cap: 'canAccessAdminWorkspace' },
-  { to: '/admin/accounting', label: 'Finance', icon: '💼', cap: 'canAccessAccountantWorkspace' },
-  { to: '/admin/approvals', label: 'Approvals', icon: '✓', cap: 'canViewApprovalsDashboard' },
-  { to: '/admin/products', label: 'Products', icon: '🛒', cap: 'canManageSystem' },
-  { to: '/admin/inventory', label: 'Inventory', icon: '📦', cap: 'canAccessInventory' },
-  { to: '/admin/purchasing', label: 'Purchasing', icon: '🛍️', cap: 'canAccessPurchasing' },
-  { to: '/admin/invoices', label: 'Invoices', icon: '🧾', cap: 'canViewInvoices' },
-  { to: '/admin/returns', label: 'Returns', icon: '↩', cap: 'canViewReturns' },
-  { to: '/admin/shifts/history', label: 'Shifts', icon: '◷', cap: 'canViewShiftReports' },
-  { to: '/admin/customers', label: 'Customers', icon: '👥', cap: 'canViewReports' },
-  { to: '/admin/activity', label: 'Activity', icon: '📋', cap: 'canViewReports' },
-  { to: '/admin/users', label: 'Users', icon: '🧑‍💼', cap: 'canManageUsers' },
-  { to: '/admin/warehouses', label: 'Warehouses', icon: '🏬', cap: 'canManageSystem' },
-  { to: '/admin/reports', label: 'Reports', icon: '📊', cap: 'canViewReports' },
-  { to: '/pos', label: 'POS', icon: '💳', cap: 'canOperatePOS' },
-  { to: '/admin/settings', label: 'Settings', icon: '⚙️', cap: 'canManageSettings' },
+  { to: '/admin', labelKey: 'nav.dashboard', icon: '◈', exact: true, cap: 'canAccessAdminWorkspace' },
+  { to: '/admin/accounting', labelKey: 'nav.finance', icon: '💼', cap: 'canAccessAccountantWorkspace' },
+  { to: '/admin/approvals', labelKey: 'nav.approvals', icon: '✓', cap: 'canViewApprovalsDashboard' },
+  { to: '/admin/products', labelKey: 'nav.products', icon: '🛒', cap: 'canManageSystem' },
+  { to: '/admin/inventory', labelKey: 'nav.inventory', icon: '📦', cap: 'canAccessInventory' },
+  { to: '/admin/purchasing', labelKey: 'nav.purchasing', icon: '🛍️', cap: 'canAccessPurchasing' },
+  { to: '/admin/invoices', labelKey: 'common.invoices', icon: '🧾', cap: 'canViewInvoices' },
+  { to: '/admin/returns', labelKey: 'nav.returns', icon: '↩', cap: 'canViewReturns' },
+  { to: '/admin/shifts/history', labelKey: 'nav.shifts', icon: '◷', cap: 'canViewShiftReports' },
+  { to: '/admin/customers', labelKey: 'nav.customers', icon: '👥', cap: 'canViewReports' },
+  { to: '/admin/activity', labelKey: 'nav.activity', icon: '📋', cap: 'canViewReports' },
+  { to: '/admin/users', labelKey: 'nav.users', icon: '🧑‍💼', cap: 'canManageUsers' },
+  { to: '/admin/warehouses', labelKey: 'nav.warehouses', icon: '🏬', cap: 'canManageSystem' },
+  { to: '/admin/reports', labelKey: 'nav.reports', icon: '📊', cap: 'canViewReports' },
+  { to: '/pos', labelKey: 'common.pos', icon: '💳', cap: 'canOperatePOS' },
+  { to: '/admin/settings', labelKey: 'nav.settings', icon: '⚙️', cap: 'canManageSettings' },
 ];
 
 const NAV_ACCOUNTANT = [
-  { to: '/admin/accounting', label: 'Finance', icon: '💼', exact: true, cap: 'canAccessAccountantWorkspace' },
-  { to: '/admin/accounting/matching', label: 'Invoice matching', icon: '🧾', cap: 'canAccessInvoiceMatching' },
-  { to: '/admin/accounting/payments', label: 'Supplier payments', icon: '💳', cap: 'canViewSupplierPayments' },
-  { to: '/admin/approvals', label: 'Approvals', icon: '✓', cap: 'canViewApprovalsDashboard' },
-  { to: '/admin/invoices', label: 'Invoices', icon: '🧾', cap: 'canViewInvoices' },
-  { to: '/admin/reports', label: 'Reports', icon: '📊', cap: 'canViewReports' },
-  { to: '/admin/shifts/history', label: 'Shifts', icon: '◷', cap: 'canViewShiftReports' },
-  { to: '/admin/purchasing/approvals', label: 'Purchase rates', icon: '🛍️', cap: 'canViewPurchaseApprovals' },
+  { to: '/admin/accounting', labelKey: 'nav.finance', icon: '💼', exact: true, cap: 'canAccessAccountantWorkspace' },
+  { to: '/admin/accounting/matching', labelKey: 'nav.invoiceMatching', icon: '🧾', cap: 'canAccessInvoiceMatching' },
+  { to: '/admin/accounting/payments', labelKey: 'nav.supplierPayments', icon: '💳', cap: 'canViewSupplierPayments' },
+  { to: '/admin/approvals', labelKey: 'nav.approvals', icon: '✓', cap: 'canViewApprovalsDashboard' },
+  { to: '/admin/invoices', labelKey: 'common.invoices', icon: '🧾', cap: 'canViewInvoices' },
+  { to: '/admin/reports', labelKey: 'nav.reports', icon: '📊', cap: 'canViewReports' },
+  { to: '/admin/shifts/history', labelKey: 'nav.shifts', icon: '◷', cap: 'canViewShiftReports' },
+  { to: '/admin/purchasing/approvals', labelKey: 'nav.purchaseRates', icon: '🛍️', cap: 'canViewPurchaseApprovals' },
 ];
 
 const NAV_PURCHASING_WORKSPACE = [
-  { to: '/admin/purchasing', label: 'Purchasing', icon: '🛍️', cap: 'canAccessPurchasing' },
+  { to: '/admin/purchasing', labelKey: 'nav.purchasing', icon: '🛍️', cap: 'canAccessPurchasing' },
 ];
 
 export default function AdminLayout({ purchasingWorkspace = false }) {
+  const { t } = useTranslation();
   const { user, logout, capabilities } = useAuth();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
@@ -65,7 +67,7 @@ export default function AdminLayout({ purchasingWorkspace = false }) {
   }, [purchasingWorkspace, capabilities]);
 
   const profileLink = hasCapability(capabilities, 'canManageSettings')
-    ? [{ label: 'Profile', onClick: () => navigate('/admin/settings') }]
+    ? [{ label: t('nav.settings'), onClick: () => navigate('/admin/settings') }]
     : [];
 
   return (
@@ -97,7 +99,7 @@ export default function AdminLayout({ purchasingWorkspace = false }) {
               className={({ isActive }) => `sidebar__link ${isActive ? 'sidebar__link--active' : ''}`}
             >
               <span className="sidebar__link-icon">{item.icon}</span>
-              {!collapsed && <span className="sidebar__link-label">{item.label}</span>}
+              {!collapsed && <span className="sidebar__link-label">{t(item.labelKey)}</span>}
             </NavLink>
           ))}
         </nav>

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   ApiErrorCard,
   Btn,
@@ -22,14 +23,15 @@ import { getUserFriendlyMessage } from '../../../utils/errorHandling';
 import { PAY_STATUS } from '../../../utils/apPaymentStatus';
 
 const STATUS_TABS = [
-  { id: 'all', label: 'All' },
-  { id: PAY_STATUS.OVERDUE, label: 'Overdue' },
-  { id: PAY_STATUS.UNPAID, label: 'Unpaid' },
-  { id: PAY_STATUS.PARTIALLY_PAID, label: 'Partial' },
-  { id: PAY_STATUS.PAID, label: 'Paid' },
+  { id: 'all', labelKey: 'finance.status.all' },
+  { id: PAY_STATUS.OVERDUE, labelKey: 'finance.status.overdue' },
+  { id: PAY_STATUS.UNPAID, labelKey: 'finance.status.unpaid' },
+  { id: PAY_STATUS.PARTIALLY_PAID, labelKey: 'finance.status.partial' },
+  { id: PAY_STATUS.PAID, labelKey: 'finance.status.paid' },
 ];
 
 export default function SupplierPaymentsPage() {
+  const { t } = useTranslation();
   const [dashboard, setDashboard] = useState(null);
   const [invoices, setInvoices] = useState([]);
   const [payments, setPayments] = useState([]);
@@ -91,16 +93,16 @@ export default function SupplierPaymentsPage() {
   return (
     <TablePageLayout className="ap-payments-page">
       <PageHeader
-        title="Supplier payments"
-        subtitle="Accounts payable — unpaid invoices, aging, and ERPNext Payment Entry"
+        title={t('nav.supplierPayments')}
+        subtitle={t('finance.payments.subtitle')}
         dense
         actions={
           <>
             <Btn variant="ghost" size="sm" onClick={load}>
-              Refresh
+              {t('common.refresh')}
             </Btn>
             <Btn variant="primary" size="sm" onClick={() => setShowPayForm((v) => !v)}>
-              {showPayForm ? 'Close form' : 'New payment'}
+              {showPayForm ? t('finance.payments.closeForm') : t('finance.payments.newPayment')}
             </Btn>
           </>
         }
@@ -117,28 +119,28 @@ export default function SupplierPaymentsPage() {
       {dashboard && (
         <section className="layout-grid layout-grid--kpi" aria-label="AP summary">
           <StatCard
-            label="Outstanding"
+            label={t('finance.outstanding')}
             value={fmtCurrency(dashboard.amounts?.total_outstanding)}
             icon="💳"
             color="amber"
             compact
           />
           <StatCard
-            label="Overdue"
+            label={t('finance.status.overdue')}
             value={fmtCurrency(dashboard.amounts?.overdue_amount)}
             icon="⚠"
             color="red"
             compact
           />
           <StatCard
-            label="Unpaid invoices"
+            label={t('finance.unpaidInvoices')}
             value={dashboard.counts?.unpaid ?? 0}
             icon="📄"
             color="blue"
             compact
           />
           <StatCard
-            label="Overdue count"
+            label={t('finance.overdueCount')}
             value={dashboard.counts?.overdue ?? 0}
             icon="⏰"
             color="red"
@@ -148,10 +150,10 @@ export default function SupplierPaymentsPage() {
       )}
 
       {dashboard?.aging && (
-        <LayoutSection title="Aging (outstanding)" variant="raised">
+        <LayoutSection title={t('finance.agingTitle')} variant="raised">
           <div className="ap-aging-grid">
             <div>
-              <span className="ap-aging-grid__label">Current</span>
+              <span className="ap-aging-grid__label">{t('finance.aging.current')}</span>
               <strong>{fmtCurrency(dashboard.aging.current)}</strong>
             </div>
             <div>
@@ -175,7 +177,7 @@ export default function SupplierPaymentsPage() {
       )}
 
       {showPayForm && (
-        <LayoutSection title="Record supplier payment" variant="raised">
+        <LayoutSection title={t('finance.payments.recordPayment')} variant="raised">
           <CreateSupplierPaymentPanel
             preselectSupplier={supplierFilter}
             onSuccess={onPaymentSuccess}
@@ -186,13 +188,13 @@ export default function SupplierPaymentsPage() {
 
       <div className="ap-payments-toolbar">
         <label>
-          Supplier
+          {t('nav.suppliers')}
           <select
             className="input"
             value={supplierFilter}
             onChange={(e) => setSupplierFilter(e.target.value)}
           >
-            <option value="">All suppliers</option>
+            <option value="">{t('finance.payments.allSuppliers')}</option>
             {suppliers.map((s) => (
               <option key={s.name} value={s.name}>
                 {s.supplier_name || s.name}
@@ -212,7 +214,7 @@ export default function SupplierPaymentsPage() {
               }`}
               onClick={() => setStatusFilter(tab.id)}
             >
-              {tab.label}
+              {t(tab.labelKey)}
               <span className="invoice-matching-filters__count">
                 {tab.id === 'all' ? filteredCounts.all : filteredCounts[tab.id] ?? 0}
               </span>
@@ -225,14 +227,14 @@ export default function SupplierPaymentsPage() {
             size="sm"
             onClick={() => setView('invoices')}
           >
-            Invoices
+            {t('common.invoices')}
           </Btn>
           <Btn
             variant={view === 'history' ? 'primary' : 'ghost'}
             size="sm"
             onClick={() => setView('history')}
           >
-            Payment history
+            {t('finance.payments.history')}
           </Btn>
         </div>
       </div>
@@ -243,20 +245,20 @@ export default function SupplierPaymentsPage() {
         <ApiErrorCard message={error} onRetry={load} />
       ) : view === 'invoices' ? (
         invoices.length === 0 ? (
-          <EmptyState icon="🧾" title="No invoices" desc="No purchase invoices match this filter." />
+          <EmptyState icon="🧾" title={t('finance.payments.noInvoices')} desc={t('finance.payments.noInvoicesDesc')} />
         ) : (
           <LayoutSection variant="raised" flushHead>
             <TableRegion>
               <table className="ap-invoices-table">
                 <thead>
                   <tr>
-                    <th>Invoice</th>
-                    <th>Supplier</th>
-                    <th>Due</th>
-                    <th>Total</th>
-                    <th>Outstanding</th>
-                    <th>Paid %</th>
-                    <th>Status</th>
+                    <th>{t('finance.table.invoice')}</th>
+                    <th>{t('nav.suppliers')}</th>
+                    <th>{t('finance.table.due')}</th>
+                    <th>{t('finance.table.total')}</th>
+                    <th>{t('finance.outstanding')}</th>
+                    <th>{t('finance.table.paidPct')}</th>
+                    <th>{t('finance.table.status')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -286,7 +288,7 @@ export default function SupplierPaymentsPage() {
           </LayoutSection>
         )
       ) : payments.length === 0 ? (
-        <EmptyState icon="💰" title="No payments" desc="Submitted supplier payments will appear here." />
+        <EmptyState icon="💰" title={t('finance.payments.noPayments')} desc={t('finance.payments.noPaymentsDesc')} />
       ) : (
         <LayoutSection variant="raised" flushHead>
           <ul className="ap-payment-history">

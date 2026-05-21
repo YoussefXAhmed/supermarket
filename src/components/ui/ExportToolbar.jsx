@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Btn } from './index';
 import { exportTable } from '../../utils/export';
 
@@ -10,6 +11,7 @@ export default function ExportToolbar({
   formats = ['csv', 'excel', 'pdf', 'print'],
   disabled,
 }) {
+  const { t } = useTranslation();
   const run = (format) => {
     if (!rows?.length && !elementId) return;
     exportTable({ format, filename, columns, rows: rows || [], title: title || filename, elementId });
@@ -27,7 +29,7 @@ export default function ExportToolbar({
         <Btn variant="ghost" size="sm" disabled={disabled} onClick={() => run('pdf')}>PDF</Btn>
       )}
       {formats.includes('print') && (
-        <Btn variant="ghost" size="sm" disabled={disabled} onClick={() => run('print')}>Print</Btn>
+        <Btn variant="ghost" size="sm" disabled={disabled} onClick={() => run('print')}>{t('ui.export.print')}</Btn>
       )}
     </div>
   );

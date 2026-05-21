@@ -1,16 +1,18 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../hooks/useAuth';
 import { hasCapability } from '../../auth/capabilities';
 import UserSessionActions from './UserSessionActions';
 
 const LINKS = [
-  { to: 'open', label: 'Open shift', cap: 'canOpenShift' },
-  { to: 'close', label: 'Close shift', cap: 'canCloseShift' },
-  { to: 'history', label: 'History', cap: 'canViewShiftReports' },
-  { to: '/pos', label: 'POS', cap: 'canViewPOS' },
+  { to: 'open', labelKey: 'shifts.openShift', cap: 'canOpenShift' },
+  { to: 'close', labelKey: 'shifts.closeShift', cap: 'canCloseShift' },
+  { to: 'history', labelKey: 'nav.history', cap: 'canViewShiftReports' },
+  { to: '/pos', labelKey: 'common.pos', cap: 'canViewPOS' },
 ];
 
 export default function ShiftsLayout() {
+  const { t } = useTranslation();
   const { user, logout, capabilities, canAccessAdminWorkspace } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -18,7 +20,7 @@ export default function ShiftsLayout() {
 
   const sessionLinks =
     canAccessAdminWorkspace && !inAdminShell
-      ? [{ label: 'Admin', onClick: () => navigate('/admin') }]
+      ? [{ label: t('common.admin'), onClick: () => navigate('/admin') }]
       : [];
 
   const links = LINKS.filter((l) => hasCapability(capabilities, l.cap));
@@ -27,8 +29,8 @@ export default function ShiftsLayout() {
     <div className="shifts-layout">
       <header className="shifts-layout__head">
         <div>
-          <h1 className="shifts-layout__title">Shift control</h1>
-          <p className="page-header__sub">Cash reconciliation · ERPNext POS Opening/Closing</p>
+          <h1 className="shifts-layout__title">{t('shifts.shiftControl')}</h1>
+          <p className="page-header__sub">{t('shifts.subtitle')}</p>
         </div>
         <UserSessionActions user={user} onLogout={logout} links={sessionLinks} />
       </header>
@@ -40,7 +42,7 @@ export default function ShiftsLayout() {
               `shifts-layout__link shifts-layout__link--admin ${isActive ? 'shifts-layout__link--active' : ''}`
             }
           >
-            Admin
+            {t('common.admin')}
           </NavLink>
         )}
         {links.map((l) => (
@@ -52,7 +54,7 @@ export default function ShiftsLayout() {
               `shifts-layout__link ${isActive ? 'shifts-layout__link--active' : ''}`
             }
           >
-            {l.label}
+            {t(l.labelKey)}
           </NavLink>
         ))}
       </nav>

@@ -1,6 +1,7 @@
 /* ════════════════════════════════════
    Shared UI primitives
 ════════════════════════════════════ */
+import { useTranslation } from 'react-i18next';
 
 /* ── Button ── */
 export function Btn({ children, variant = 'primary', size = 'md', loading, className = '', ...props }) {
@@ -43,19 +44,20 @@ export function PageLoading({ size = 28, className = '' }) {
 
 /* ── ApiErrorCard ── */
 export function ApiErrorCard({
-  title = 'Could not load data',
+  title,
   message,
   onRetry,
-  retryLabel = 'Try again',
+  retryLabel,
 }) {
+  const { t } = useTranslation();
   if (!message) return null;
   return (
     <div className="card api-error-card" role="alert">
-      <p className="api-error-card__title">{title}</p>
+      <p className="api-error-card__title">{title || t('ui.error.couldNotLoad')}</p>
       <p className="api-error-card__message">{message}</p>
       {onRetry && (
         <Btn variant="ghost" size="sm" onClick={onRetry} style={{ marginTop: 12 }}>
-          {retryLabel}
+          {retryLabel || t('ui.error.tryAgain')}
         </Btn>
       )}
     </div>
@@ -63,11 +65,12 @@ export function ApiErrorCard({
 }
 
 /* ── EmptyState ── */
-export function EmptyState({ icon = '📭', title = 'Nothing here', desc = '' }) {
+export function EmptyState({ icon = '📭', title, desc = '' }) {
+  const { t } = useTranslation();
   return (
     <div className="empty-state">
       <span className="empty-state__icon">{icon}</span>
-      <p className="empty-state__title">{title}</p>
+      <p className="empty-state__title">{title || t('ui.empty.nothingHere')}</p>
       {desc && <p className="empty-state__desc">{desc}</p>}
     </div>
   );
@@ -75,10 +78,11 @@ export function EmptyState({ icon = '📭', title = 'Nothing here', desc = '' })
 
 /* ── Toast ── */
 export function Toast({ message, type = 'info', onClose }) {
+  const { t } = useTranslation();
   return (
     <div className={`toast toast--${type}`}>
       <span>{message}</span>
-      <button onClick={onClose} className="toast__close">✕</button>
+      <button onClick={onClose} className="toast__close" aria-label={t('ui.toast.close')}>✕</button>
     </div>
   );
 }
@@ -115,8 +119,9 @@ export function StatCard({ label, value, icon, color = 'accent', trend, compact 
 }
 
 /* ── Table ── */
-export function Table({ columns, data, emptyMsg = 'No data', compact = false, className = '' }) {
-  if (!data?.length) return <EmptyState title={emptyMsg} />;
+export function Table({ columns, data, emptyMsg, compact = false, className = '' }) {
+  const { t } = useTranslation();
+  if (!data?.length) return <EmptyState title={emptyMsg || t('ui.table.noData')} />;
   return (
     <div className={`table-wrap ${compact ? 'table-wrap--compact' : ''} ${className}`.trim()}>
       <table className={`table ${compact ? 'table--compact' : ''}`}>
@@ -140,10 +145,11 @@ export function Table({ columns, data, emptyMsg = 'No data', compact = false, cl
 /* ── SearchInput ── */
 /* ── Partial data warning (degraded ERP queries) ── */
 export function PartialDataBanner({ warnings }) {
+  const { t } = useTranslation();
   if (!warnings?.length) return null;
   return (
     <div className="card panel partial-data-banner" role="status" style={{ marginBottom: 16, borderColor: 'var(--amber)' }}>
-      <p className="inv-warn" style={{ margin: 0 }}>Some data could not be loaded. Showing partial results.</p>
+      <p className="inv-warn" style={{ margin: 0 }}>{t('ui.partialData')}</p>
       <ul className="partial-data-banner__list">
         {warnings.map((w) => (
           <li key={w}>{w}</li>
@@ -160,6 +166,7 @@ export { default as RoleBadge } from './RoleBadge';
 export { default as UserAvatar } from './UserAvatar';
 
 export function SearchInput({ value, onChange, placeholder, inputRef, autoFocus }) {
+  const { t } = useTranslation();
   return (
     <div className="search-input-wrap">
       <svg className="search-input-wrap__icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -172,10 +179,14 @@ export function SearchInput({ value, onChange, placeholder, inputRef, autoFocus 
         type="text"
         value={value}
         onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
+        placeholder={placeholder || t('ui.search.placeholder')}
         autoFocus={autoFocus}
       />
-      {value && <button className="search-input-wrap__clear" onClick={() => onChange('')}>✕</button>}
+      {value && (
+        <button className="search-input-wrap__clear" onClick={() => onChange('')} aria-label={t('ui.search.clear')}>
+          ✕
+        </button>
+      )}
     </div>
   );
 }

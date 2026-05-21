@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ApiErrorCard, Btn, EmptyState, PageHeader, PageLoading, Table } from '../../../components/ui';
 import { TablePageLayout, LayoutSection, TableRegion } from '../../../components/layout/page-layouts';
 import { listStockLedger } from '../../../services/inventoryApi';
@@ -7,6 +8,7 @@ import { getUserFriendlyMessage } from '../../../utils/errorHandling';
 import { exportToCsv, printElement } from '../../../utils/exportCsv';
 
 export default function ReportsPage() {
+  const { t } = useTranslation();
   const [warehouses, setWarehouses] = useState([]);
   const [warehouse, setWarehouse] = useState('all');
   const [itemSearch, setItemSearch] = useState('');
@@ -61,51 +63,51 @@ export default function ReportsPage() {
     exportToCsv(
       `stock-balance-${warehouse}`,
       [
-        { key: 'warehouse', label: 'Warehouse' },
-        { key: 'item_code', label: 'Item' },
-        { key: 'actual_qty', label: 'Qty', export: (r) => r.actual_qty },
-        { key: 'available_qty', label: 'Available', export: (r) => r.available_qty },
-        { key: 'stock_value', label: 'Value', export: (r) => r.stock_value },
+        { key: 'warehouse', label: t('inventory.table.warehouse') },
+        { key: 'item_code', label: t('inventory.stockEntry.item') },
+        { key: 'actual_qty', label: t('inventory.stockEntry.qty'), export: (r) => r.actual_qty },
+        { key: 'available_qty', label: t('inventory.available'), export: (r) => r.available_qty },
+        { key: 'stock_value', label: t('inventory.table.value'), export: (r) => r.stock_value },
       ],
       flatBalance,
     );
   };
 
   const balanceColumns = [
-    { key: 'item_code', label: 'Item', render: (v) => <span className="mono">{v}</span> },
-    { key: 'actual_qty', label: 'Balance', render: (v) => Number(v || 0).toFixed(2) },
-    { key: 'available_qty', label: 'Available', render: (v) => Number(v || 0).toFixed(2) },
-    { key: 'stock_value', label: 'Value', render: (v) => `EGP ${Number(v || 0).toFixed(2)}` },
+    { key: 'item_code', label: t('inventory.stockEntry.item'), render: (v) => <span className="mono">{v}</span> },
+    { key: 'actual_qty', label: t('inventory.table.balance'), render: (v) => Number(v || 0).toFixed(2) },
+    { key: 'available_qty', label: t('inventory.available'), render: (v) => Number(v || 0).toFixed(2) },
+    { key: 'stock_value', label: t('inventory.table.value'), render: (v) => `EGP ${Number(v || 0).toFixed(2)}` },
   ];
 
   const movementColumns = [
-    { key: 'posting_date', label: 'Date' },
-    { key: 'item_code', label: 'Item', render: (v) => <span className="mono">{v}</span> },
-    { key: 'warehouse', label: 'Warehouse' },
-    { key: 'actual_qty', label: 'Qty', render: (v) => Number(v || 0).toFixed(2) },
-    { key: 'voucher_type', label: 'Type' },
-    { key: 'voucher_no', label: 'No.' },
+    { key: 'posting_date', label: t('finance.table.date') },
+    { key: 'item_code', label: t('inventory.stockEntry.item'), render: (v) => <span className="mono">{v}</span> },
+    { key: 'warehouse', label: t('inventory.table.warehouse') },
+    { key: 'actual_qty', label: t('inventory.stockEntry.qty'), render: (v) => Number(v || 0).toFixed(2) },
+    { key: 'voucher_type', label: t('inventory.table.type') },
+    { key: 'voucher_no', label: t('inventory.table.no') },
   ];
 
   return (
     <TablePageLayout className="page-layout--list-page">
       <PageHeader
-        title="Inventory Reports"
-        subtitle="Stock balance, movement, export and print"
+        title={t('inventory.reports.title')}
+        subtitle={t('inventory.reports.subtitle')}
         dense
         actions={
           <>
             <Btn variant="ghost" size="sm" onClick={loadReports}>
-              Load
+              {t('inventory.reports.load')}
             </Btn>
             {flatBalance.length > 0 && (
               <Btn variant="ghost" size="sm" onClick={exportBalance}>
-                Export CSV
+                {t('inventory.reports.exportCsv')}
               </Btn>
             )}
             {flatBalance.length > 0 && (
               <Btn variant="ghost" size="sm" onClick={() => printElement('inv-report-print')}>
-                Print
+                {t('inventory.reports.print')}
               </Btn>
             )}
           </>
@@ -120,7 +122,7 @@ export default function ReportsPage() {
               value={warehouse}
               onChange={(e) => setWarehouse(e.target.value)}
             >
-              <option value="all">All warehouses</option>
+              <option value="all">{t('inventory.allWarehouses')}</option>
               {warehouses.map((w) => (
                 <option key={w.name} value={w.name}>
                   {w.warehouse_name || w.name}
@@ -129,7 +131,7 @@ export default function ReportsPage() {
             </select>
             <input
               className="input toolbar__input-sm"
-              placeholder="Filter item code"
+              placeholder={t('inventory.reports.filterItemCode')}
               value={itemSearch}
               onChange={(e) => setItemSearch(e.target.value)}
             />
@@ -138,7 +140,7 @@ export default function ReportsPage() {
               type="date"
               value={fromDate}
               onChange={(e) => setFromDate(e.target.value)}
-              title="Movement from date"
+              title={t('inventory.reports.movementFromDate')}
             />
             <label className="inv-checkbox">
               <input
@@ -146,7 +148,7 @@ export default function ReportsPage() {
                 checked={groupByWarehouse}
                 onChange={(e) => setGroupByWarehouse(e.target.checked)}
               />
-              Group by warehouse
+              {t('inventory.reports.groupByWarehouse')}
             </label>
           </div>
         </div>
@@ -167,7 +169,7 @@ export default function ReportsPage() {
                   subtitle={`Qty ${group.total_qty.toFixed(0)} · EGP ${group.total_value.toFixed(2)}`}
                 >
                   {group.items.length === 0 ? (
-                    <EmptyState title="No rows" />
+                    <EmptyState title={t('inventory.reports.noRows')} />
                   ) : (
                     <TableRegion>
                       <Table columns={balanceColumns} data={group.items} compact />
@@ -176,10 +178,10 @@ export default function ReportsPage() {
                 </LayoutSection>
               ))
             : (
-                <LayoutSection variant="raised" title="Stock balance">
+                <LayoutSection variant="raised" title={t('inventory.reports.stockBalance')}>
                   <TableRegion>
                     <Table
-                      columns={[{ key: 'warehouse', label: 'Warehouse' }, ...balanceColumns]}
+                      columns={[{ key: 'warehouse', label: t('inventory.table.warehouse') }, ...balanceColumns]}
                       data={flatBalance}
                       compact
                     />
@@ -187,9 +189,9 @@ export default function ReportsPage() {
                 </LayoutSection>
               )}
 
-          <LayoutSection variant="raised" title="Stock movement">
+          <LayoutSection variant="raised" title={t('inventory.reports.stockMovement')}>
             {movementRows.length === 0 ? (
-              <EmptyState icon="📈" title="No movement rows" />
+              <EmptyState icon="📈" title={t('inventory.reports.noMovementRows')} />
             ) : (
               <TableRegion>
                 <Table columns={movementColumns} data={movementRows} compact />

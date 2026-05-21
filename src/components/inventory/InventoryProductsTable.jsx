@@ -1,11 +1,13 @@
+import { useTranslation } from 'react-i18next';
 import { Badge, Table } from '../ui';
 import { getERPDeskUrl } from '../../utils/erpLinks';
 
 export default function InventoryProductsTable({ rows, showValuation = true }) {
+  const { t } = useTranslation();
   const columns = [
     {
       key: 'item_name',
-      label: 'Product',
+      label: t('inventory.table.product'),
       render: (v, row) => (
         <div>
           <p style={{ fontWeight: 600 }}>{v || row.item_code}</p>
@@ -15,14 +17,14 @@ export default function InventoryProductsTable({ rows, showValuation = true }) {
     },
     {
       key: 'qty',
-      label: 'Quantity',
+      label: t('inventory.stockEntry.quantity'),
       render: (v, row) => (
         <div>
           <Badge color={v > 10 ? 'green' : v > 0 ? 'amber' : 'red'}>
             {v.toFixed(2)}
           </Badge>
           <p style={{ fontSize: '0.72rem', color: 'var(--text-3)', marginTop: 4 }}>
-            {row.warehouse_label || 'All warehouses'}
+            {row.warehouse_label || t('inventory.allWarehouses')}
           </p>
         </div>
       ),
@@ -30,27 +32,27 @@ export default function InventoryProductsTable({ rows, showValuation = true }) {
     ...(showValuation
       ? [{
         key: 'price',
-        label: 'Price',
+        label: t('inventory.table.price'),
         render: (v) => <span className="mono">EGP {v.toFixed(2)}</span>,
       }]
       : []),
     {
       key: 'stock_state',
-      label: 'Status',
+      label: t('finance.table.status'),
       render: (_, row) => (
         row.qty < 10
-          ? <Badge color="amber">Low Stock</Badge>
-          : <Badge color="green">In Stock</Badge>
+          ? <Badge color="amber">{t('inventory.alerts.lowStock')}</Badge>
+          : <Badge color="green">{t('inventory.table.inStock')}</Badge>
       ),
     },
     {
       key: 'value',
-      label: 'Stock Value',
+      label: t('inventory.table.stockValue'),
       render: (v) => <span className="mono">EGP {v.toFixed(2)}</span>,
     },
     {
       key: 'actions',
-      label: 'Actions',
+      label: t('ui.table.actions'),
       render: (_, row) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <a
@@ -59,7 +61,7 @@ export default function InventoryProductsTable({ rows, showValuation = true }) {
             target="_blank"
             rel="noreferrer"
           >
-            Edit
+            {t('common.edit')}
           </a>
           <a
             className="btn btn--ghost btn--sm"
@@ -67,7 +69,7 @@ export default function InventoryProductsTable({ rows, showValuation = true }) {
             target="_blank"
             rel="noreferrer"
           >
-            Stock Entry
+            {t('nav.stockEntry')}
           </a>
         </div>
       ),
@@ -79,6 +81,6 @@ export default function InventoryProductsTable({ rows, showValuation = true }) {
     id: row.row_key || `${row.item_code}|${row.warehouse || 'all'}`,
   }));
 
-  return <Table columns={columns} data={tableData} emptyMsg="No inventory products found" compact />;
+  return <Table columns={columns} data={tableData} emptyMsg={t('inventory.noProductsFound')} compact />;
 }
 

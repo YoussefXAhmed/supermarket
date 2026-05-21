@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { PageHeader, PageLoading, ApiErrorCard, EmptyState, Table, Btn, Badge } from '../../components/ui';
 import { TablePageLayout, LayoutSection, TableRegion } from '../../components/layout/page-layouts';
 import { listSuppliers } from '../../services/purchasingApi';
 import { getUserFriendlyMessage } from '../../utils/errorHandling';
 
 export default function SuppliersPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -40,21 +42,21 @@ export default function SuppliersPage() {
   const columns = [
     {
       key: 'supplier_name',
-      label: 'Supplier',
+      label: t('purchasing.table.supplier'),
       render: (v, row) => (
         <Link to={`/admin/purchasing/suppliers/${encodeURIComponent(row.name)}`}>{v || row.name}</Link>
       ),
     },
-    { key: 'name', label: 'ID', render: (v) => <span className="mono" style={{ fontSize: '0.78rem', color: 'var(--text-2)' }}>{v}</span> },
-    { key: 'supplier_group', label: 'Group' },
-    { key: 'mobile_no', label: 'Mobile', render: (v) => v || '—' },
-    { key: 'email_id', label: 'Email', render: (v) => v || '—' },
+    { key: 'name', label: t('inventory.table.id'), render: (v) => <span className="mono" style={{ fontSize: '0.78rem', color: 'var(--text-2)' }}>{v}</span> },
+    { key: 'supplier_group', label: t('purchasing.table.group') },
+    { key: 'mobile_no', label: t('purchasing.table.mobile'), render: (v) => v || '—' },
+    { key: 'email_id', label: t('purchasing.table.email'), render: (v) => v || '—' },
     {
       key: 'actions',
       label: '',
       render: (_, row) => (
         <Btn variant="ghost" size="sm" onClick={() => navigate(`/admin/purchasing/suppliers/${encodeURIComponent(row.name)}`)}>
-          View
+          {t('common.view')}
         </Btn>
       ),
     },
@@ -65,19 +67,19 @@ export default function SuppliersPage() {
   return (
     <TablePageLayout tableConstrain={sparse}>
       <PageHeader
-        title="Suppliers"
+        title={t('nav.suppliers')}
         subtitle={`${filtered.length} active suppliers`}
         dense
         actions={
           <Btn variant="primary" size="sm" onClick={() => navigate('/admin/purchasing/suppliers/new')}>
-            + New supplier
+            + {t('purchasing.newSupplier')}
           </Btn>
         }
       />
       <LayoutSection variant="flat" flushHead>
         <input
           className="input toolbar__input-md"
-          placeholder="Search suppliers…"
+          placeholder={t('purchasing.searchSuppliers')}
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
@@ -87,7 +89,7 @@ export default function SuppliersPage() {
       ) : error ? (
         <ApiErrorCard message={error} onRetry={load} />
       ) : filtered.length === 0 ? (
-        <EmptyState icon="🏭" title="No suppliers" desc="Create your first supplier to start purchasing." />
+        <EmptyState icon="🏭" title={t('purchasing.noSuppliers')} desc={t('purchasing.noSuppliersDesc')} />
       ) : (
         <LayoutSection variant="raised" flushHead fit={sparse}>
           <TableRegion fit={sparse}>

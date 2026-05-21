@@ -1,19 +1,21 @@
 import { NavLink, Outlet } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import ErrorBoundary from '../common/ErrorBoundary';
 import { useAuth } from '../../hooks/useAuth';
 import { hasCapability } from '../../auth/capabilities';
 
 const NAV = [
-  { to: '/admin/purchasing', label: 'Overview', end: true },
-  { to: '/admin/purchasing/suppliers', label: 'Suppliers' },
-  { to: '/admin/purchasing/receive', label: 'Receive' },
-  { to: '/admin/purchasing/approvals', label: 'Approvals', cap: 'canViewPurchaseApprovals' },
-  { to: '/admin/purchasing/invoices', label: 'Invoices' },
-  { to: '/admin/purchasing/matching', label: 'Matching' },
-  { to: '/admin/purchasing/reports', label: 'Reports' },
+  { to: '/admin/purchasing', labelKey: 'nav.overview', end: true },
+  { to: '/admin/purchasing/suppliers', labelKey: 'nav.suppliers' },
+  { to: '/admin/purchasing/receive', labelKey: 'nav.receive' },
+  { to: '/admin/purchasing/approvals', labelKey: 'nav.approvals', cap: 'canViewPurchaseApprovals' },
+  { to: '/admin/purchasing/invoices', labelKey: 'common.invoices' },
+  { to: '/admin/purchasing/matching', labelKey: 'nav.matching' },
+  { to: '/admin/purchasing/reports', labelKey: 'nav.reports' },
 ];
 
 export default function PurchasingLayout() {
+  const { t } = useTranslation();
   const { capabilities } = useAuth();
   const links = NAV.filter((item) => !item.cap || hasCapability(capabilities, item.cap));
 
@@ -29,7 +31,7 @@ export default function PurchasingLayout() {
               `module-nav__link ${isActive ? 'module-nav__link--active' : ''}`
             }
           >
-            {item.label}
+            {t(item.labelKey)}
           </NavLink>
         ))}
       </nav>

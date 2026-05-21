@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Btn } from '../ui';
 import { fmtCurrency } from '../../utils/format';
 import { approvalLevelLabel } from '../../utils/purchasingApproval';
@@ -38,6 +39,7 @@ export default function PurchaseApprovalCard({
   const status = purchaseReceiptApprovalStatus(statusDoc);
   const statusLabel = purchaseReceiptStatusLabel(statusDoc);
   const { canAct, reason: blockedReason } = purchaseApprovalActionState(doc, capabilities, user);
+  const { t } = useTranslation();
   const showActions = !readOnly && isPendingPurchaseStatus(status);
   const maxVar = doc.max_variance_pct ?? Math.max(...(doc.lines || []).map((l) => l.variance_pct || 0), 0);
 
@@ -49,7 +51,7 @@ export default function PurchaseApprovalCard({
           <StatusPill status={status} label={statusLabel} />
           <span className="approval-card__level">{approvalLevelLabel(doc.approval_level)}</span>
         </div>
-        <span className="approval-card__owner">Requested by {doc.requested_by || '—'}</span>
+        <span className="approval-card__owner">{t('approvals.requestedBy')} {doc.requested_by || '—'}</span>
       </header>
 
       <WarehouseScopeBar warehouse={doc.warehouse} />
@@ -58,12 +60,12 @@ export default function PurchaseApprovalCard({
         <table className="approval-table">
           <thead>
             <tr>
-              <th>Item</th>
-              <th>Qty</th>
-              <th>Expected</th>
-              <th>Entered</th>
-              <th>Var %</th>
-              <th className="approval-table__num">Amount</th>
+              <th>{t('approvals.table.item')}</th>
+              <th>{t('approvals.table.qty')}</th>
+              <th>{t('approvals.table.expected')}</th>
+              <th>{t('approvals.table.entered')}</th>
+              <th>{t('approvals.table.varPct')}</th>
+              <th className="approval-table__num">{t('approvals.table.amount')}</th>
             </tr>
           </thead>
           <tbody>
@@ -92,7 +94,7 @@ export default function PurchaseApprovalCard({
       />
 
       <footer className="approval-card__foot">
-        <span className="approval-card__total">Total {fmtCurrency(doc.grand_total)}</span>
+        <span className="approval-card__total">{t('approvals.total')} {fmtCurrency(doc.grand_total)}</span>
         {showActions && canAct && (
           <div className="approval-card__actions">
             <Btn
@@ -102,10 +104,10 @@ export default function PurchaseApprovalCard({
               disabled={busy}
               onClick={() => onApprove?.(doc.name)}
             >
-              Approve &amp; submit
+              {t('approvals.approveAndSubmit')}
             </Btn>
             <Btn variant="ghost" size="sm" disabled={busy} onClick={() => onReject?.(doc.name)}>
-              Reject
+              {t('approvals.reject')}
             </Btn>
           </div>
         )}
@@ -115,7 +117,7 @@ export default function PurchaseApprovalCard({
           </p>
         )}
         {readOnly && isPendingPurchaseStatus(status) && (
-          <span className="approval-card__readonly-hint">View only — submit from Approvals hub</span>
+          <span className="approval-card__readonly-hint">{t('approvals.viewOnly')}</span>
         )}
       </footer>
     </article>

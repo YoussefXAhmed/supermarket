@@ -1,19 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ApiErrorCard, EmptyState, PageHeader, PageLoading, Table } from '../../../components/ui';
 import ExportToolbar from '../../../components/ui/ExportToolbar';
 import { TablePageLayout, LayoutSection, TableRegion } from '../../../components/layout/page-layouts';
 import { listWarehouses } from '../../../services/inventoryApi';
 import { getUserFriendlyMessage } from '../../../utils/errorHandling';
 
-const EXPORT_COLUMNS = [
-  { key: 'warehouse_name', label: 'Warehouse' },
-  { key: 'name', label: 'ID' },
-  { key: 'warehouse_type', label: 'Type' },
-  { key: 'company', label: 'Company' },
-  { key: 'parent_warehouse', label: 'Parent' },
-];
-
 export default function WarehousesPage() {
+  const { t } = useTranslation();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -55,12 +49,20 @@ export default function WarehousesPage() {
     });
   }, [rows, query]);
 
+  const exportColumns = [
+    { key: 'warehouse_name', label: t('inventory.table.warehouse') },
+    { key: 'name', label: t('inventory.table.id') },
+    { key: 'warehouse_type', label: t('inventory.table.type') },
+    { key: 'company', label: t('inventory.table.company') },
+    { key: 'parent_warehouse', label: t('inventory.table.parent') },
+  ];
+
   const columns = [
-    { key: 'warehouse_name', label: 'Warehouse' },
-    { key: 'name', label: 'ID', render: (v) => <span className="mono mono-subtle">{v}</span> },
-    { key: 'warehouse_type', label: 'Type', render: (v) => v || '—' },
-    { key: 'company', label: 'Company' },
-    { key: 'parent_warehouse', label: 'Parent', render: (v) => v || '—' },
+    { key: 'warehouse_name', label: t('inventory.table.warehouse') },
+    { key: 'name', label: t('inventory.table.id'), render: (v) => <span className="mono mono-subtle">{v}</span> },
+    { key: 'warehouse_type', label: t('inventory.table.type'), render: (v) => v || '—' },
+    { key: 'company', label: t('inventory.table.company') },
+    { key: 'parent_warehouse', label: t('inventory.table.parent'), render: (v) => v || '—' },
   ];
 
   const sparse = filtered.length > 0 && filtered.length <= 5;
@@ -74,7 +76,7 @@ export default function WarehousesPage() {
   return (
     <TablePageLayout tableConstrain={sparse} className={layoutClass}>
       <PageHeader
-        title="Warehouses"
+        title={t('nav.warehouses')}
         subtitle={
           query.trim()
             ? `${filtered.length} of ${rows.length} warehouses`
@@ -89,22 +91,22 @@ export default function WarehousesPage() {
             <input
               className="input toolbar__input-md"
               type="search"
-              placeholder="Search warehouses…"
+              placeholder={t('inventory.warehouses.search')}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              aria-label="Search warehouses"
+              aria-label={t('inventory.warehouses.search')}
             />
             <select className="input toolbar__input-fixed" disabled aria-label="Warehouse type filter">
-              <option>All types</option>
+              <option>{t('inventory.warehouses.allTypes')}</option>
             </select>
             <select className="input toolbar__input-fixed" disabled aria-label="Company filter">
-              <option>All companies</option>
+              <option>{t('inventory.warehouses.allCompanies')}</option>
             </select>
           </div>
           <ExportToolbar
             filename="warehouses"
-            title="Warehouses"
-            columns={EXPORT_COLUMNS}
+            title={t('nav.warehouses')}
+            columns={exportColumns}
             rows={filtered}
             disabled={!filtered.length}
           />
@@ -118,8 +120,8 @@ export default function WarehousesPage() {
       ) : filtered.length === 0 ? (
         <EmptyState
           icon="🏬"
-          title={query.trim() ? 'No matching warehouses' : 'No warehouses found'}
-          desc={query.trim() ? 'Try a different search term.' : undefined}
+          title={query.trim() ? t('inventory.warehouses.noMatching') : t('inventory.warehouses.none')}
+          desc={query.trim() ? t('inventory.tryDifferentSearch') : undefined}
         />
       ) : (
         <LayoutSection variant="raised" flushHead fit={sparse}>

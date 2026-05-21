@@ -3,6 +3,8 @@ import { Btn } from '../ui';
 import { getERPPrintviewUrl } from '../../utils/erpLinks';
 
 const fmt = (n) => `EGP ${Number(n || 0).toFixed(2)}`;
+const ARABIC_TEXT_RE = /[\u0600-\u06FF]/;
+const hasArabicText = (value) => ARABIC_TEXT_RE.test(String(value || ''));
 
 export default function POSThermalReceipt({ invoice, companyName = 'Elmahdi Supermarket', onClose }) {
   const printRef = useRef(null);
@@ -14,6 +16,14 @@ export default function POSThermalReceipt({ invoice, companyName = 'Elmahdi Supe
   const paid = invoice.payments || [];
   const date = invoice.posting_date || new Date().toISOString().slice(0, 10);
   const time = invoice.posting_time?.slice(0, 8) || new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  const hasArabicContent = [
+    companyName,
+    invoice.customer,
+    ...lines.flatMap((line) => [line.item_name, line.item_code]),
+    ...paid.map((payment) => payment.mode_of_payment),
+  ].some(hasArabicText);
+  const appDir = typeof document !== 'undefined' ? document.documentElement.dir : 'ltr';
+  const receiptDir = hasArabicContent || appDir === 'rtl' ? 'rtl' : 'ltr';
 
   const handlePrint = () => {
     const node = printRef.current;
@@ -21,18 +31,47 @@ export default function POSThermalReceipt({ invoice, companyName = 'Elmahdi Supe
     const w = window.open('', '_blank', 'width=320,height=600');
     if (!w) return;
     w.document.write(`
-      <!DOCTYPE html><html><head>
+      <!DOCTYPE html><html dir="${receiptDir}" lang="${receiptDir === 'rtl' ? 'ar' : 'en'}"><head>
         <title>Receipt ${invoice.name}</title>
         <style>
-          body { font-family: 'Courier New', monospace; font-size: 12px; margin: 8px; color: #000; }
+          @page { size: 80mm auto; margin: 4mm; }
+          * { box-sizing: border-box; }
+          body {
+            font-family: 'Noto Naskh Arabic', 'Noto Sans Arabic', Tahoma, Arial, 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.45;
+            margin: 0;
+            color: #000;
+            direction: ${receiptDir};
+            unicode-bidi: plaintext;
+          }
           .center { text-align: center; }
-          .line { border-top: 1px dashed #000; margin: 8px 0; }
+          .pos-receipt__line, .line { border-top: 1px dashed #000; margin: 8px 0; }
+          .pos-receipt__meta p, .pos-receipt__payments p, .pos-receipt__total {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            margin: 4px 0;
+          }
           table { width: 100%; border-collapse: collapse; }
-          td { padding: 2px 0; vertical-align: top; }
-          .right { text-align: right; }
+          th, td { padding: 3px 0; vertical-align: top; }
+          th:first-child, td:first-child { text-align: start; }
+          .right, .pos-receipt__num {
+            direction: ltr;
+            unicode-bidi: isolate;
+            text-align: end;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+          }
+          .pos-receipt__item-name, .pos-receipt__text { unicode-bidi: isolate; overflow-wrap: anywhere; }
+          .pos-receipt__item-code { direction: ltr; unicode-bidi: isolate; font-size: 10px; color: #444; }
           .bold { font-weight: bold; }
+          .pos-receipt__brand { font-size: 14px; font-weight: bold; margin: 0; }
+          .pos-receipt__tag, .pos-receipt__muted { font-size: 10px; }
+          .pos-receipt__ltr { direction: ltr; unicode-bidi: isolate; }
+          .pos-receipt__footer { margin-top: 12px; }
         </style>
-      </head><body>${node.innerHTML}</body></html>
+      </head><body dir="${receiptDir}" class="pos-receipt-print">${node.innerHTML}</body></html>
     `);
     w.document.close();
     w.focus();
@@ -59,17 +98,17 @@ export default function POSThermalReceipt({ invoice, companyName = 'Elmahdi Supe
         )}
       </div>
 
-      <article ref={printRef} className="pos-receipt thermal-receipt">
+      <article ref={printRef} className="pos-receipt thermal-receipt" dir={receiptDir}>
         <header className="pos-receipt__header center">
-          <p className="pos-receipt__brand">{companyName}</p>
-          <p className="pos-receipt__tag">Tax Invoice / Receipt</p>
+          <p className="pos-receipt__brand"><bdi dir="auto">{companyName}</bdi></p>
+          <p className="pos-receipt__tag pos-receipt__ltr">Tax Invoice / Receipt</p>
         </header>
 
         <div className="pos-receipt__meta">
-          <p><span>Invoice</span> <strong>{invoice.name}</strong></p>
-          <p><span>Date</span> {date} {time}</p>
-          <p><span>Customer</span> {invoice.customer || 'Walk-in Customer'}</p>
-          {invoice.pos_profile && <p><span>POS</span> {invoice.pos_profile}</p>}
+          <p><span>Invoice</span> <strong className="pos-receipt__num">{invoice.name}</strong></p>
+          <p><span>Date</span> <span className="pos-receipt__num">{date} {time}</span></p>
+          <p><span>Customer</span> <bdi className="pos-receipt__text" dir="auto">{invoice.customer || 'Walk-in Customer'}</bdi></p>
+          {invoice.pos_profile && <p><span>POS</span> <bdi className="pos-receipt__text" dir="auto">{invoice.pos_profile}</bdi></p>}
         </div>
 
         <div className="pos-receipt__line" />
@@ -89,11 +128,11 @@ export default function POSThermalReceipt({ invoice, companyName = 'Elmahdi Supe
               return (
                 <tr key={`${line.item_code}-${idx}`}>
                   <td>
-                    <div className="pos-receipt__item-name">{line.item_name || line.item_code}</div>
+                    <bdi className="pos-receipt__item-name" dir="auto">{line.item_name || line.item_code}</bdi>
                     <div className="pos-receipt__item-code">{line.item_code}</div>
                   </td>
-                  <td className="right">{qty}</td>
-                  <td className="right">{amount.toFixed(2)}</td>
+                  <td className="right pos-receipt__num">{qty}</td>
+                  <td className="right pos-receipt__num">{amount.toFixed(2)}</td>
                 </tr>
               );
             })}
@@ -104,7 +143,7 @@ export default function POSThermalReceipt({ invoice, companyName = 'Elmahdi Supe
 
         <div className="pos-receipt__total">
           <span>TOTAL</span>
-          <strong>{fmt(total)}</strong>
+          <strong className="pos-receipt__num">{fmt(total)}</strong>
         </div>
 
         {paid.length > 0 && (
@@ -113,8 +152,8 @@ export default function POSThermalReceipt({ invoice, companyName = 'Elmahdi Supe
             <div className="pos-receipt__payments">
               {paid.map((p, i) => (
                 <p key={i}>
-                  <span>{p.mode_of_payment}</span>
-                  <span className="right">{fmt(p.amount)}</span>
+                  <bdi className="pos-receipt__text" dir="auto">{p.mode_of_payment}</bdi>
+                  <span className="right pos-receipt__num">{fmt(p.amount)}</span>
                 </p>
               ))}
             </div>
@@ -122,8 +161,8 @@ export default function POSThermalReceipt({ invoice, companyName = 'Elmahdi Supe
         )}
 
         <footer className="pos-receipt__footer center">
-          <p>Thank you for shopping!</p>
-          <p className="pos-receipt__muted">Please keep this receipt</p>
+          <p className="pos-receipt__ltr">Thank you for shopping!</p>
+          <p className="pos-receipt__muted pos-receipt__ltr">Please keep this receipt</p>
         </footer>
       </article>
     </div>

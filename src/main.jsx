@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
 import { NotificationProvider } from './context/NotificationContext';
+import './i18n';
 import './styles/admin.css';
 import './styles/components.css';
 import './styles/enterprise.css';

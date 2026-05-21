@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { PageHeader, PageLoading, ApiErrorCard, StatCard, Btn, PartialDataBanner } from '../../components/ui';
 import { useAuth } from '../../hooks/useAuth';
 import { hasCapability } from '../../auth/capabilities';
@@ -10,6 +11,7 @@ import { useOperationalRefresh } from '../../services/operationalRefresh';
 import { fmtCurrencyCompact } from '../../utils/format';
 
 export default function PurchasingDashboardPage() {
+  const { t } = useTranslation();
   const { capabilities } = useAuth();
   const showApprovals = hasCapability(capabilities, 'canViewPurchaseApprovals');
   const [data, setData] = useState(null);
@@ -44,7 +46,7 @@ export default function PurchasingDashboardPage() {
   if (error) {
     return (
       <DashboardLayout>
-        <PageHeader title="Purchasing" subtitle="Overview" dense actions={<Btn variant="ghost" size="sm" onClick={load}>Refresh</Btn>} />
+        <PageHeader title={t('nav.purchasing')} subtitle={t('nav.overview')} dense actions={<Btn variant="ghost" size="sm" onClick={load}>{t('common.refresh')}</Btn>} />
         <ApiErrorCard message={error} onRetry={load} />
       </DashboardLayout>
     );
@@ -58,60 +60,60 @@ export default function PurchasingDashboardPage() {
   return (
     <DashboardLayout>
       <PageHeader
-        title="Purchasing"
-        subtitle="Suppliers · receipts · payables"
+        title={t('nav.purchasing')}
+        subtitle={t('purchasing.subtitle')}
         dense
-        actions={<Btn variant="ghost" size="sm" onClick={load}>Refresh</Btn>}
+        actions={<Btn variant="ghost" size="sm" onClick={load}>{t('common.refresh')}</Btn>}
       />
 
       <PartialDataBanner warnings={warnings} />
 
       <section className="layout-grid layout-grid--kpi" aria-label="Key metrics">
-        <StatCard label="Suppliers" value={data.supplierCount} icon="🏭" color="blue" compact />
-        <StatCard label="Total purchases" value={fmtCurrencyCompact(data.totalPurchases)} icon="💰" color="accent" compact />
-        <StatCard label="Outstanding" value={fmtCurrencyCompact(data.totalOutstanding)} icon="📋" color="red" compact />
-        <StatCard label="This month" value={fmtCurrencyCompact(data.monthPurchases)} icon="📅" color="green" compact />
+        <StatCard label={t('nav.suppliers')} value={data.supplierCount} icon="🏭" color="blue" compact />
+        <StatCard label={t('purchasing.totalPurchases')} value={fmtCurrencyCompact(data.totalPurchases)} icon="💰" color="accent" compact />
+        <StatCard label={t('finance.outstanding')} value={fmtCurrencyCompact(data.totalOutstanding)} icon="📋" color="red" compact />
+        <StatCard label={t('purchasing.thisMonth')} value={fmtCurrencyCompact(data.monthPurchases)} icon="📅" color="green" compact />
       </section>
 
       <LayoutSection variant="flat">
         <div className="workflow-bar">
           <div>
-            <h2 className="layout-section__title">Workflow</h2>
+            <h2 className="layout-section__title">{t('purchasing.workflow')}</h2>
             <p className="workflow-bar__desc">
               Supplier → Purchase Receipt → Purchase Invoice (line-item link)
             </p>
           </div>
           <div className="workflow-bar__actions">
-            <Link to="/admin/purchasing/receive" className="btn btn--primary btn--sm">Receive stock</Link>
+            <Link to="/admin/purchasing/receive" className="btn btn--primary btn--sm">{t('purchasing.receiveStock')}</Link>
             {showApprovals && (
-              <Link to="/admin/purchasing/approvals" className="btn btn--ghost btn--sm">Approvals</Link>
+              <Link to="/admin/purchasing/approvals" className="btn btn--ghost btn--sm">{t('nav.approvals')}</Link>
             )}
-            <Link to="/admin/purchasing/invoices" className="btn btn--ghost btn--sm">New invoice</Link>
-            <Link to="/admin/purchasing/matching" className="btn btn--ghost btn--sm">Matching</Link>
-            <Link to="/admin/purchasing/suppliers" className="btn btn--ghost btn--sm">Suppliers</Link>
+            <Link to="/admin/purchasing/invoices" className="btn btn--ghost btn--sm">{t('purchasing.newInvoice')}</Link>
+            <Link to="/admin/purchasing/matching" className="btn btn--ghost btn--sm">{t('nav.matching')}</Link>
+            <Link to="/admin/purchasing/suppliers" className="btn btn--ghost btn--sm">{t('nav.suppliers')}</Link>
           </div>
         </div>
       </LayoutSection>
 
       <LayoutSection
-        title="Top suppliers"
-        subtitle="By purchase invoice value"
+        title={t('purchasing.topSuppliers')}
+        subtitle={t('purchasing.byInvoiceValue')}
         variant="raised"
         fit={sparseTable}
-        actions={<Link to="/admin/purchasing/reports" className="btn btn--ghost btn--sm">Full report</Link>}
+        actions={<Link to="/admin/purchasing/reports" className="btn btn--ghost btn--sm">{t('purchasing.fullReport')}</Link>}
       >
         {supplierRows.length === 0 ? (
-          <p className="empty-inline">No purchase invoices yet. Receive stock or create a purchase invoice to get started.</p>
+          <p className="empty-inline">{t('purchasing.noInvoicesYet')}</p>
         ) : (
           <TableRegion fit={sparseTable}>
             <div className="table-wrap table-wrap--compact">
               <table className="table table--compact">
                 <thead>
                   <tr>
-                    <th>Supplier</th>
-                    <th>Inv.</th>
-                    <th>Total</th>
-                    <th>Outstanding</th>
+                    <th>{t('nav.suppliers')}</th>
+                    <th>{t('purchasing.table.inv')}</th>
+                    <th>{t('finance.table.total')}</th>
+                    <th>{t('finance.outstanding')}</th>
                   </tr>
                 </thead>
                 <tbody>

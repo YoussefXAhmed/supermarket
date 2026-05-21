@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ApiErrorCard, Badge, Btn, EmptyState, PageHeader, PageLoading, Table } from '../../../components/ui';
 import { TablePageLayout, LayoutSection, TableRegion } from '../../../components/layout/page-layouts';
 import { getReorderSuggestions, getWarehousesList } from '../../../services/inventoryService';
@@ -7,6 +8,7 @@ import { useInventoryCapabilities } from '../../../hooks/useInventoryCapabilitie
 import api from '../../../services/api';
 
 export default function AlertsPage() {
+  const { t } = useTranslation();
   const { canInventoryViewValuation } = useInventoryCapabilities();
   const [tab, setTab] = useState('low');
   const [threshold, setThreshold] = useState(10);
@@ -59,22 +61,22 @@ export default function AlertsPage() {
   const columns =
     tab === 'reorder'
       ? [
-          { key: 'item_code', label: 'Item', render: (v) => <span className="mono">{v}</span> },
-          { key: 'warehouse', label: 'Warehouse' },
+          { key: 'item_code', label: t('inventory.stockEntry.item'), render: (v) => <span className="mono">{v}</span> },
+          { key: 'warehouse', label: t('inventory.table.warehouse') },
           {
             key: 'actual_qty',
-            label: 'On hand',
+            label: t('inventory.table.onHand'),
             render: (v) => <Badge color="amber">{Number(v || 0).toFixed(2)}</Badge>,
           },
-          { key: 'reorder_level', label: 'Reorder at', render: (v) => <span className="mono">{v}</span> },
-          { key: 'suggested_qty', label: 'Order qty', render: (v) => <strong>{v}</strong> },
+          { key: 'reorder_level', label: t('inventory.table.reorderAt'), render: (v) => <span className="mono">{v}</span> },
+          { key: 'suggested_qty', label: t('inventory.table.orderQty'), render: (v) => <strong>{v}</strong> },
         ]
       : [
-          { key: 'item_code', label: 'Item', render: (v) => <span className="mono">{v}</span> },
-          { key: 'warehouse', label: 'Warehouse' },
+          { key: 'item_code', label: t('inventory.stockEntry.item'), render: (v) => <span className="mono">{v}</span> },
+          { key: 'warehouse', label: t('inventory.table.warehouse') },
           {
             key: 'sellable_qty',
-            label: 'Sellable',
+            label: t('inventory.table.sellable'),
             render: (v) => (
               <Badge color={Number(v || 0) <= 0 ? 'red' : 'amber'}>
                 {Number(v || 0).toFixed(2)}
@@ -85,7 +87,7 @@ export default function AlertsPage() {
             ? [
                 {
                   key: 'valuation_rate',
-                  label: 'Valuation',
+                  label: t('inventory.table.valuation'),
                   render: (v) => `EGP ${Number(v || 0).toFixed(2)}`,
                 },
               ]
@@ -96,7 +98,7 @@ export default function AlertsPage() {
 
   return (
     <TablePageLayout className="page-layout--list-page" tableConstrain={sparse}>
-      <PageHeader title="Stock alerts" subtitle="Low stock and reorder-level warnings" dense />
+      <PageHeader title={t('inventory.alerts.title')} subtitle={t('inventory.alerts.subtitle')} dense />
 
       <LayoutSection variant="flat" flushHead>
         <div className="toolbar">
@@ -106,14 +108,14 @@ export default function AlertsPage() {
               className={`pos-view-toggle__btn ${tab === 'low' ? 'pos-view-toggle__btn--active' : ''}`}
               onClick={() => setTab('low')}
             >
-              Low stock
+              {t('inventory.alerts.lowStock')}
             </button>
             <button
               type="button"
               className={`pos-view-toggle__btn ${tab === 'reorder' ? 'pos-view-toggle__btn--active' : ''}`}
               onClick={() => setTab('reorder')}
             >
-              Reorder level
+              {t('inventory.alerts.reorderLevel')}
             </button>
           </div>
           <div className="toolbar__group">
@@ -122,7 +124,7 @@ export default function AlertsPage() {
               value={warehouse}
               onChange={(e) => setWarehouse(e.target.value)}
             >
-              <option value="all">All warehouses</option>
+              <option value="all">{t('inventory.allWarehouses')}</option>
               {warehouses.map((w) => (
                 <option key={w.name} value={w.name}>
                   {w.warehouse_name || w.name}
@@ -136,11 +138,11 @@ export default function AlertsPage() {
                 min="0"
                 value={threshold}
                 onChange={(e) => setThreshold(e.target.value)}
-                title="Max qty threshold"
+                title={t('inventory.alerts.maxQtyThreshold')}
               />
             )}
             <Btn variant="ghost" size="sm" onClick={load}>
-              Load alerts
+              {t('inventory.alerts.load')}
             </Btn>
           </div>
         </div>
@@ -151,7 +153,7 @@ export default function AlertsPage() {
       ) : error ? (
         <ApiErrorCard message={error} onRetry={load} />
       ) : rows.length === 0 ? (
-        <EmptyState icon="🚨" title="No alerts" desc="Adjust filters and load." />
+        <EmptyState icon="🚨" title={t('inventory.alerts.none')} desc={t('inventory.alerts.adjustFilters')} />
       ) : (
         <LayoutSection variant="raised" flushHead fit={sparse}>
           <TableRegion fit={sparse}>

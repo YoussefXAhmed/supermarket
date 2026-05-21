@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Btn } from '../ui';
 import { fmtCurrency } from '../../utils/format';
 import StatusPill from './StatusPill';
@@ -15,6 +16,7 @@ export default function ShiftApprovalCard({
   onReject,
   compact = false,
 }) {
+  const { t } = useTranslation();
   const status = shiftSessionApprovalStatus(session);
   const canAct = canManagerActOnSession(session, user, canApprove);
   const notes = session.audit?.close_notes || session.closing?.remarks || '';
@@ -54,16 +56,16 @@ export default function ShiftApprovalCard({
       <footer className="approval-card__foot">
         {!compact && (
           <Link to="/admin/shifts/history" className="btn btn--ghost btn--sm">
-            Full history
+            {t('approvals.fullHistory')}
           </Link>
         )}
         {canAct && (
           <div className="approval-card__actions">
             <Btn variant="primary" size="sm" loading={busy} disabled={busy} onClick={() => onApprove?.(session)}>
-              Approve &amp; submit
+              {t('approvals.approveAndSubmit')}
             </Btn>
             <Btn variant="ghost" size="sm" disabled={busy} onClick={() => onReject?.(session)}>
-              Reject
+              {t('approvals.reject')}
             </Btn>
           </div>
         )}

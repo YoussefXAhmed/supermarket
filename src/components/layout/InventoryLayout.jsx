@@ -1,4 +1,5 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../hooks/useAuth';
 import { useInventoryCapabilities } from '../../hooks/useInventoryCapabilities';
 import UserSessionActions from './UserSessionActions';
@@ -6,21 +7,22 @@ import ErrorBoundary from '../common/ErrorBoundary';
 import { RoleBadge } from '../ui';
 
 const NAV = [
-  { to: '/inventory', label: 'Overview', end: true },
-  { to: '/inventory/warehouses', label: 'Warehouses' },
-  { to: '/inventory/stock-entry', label: 'Stock entry' },
-  { to: '/inventory/transfer', label: 'Transfer', cap: 'canInventoryIssueTransfer' },
-  { to: '/inventory/reconciliation', label: 'Reconcile', cap: 'canInventoryReconcile' },
-  { to: '/inventory/ledger', label: 'Ledger' },
-  { to: '/inventory/items', label: 'Items' },
-  { to: '/inventory/alerts', label: 'Alerts' },
-  { to: '/inventory/reorder', label: 'Reorder' },
-  { to: '/inventory/batches', label: 'Batches' },
-  { to: '/inventory/analytics', label: 'Analytics', cap: 'canInventoryAnalytics' },
-  { to: '/inventory/reports', label: 'Reports' },
+  { to: '/inventory', labelKey: 'nav.overview', end: true },
+  { to: '/inventory/warehouses', labelKey: 'nav.warehouses' },
+  { to: '/inventory/stock-entry', labelKey: 'nav.stockEntry' },
+  { to: '/inventory/transfer', labelKey: 'nav.transfer', cap: 'canInventoryIssueTransfer' },
+  { to: '/inventory/reconciliation', labelKey: 'nav.reconcile', cap: 'canInventoryReconcile' },
+  { to: '/inventory/ledger', labelKey: 'nav.ledger' },
+  { to: '/inventory/items', labelKey: 'nav.items' },
+  { to: '/inventory/alerts', labelKey: 'nav.alerts' },
+  { to: '/inventory/reorder', labelKey: 'nav.reorder' },
+  { to: '/inventory/batches', labelKey: 'nav.batches' },
+  { to: '/inventory/analytics', labelKey: 'nav.analytics', cap: 'canInventoryAnalytics' },
+  { to: '/inventory/reports', labelKey: 'nav.reports' },
 ];
 
 export default function InventoryLayout() {
+  const { t } = useTranslation();
   const { user, logout, canAccessAdminWorkspace, canViewPOS } = useAuth();
   const caps = useInventoryCapabilities();
   const navigate = useNavigate();
@@ -45,7 +47,7 @@ export default function InventoryLayout() {
                   `module-nav__link ${isActive ? 'module-nav__link--active' : ''}`
                 }
               >
-                {item.label}
+                {t(item.labelKey)}
               </NavLink>
             ))}
           </nav>
@@ -53,8 +55,8 @@ export default function InventoryLayout() {
             user={user}
             compact
             links={[
-              ...(canAccessAdminWorkspace ? [{ label: 'Admin', onClick: () => navigate('/admin') }] : []),
-              ...(canViewPOS ? [{ label: 'POS', onClick: () => navigate('/pos') }] : []),
+              ...(canAccessAdminWorkspace ? [{ label: t('common.admin'), onClick: () => navigate('/admin') }] : []),
+              ...(canViewPOS ? [{ label: t('common.pos'), onClick: () => navigate('/pos') }] : []),
             ]}
             onLogout={async () => {
               await logout();

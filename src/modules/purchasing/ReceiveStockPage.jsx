@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { PageHeader, Btn, ApiErrorCard } from '../../components/ui';
 import StatusPill from '../../components/approvals/StatusPill';
 import { purchaseReceiptApprovalStatus, purchaseReceiptStatusLabel } from '../../utils/approvalStatuses';
@@ -33,6 +34,7 @@ const emptyLine = () => ({
 });
 
 export default function ReceiveStockPage() {
+  const { t } = useTranslation();
   const { capabilities } = useAuth();
   const [searchParams] = useSearchParams();
   const [suppliers, setSuppliers] = useState([]);
@@ -181,7 +183,7 @@ export default function ReceiveStockPage() {
 
   return (
     <FormPageLayout>
-      <PageHeader title="Receive stock" subtitle="Purchase Receipt — increases warehouse stock on submit" dense />
+      <PageHeader title={t('purchasing.receiveStock')} subtitle={t('purchasing.receiveStockSubtitle')} dense />
       <LayoutSection variant="raised" flushHead>
         {lastReceipt && !lastReceipt.submitted && (
           <div className="receive-pending-banner card panel" role="status">
@@ -201,11 +203,11 @@ export default function ReceiveStockPage() {
               {pendingReceiptMessage(lastReceipt)}
             </p>
             <p className="page-header__sub" style={{ marginTop: 8 }}>
-              Track status in <Link to="/admin/purchasing/reports">purchase history</Link>
+              {t('purchasing.trackStatusIn')} <Link to="/admin/purchasing/reports">{t('purchasing.purchaseHistory')}</Link>
               {capabilities.canViewApprovalsDashboard ? (
                 <>
                   {' '}
-                  or <Link to="/admin/approvals">Approvals</Link>
+                  {t('common.or')} <Link to="/admin/approvals">{t('nav.approvals')}</Link>
                 </>
               ) : null}
               .
@@ -214,16 +216,16 @@ export default function ReceiveStockPage() {
         )}
         <form className="inv-form form-region" onSubmit={onSubmit}>
           <label>
-            Supplier
+            {t('purchasing.table.supplier')}
             <select className="input" value={supplier} onChange={(e) => setSupplier(e.target.value)} required>
-              <option value="">Select supplier</option>
+              <option value="">{t('purchasing.selectSupplier')}</option>
               {suppliers.map((s) => (
                 <option key={s.name} value={s.name}>{s.supplier_name || s.name}</option>
               ))}
             </select>
           </label>
           <label>
-            Receiving warehouse
+            {t('purchasing.receivingWarehouse')}
             <select className="input" value={warehouse} onChange={(e) => setWarehouse(e.target.value)} required>
               {warehouses.map((w) => (
                 <option key={w.name} value={w.name}>{w.warehouse_name || w.name}</option>
@@ -250,12 +252,12 @@ export default function ReceiveStockPage() {
             </p>
           )}
 
-          <p className="section-title">Line items</p>
+          <p className="section-title">{t('purchasing.lineItems')}</p>
           <div className="receive-line receive-line--head" aria-hidden="true">
-            <span>Item</span>
-            <span>Qty</span>
-            <span>Rate</span>
-            <span>Line total</span>
+            <span>{t('inventory.stockEntry.item')}</span>
+            <span>{t('inventory.stockEntry.qty')}</span>
+            <span>{t('purchasing.rate')}</span>
+            <span>{t('purchasing.lineTotal')}</span>
             <span />
           </div>
           {lines.map((line, index) => {
@@ -267,7 +269,7 @@ export default function ReceiveStockPage() {
               <input
                 className="input"
                 list="receive-items"
-                placeholder="Item code"
+                placeholder={t('inventory.stockEntry.itemCode')}
                 value={line.item_code}
                 onChange={(e) => updateLine(index, { item_code: e.target.value })}
                 onBlur={(e) => onItemBlur(index, e.target.value)}
@@ -278,7 +280,7 @@ export default function ReceiveStockPage() {
                 type="number"
                 min="0.001"
                 step="any"
-                placeholder="Qty"
+                placeholder={t('inventory.stockEntry.qty')}
                 value={line.qty}
                 onChange={(e) => updateLine(index, { qty: e.target.value })}
                 required
@@ -289,14 +291,14 @@ export default function ReceiveStockPage() {
                   type="number"
                   min="0.01"
                   step="0.01"
-                  placeholder="Buying rate"
+                  placeholder={t('purchasing.buyingRate')}
                   value={line.rate}
                   onChange={(e) => onRateChange(index, e.target.value)}
                   required
                 />
                 {line.expected_rate !== '' && Number(line.expected_rate) > 0 && (
                   <p className="receive-line-expected">
-                    Expected {Number(line.expected_rate).toFixed(2)}
+                    {t('purchasing.expected')} {Number(line.expected_rate).toFixed(2)}
                   </p>
                 )}
               </div>
@@ -313,7 +315,7 @@ export default function ReceiveStockPage() {
                 )}
               </div>
               {lines.length > 1 ? (
-                <button type="button" className="btn btn--ghost btn--sm" onClick={() => setLines((p) => p.filter((_, i) => i !== index))}>Remove</button>
+                <button type="button" className="btn btn--ghost btn--sm" onClick={() => setLines((p) => p.filter((_, i) => i !== index))}>{t('common.remove')}</button>
               ) : (
                 <span />
               )}
@@ -321,14 +323,14 @@ export default function ReceiveStockPage() {
             );
           })}
           <p className="receive-order-total">
-            Order total: <strong>{fmtCurrency(orderTotal)}</strong>
+            {t('purchasing.orderTotal')}: <strong>{fmtCurrency(orderTotal)}</strong>
           </p>
           <datalist id="receive-items">{items.map((it) => <option key={it.item_code} value={it.item_code} />)}</datalist>
-          <Btn type="button" variant="ghost" size="sm" onClick={() => setLines((p) => [...p, emptyLine()])}>+ Add line</Btn>
+          <Btn type="button" variant="ghost" size="sm" onClick={() => setLines((p) => [...p, emptyLine()])}>+ {t('purchasing.addLine')}</Btn>
           <Btn type="submit" variant="primary" size="md" loading={saving}>{submitLabel}</Btn>
         </form>
         {msg && <p className="inv-success">{msg}</p>}
-        {err && <ApiErrorCard title="Receive failed" message={err} />}
+        {err && <ApiErrorCard title={t('purchasing.receiveFailed')} message={err} />}
       </LayoutSection>
     </FormPageLayout>
   );

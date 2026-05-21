@@ -1,0 +1,364 @@
+{
+  "common": {
+    "admin": "Admin",
+    "cancel": "Cancel",
+    "checkout": "Checkout",
+    "clear": "Clear",
+    "edit": "Edit",
+    "invoices": "Invoices",
+    "logout": "Log out",
+    "or": "or",
+    "pos": "POS",
+    "refresh": "Refresh",
+    "remove": "Remove",
+    "save": "Save",
+    "select": "Select",
+    "view": "View",
+    "submit": "Submit"
+  },
+  "roles": {
+    "administrator": "Administrator",
+    "storeManager": "Store Manager",
+    "cashier": "Cashier",
+    "manager": "Manager",
+    "deskUser": "Desk User"
+  },
+  "ui": {
+    "loading": "Loading...",
+    "partialData": "Some data could not be loaded. Showing partial results.",
+    "error": {
+      "couldNotLoad": "Could not load data",
+      "tryAgain": "Try again"
+    },
+    "errorBoundary": {
+      "title": "Something went wrong",
+      "desc": "An unexpected error occurred. Reload the page or try again.",
+      "reloadPage": "Reload page"
+    },
+    "empty": {
+      "nothingHere": "Nothing here"
+    },
+    "table": {
+      "noData": "No data",
+      "actions": "Actions"
+    },
+    "pagination": {
+      "range": "{{start}}-{{end}} of {{total}}",
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {{page}} / {{pageCount}}"
+    },
+    "search": {
+      "placeholder": "Search...",
+      "clear": "Clear search"
+    },
+    "toast": {
+      "close": "Close notification"
+    },
+    "export": {
+      "print": "Print"
+    },
+    "selector": {
+      "suggested": "Suggested",
+      "score": "score"
+    }
+  },
+  "language": {
+    "label": "Language",
+    "english": "English",
+    "arabic": "العربية"
+  },
+  "nav": {
+    "activity": "Activity",
+    "alerts": "Alerts",
+    "analytics": "Analytics",
+    "approvals": "Approvals",
+    "batches": "Batches",
+    "customers": "Customers",
+    "dashboard": "Dashboard",
+    "finance": "Finance",
+    "history": "History",
+    "inventory": "Inventory",
+    "invoiceMatching": "Invoice matching",
+    "items": "Items",
+    "ledger": "Ledger",
+    "matching": "Matching",
+    "overview": "Overview",
+    "products": "Products",
+    "purchaseRates": "Purchase rates",
+    "purchasing": "Purchasing",
+    "receive": "Receive",
+    "reconcile": "Reconcile",
+    "reorder": "Reorder",
+    "reports": "Reports",
+    "returns": "Returns",
+    "settings": "Settings",
+    "shifts": "Shifts",
+    "stock": "Stock",
+    "stockEntry": "Stock entry",
+    "supplierPayments": "Supplier payments",
+    "suppliers": "Suppliers",
+    "transfer": "Transfer",
+    "users": "Users",
+    "warehouses": "Warehouses"
+  },
+  "pos": {
+    "card": "Card",
+    "cart": "Cart",
+    "checkoutDisabled": "Checkout disabled",
+    "cash": "Cash",
+    "confirmOpenShift": "Confirm & open shift",
+    "dismissDraft": "Dismiss draft",
+    "endShift": "End shift",
+    "myInvoices": "My Invoices",
+    "noShift": "No shift",
+    "openingAmountLabel": "Amount (EGP)",
+    "openingBalance": "Opening balance",
+    "modeLabel": "Mode",
+    "profileLabel": "Profile",
+    "retrySubmit": "Retry submit",
+    "sell": "Sell",
+    "shiftOpen": "Shift open",
+    "split": "Split",
+    "startShift": "Start shift"
+  },
+  "shifts": {
+    "closeShift": "Close shift",
+    "openShift": "Open shift",
+    "shiftControl": "Shift control",
+    "subtitle": "Cash reconciliation · ERPNext POS Opening/Closing"
+  },
+  "approvals": {
+    "approveAndSubmit": "Approve & submit",
+    "fullHistory": "Full history",
+    "reject": "Reject",
+    "requestedBy": "Requested by",
+    "total": "Total",
+    "viewOnly": "View only — submit from Approvals hub",
+    "table": {
+      "item": "Item",
+      "qty": "Qty",
+      "expected": "Expected",
+      "entered": "Entered",
+      "varPct": "Var %",
+      "amount": "Amount"
+    }
+  },
+  "inventory": {
+    "subtitle": "Stock snapshot from ERPNext",
+    "searchItems": "Search items",
+    "allWarehouses": "All warehouses",
+    "newItem": "New item",
+    "emptyFiltered": "No inventory rows match your filters.",
+    "itemsCount": "{{count}} items",
+    "available": "Available",
+    "noProductsFound": "No inventory products found",
+    "tryDifferentSearch": "Try a different search term.",
+    "kpi": {
+      "products": "Products",
+      "qtyOnHand": "Qty on hand",
+      "value": "Value",
+      "lowStock": "Low stock"
+    },
+    "table": {
+      "warehouse": "Warehouse",
+      "product": "Product",
+      "id": "ID",
+      "name": "Name",
+      "type": "Type",
+      "company": "Company",
+      "parent": "Parent",
+      "onHand": "On hand",
+      "reorderAt": "Reorder at",
+      "orderQty": "Order qty",
+      "sellable": "Sellable",
+      "valuation": "Valuation",
+      "currentQty": "Current Qty",
+      "time": "Time",
+      "qtyChange": "Qty Change",
+      "balance": "Balance",
+      "voucher": "Voucher",
+      "no": "No.",
+      "value": "Value",
+      "price": "Price",
+      "inStock": "In Stock",
+      "stockValue": "Stock Value"
+    },
+    "stockEntry": {
+      "title": "Stock Entry",
+      "subtitle": "Create and submit stock movements",
+      "entryType": "Entry Type",
+      "item": "Item",
+      "itemCode": "Item Code",
+      "qty": "Qty",
+      "quantity": "Quantity",
+      "sourceWarehouse": "Source Warehouse",
+      "targetWarehouse": "Target Warehouse",
+      "selectSource": "Select source",
+      "selectTarget": "Select target",
+      "createSubmit": "Create & Submit",
+      "failed": "Stock entry failed"
+    },
+    "transfer": {
+      "title": "Stock Transfer",
+      "subtitle": "Move stock between warehouses",
+      "from": "From",
+      "to": "To",
+      "submit": "Submit transfer"
+    },
+    "warehouses": {
+      "search": "Search warehouses...",
+      "allTypes": "All types",
+      "allCompanies": "All companies",
+      "noMatching": "No matching warehouses",
+      "none": "No warehouses found"
+    },
+    "alerts": {
+      "title": "Stock alerts",
+      "subtitle": "Low stock and reorder-level warnings",
+      "lowStock": "Low stock",
+      "reorderLevel": "Reorder level",
+      "maxQtyThreshold": "Max qty threshold",
+      "load": "Load alerts",
+      "none": "No alerts",
+      "adjustFilters": "Adjust filters and load."
+    },
+    "reorder": {
+      "title": "Reorder suggestions",
+      "subtitle": "Items at or below reorder level from ERPNext Item reorder table",
+      "suggestedOrder": "Suggested Order",
+      "suggestedQty": "Suggested qty",
+      "load": "Load suggestions",
+      "empty": "Load to see reorder suggestions"
+    },
+    "ledger": {
+      "title": "Stock Ledger",
+      "subtitle": "Movement history from Stock Ledger Entry",
+      "filterItemCode": "Filter by item code",
+      "load": "Load Movements",
+      "emptyTitle": "No ledger entries loaded",
+      "emptyDesc": "Use filter and click Load Movements."
+    },
+    "reports": {
+      "title": "Inventory Reports",
+      "subtitle": "Stock balance, movement, export and print",
+      "load": "Load",
+      "exportCsv": "Export CSV",
+      "print": "Print",
+      "filterItemCode": "Filter item code",
+      "movementFromDate": "Movement from date",
+      "groupByWarehouse": "Group by warehouse",
+      "noRows": "No rows",
+      "stockBalance": "Stock balance",
+      "stockMovement": "Stock movement",
+      "noMovementRows": "No movement rows"
+    }
+  },
+  "purchasing": {
+    "subtitle": "Suppliers · receipts · payables",
+    "totalPurchases": "Total purchases",
+    "thisMonth": "This month",
+    "workflow": "Workflow",
+    "receiveStock": "Receive stock",
+    "receiveStockSubtitle": "Purchase Receipt — increases warehouse stock on submit",
+    "newInvoice": "New invoice",
+    "topSuppliers": "Top suppliers",
+    "byInvoiceValue": "By purchase invoice value",
+    "fullReport": "Full report",
+    "noInvoicesYet": "No purchase invoices yet. Receive stock or create a purchase invoice to get started.",
+    "newSupplier": "New supplier",
+    "searchSuppliers": "Search suppliers...",
+    "noSuppliers": "No suppliers",
+    "noSuppliersDesc": "Create your first supplier to start purchasing.",
+    "purchaseInvoices": "Purchase invoices",
+    "purchaseInvoicesSubtitle": "Supplier payables and bill matching",
+    "exceptionalBilling": "Exceptional billing",
+    "newPurchaseInvoice": "New purchase invoice",
+    "noPurchaseInvoices": "No purchase invoices",
+    "supplierBillNo": "Supplier bill #",
+    "rate": "Rate",
+    "line": "Line",
+    "submitInvoice": "Submit invoice",
+    "selectSupplier": "Select supplier",
+    "receivingWarehouse": "Receiving warehouse",
+    "lineItems": "Line items",
+    "lineTotal": "Line total",
+    "buyingRate": "Buying rate",
+    "expected": "Expected",
+    "orderTotal": "Order total",
+    "addLine": "Add line",
+    "receiveFailed": "Receive failed",
+    "trackStatusIn": "Track status in",
+    "purchaseHistory": "purchase history",
+    "matching": {
+      "selectDraftInvoice": "Select draft invoice...",
+      "link": "Link",
+      "searchDraftInvoice": "Search draft PINV...",
+      "noDraftInvoices": "No draft invoices for this supplier and company.",
+      "linked": "linked"
+    },
+    "table": {
+      "supplier": "Supplier",
+      "inv": "Inv.",
+      "group": "Group",
+      "mobile": "Mobile",
+      "email": "Email"
+    }
+  },
+  "finance": {
+    "workspaceTitle": "Finance workspace",
+    "workspaceSubtitle": "Approvals, payments, and reporting — no POS selling or inventory execution.",
+    "workspaceHint": "Scoped to your ERP company and warehouse permissions. Stock transfers and reconciliation are not available in this workspace.",
+    "purchaseApprovals": "Purchase approvals",
+    "shiftApprovals": "Shift approvals",
+    "highVariance": "High variance",
+    "quickLinks": "Quick links",
+    "outstanding": "Outstanding",
+    "unpaidInvoices": "Unpaid invoices",
+    "overdueCount": "Overdue count",
+    "agingTitle": "Aging (outstanding)",
+    "links": {
+      "invoiceMatching": "Create bills from receipts",
+      "supplierPayments": "AP, aging, ERP Payment Entry",
+      "approvalsHub": "Approvals hub",
+      "approvalsDesc": "Purchases, shifts, variance, history",
+      "salesInvoices": "Sales invoices",
+      "salesInvoicesDesc": "Customer sales invoices",
+      "financialReports": "Financial reports",
+      "financialReportsDesc": "Purchasing and sales reporting",
+      "shiftApprovals": "Shift approvals",
+      "shiftApprovalsDesc": "Review cashier closings",
+      "purchaseRatesDesc": "Buying price variance queue"
+    },
+    "payments": {
+      "subtitle": "Accounts payable — unpaid invoices, aging, and ERPNext Payment Entry",
+      "closeForm": "Close form",
+      "newPayment": "New payment",
+      "recordPayment": "Record supplier payment",
+      "allSuppliers": "All suppliers",
+      "history": "Payment history",
+      "noInvoices": "No invoices",
+      "noInvoicesDesc": "No purchase invoices match this filter.",
+      "noPayments": "No payments",
+      "noPaymentsDesc": "Submitted supplier payments will appear here."
+    },
+    "status": {
+      "all": "All",
+      "overdue": "Overdue",
+      "unpaid": "Unpaid",
+      "partial": "Partial",
+      "paid": "Paid"
+    },
+    "aging": {
+      "current": "Current"
+    },
+    "table": {
+      "invoice": "Invoice",
+      "due": "Due",
+      "date": "Date",
+      "total": "Total",
+      "paidPct": "Paid %",
+      "status": "Status"
+    }
+  }
+}

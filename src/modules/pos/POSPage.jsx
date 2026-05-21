@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { usePOS } from '../../hooks/usePOS';
 import { useAuth } from '../../hooks/useAuth';
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
@@ -88,6 +89,7 @@ function CartRow({ item, onQty, onRemove, maxQty }) {
 }
 
 export default function POSPage() {
+  const { t } = useTranslation();
   const {
     canOperatePOS,
     canManageShift,
@@ -276,10 +278,10 @@ export default function POSPage() {
           <div className="pos-header__tools">
             <div className="pos-view-toggle">
               {canOperatePOS && (
-                <button type="button" className={`pos-view-toggle__btn ${viewMode === 'sell' ? 'pos-view-toggle__btn--active' : ''}`} onClick={() => setViewMode('sell')}>Sell</button>
+                <button type="button" className={`pos-view-toggle__btn ${viewMode === 'sell' ? 'pos-view-toggle__btn--active' : ''}`} onClick={() => setViewMode('sell')}>{t('pos.sell')}</button>
               )}
               <button type="button" className={`pos-view-toggle__btn ${viewMode === 'invoices' ? 'pos-view-toggle__btn--active' : ''}`} onClick={() => setViewMode('invoices')}>
-                {canOperatePOS ? 'My Invoices' : 'Invoices'}
+                {canOperatePOS ? t('pos.myInvoices') : t('common.invoices')}
               </button>
             </div>
             {viewMode === 'sell' && canOperatePOS && (
@@ -298,8 +300,8 @@ export default function POSPage() {
             user={user}
             compact
             links={[
-              ...(canAccessInventory ? [{ label: 'Stock', onClick: () => navigate('/inventory') }] : []),
-              ...(canAccessAdminWorkspace ? [{ label: 'Admin', onClick: () => navigate('/admin') }] : []),
+              ...(canAccessInventory ? [{ label: t('nav.stock'), onClick: () => navigate('/inventory') }] : []),
+              ...(canAccessAdminWorkspace ? [{ label: t('common.admin'), onClick: () => navigate('/admin') }] : []),
             ]}
             onLogout={async () => { await logout(); navigate('/login'); }}
           />
@@ -353,8 +355,8 @@ export default function POSPage() {
             Retry only if stock or validation issues are resolved.
           </p>
           <div className="pos-pending__actions">
-            <Btn variant="primary" size="sm" loading={pos.checkoutLoading} onClick={() => pos.recoverPendingInvoice()}>Retry submit</Btn>
-            <Btn variant="ghost" size="sm" onClick={() => pos.dismissPendingInvoice()}>Dismiss draft</Btn>
+            <Btn variant="primary" size="sm" loading={pos.checkoutLoading} onClick={() => pos.recoverPendingInvoice()}>{t('pos.retrySubmit')}</Btn>
+            <Btn variant="ghost" size="sm" onClick={() => pos.dismissPendingInvoice()}>{t('pos.dismissDraft')}</Btn>
           </div>
         </div>
       )}
@@ -383,7 +385,7 @@ export default function POSPage() {
               <h2 className="pos-cart__title">Cart</h2>
               <span className="pos-cart__count">{pos.cartCount} items</span>
               {pos.cartCount > 0 && (
-                <button type="button" className="pos-cart__clear" onClick={handleClearCart}>Clear</button>
+                <button type="button" className="pos-cart__clear" onClick={handleClearCart}>{t('common.clear')}</button>
               )}
             </div>
 
@@ -450,7 +452,7 @@ export default function POSPage() {
                 disabled={!canOperatePOS || !pos.cart.length || sellDisabled}
                 onClick={handleCheckout}
               >
-                {canOperatePOS ? `Checkout · EGP ${pos.cartTotal.toFixed(2)}` : 'Checkout disabled'}
+                {canOperatePOS ? `${t('common.checkout')} · EGP ${pos.cartTotal.toFixed(2)}` : t('pos.checkoutDisabled')}
               </Btn>
               <p className="pos-cart__shortcuts mono">F2 checkout · Esc clear cart</p>
             </div>
@@ -461,7 +463,7 @@ export default function POSPage() {
           <section className="card pos-invoices-page__list">
             <div className="pos-cart__history-head">
               <h3>My Invoices</h3>
-              <button type="button" className="pos-cart__history-refresh" onClick={loadMyInvoices}>Refresh</button>
+              <button type="button" className="pos-cart__history-refresh" onClick={loadMyInvoices}>{t('common.refresh')}</button>
             </div>
             {invoicesLoading ? (
               <div className="pos-cart__history-loading"><Spinner size={18} /></div>

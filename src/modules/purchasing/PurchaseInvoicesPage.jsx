@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ApiErrorCard, Badge, Btn, PageHeader, PageLoading, Table } from '../../components/ui';
 import {
   FormPageLayout,
@@ -18,6 +19,7 @@ const fmt = (n) =>
 const emptyLine = () => ({ item_code: '', qty: '', rate: '' });
 
 export default function PurchaseInvoicesPage() {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const [tab, setTab] = useState('list');
   const [rows, setRows] = useState([]);
@@ -83,14 +85,14 @@ export default function PurchaseInvoicesPage() {
   };
 
   const columns = [
-    { key: 'name', label: 'Invoice', render: (v) => <span className="mono">{v}</span> },
-    { key: 'supplier', label: 'Supplier' },
-    { key: 'posting_date', label: 'Date' },
-    { key: 'grand_total', label: 'Total', render: (v) => fmt(v) },
-    { key: 'outstanding_amount', label: 'Outstanding', render: (v) => fmt(v) },
+    { key: 'name', label: t('finance.table.invoice'), render: (v) => <span className="mono">{v}</span> },
+    { key: 'supplier', label: t('purchasing.table.supplier') },
+    { key: 'posting_date', label: t('finance.table.date') },
+    { key: 'grand_total', label: t('finance.table.total'), render: (v) => fmt(v) },
+    { key: 'outstanding_amount', label: t('finance.outstanding'), render: (v) => fmt(v) },
     {
       key: 'status',
-      label: 'Status',
+      label: t('finance.table.status'),
       render: (v) => <Badge color={v === 'Paid' ? 'green' : 'amber'}>{v}</Badge>,
     },
   ];
@@ -101,8 +103,8 @@ export default function PurchaseInvoicesPage() {
   return (
     <Layout className="page-layout--list-page" tableConstrain={tab === 'list' && sparse}>
       <PageHeader
-        title="Purchase invoices"
-        subtitle="Supplier payables and bill matching"
+        title={t('purchasing.purchaseInvoices')}
+        subtitle={t('purchasing.purchaseInvoicesSubtitle')}
         dense
       />
 
@@ -113,21 +115,21 @@ export default function PurchaseInvoicesPage() {
             className={`pos-view-toggle__btn ${tab === 'list' ? 'pos-view-toggle__btn--active' : ''}`}
             onClick={() => setTab('list')}
           >
-            History
+            {t('nav.history')}
           </button>
           <button
             type="button"
             className={`pos-view-toggle__btn ${tab === 'new' ? 'pos-view-toggle__btn--active' : ''}`}
             onClick={() => setTab('new')}
           >
-            New invoice
+            {t('purchasing.newInvoice')}
           </button>
           <button
             type="button"
             className={`pos-view-toggle__btn ${tab === 'from-receipt' ? 'pos-view-toggle__btn--active' : ''}`}
             onClick={() => setTab('from-receipt')}
           >
-            Exceptional billing
+            {t('purchasing.exceptionalBilling')}
           </button>
         </div>
       </LayoutSection>
@@ -138,26 +140,26 @@ export default function PurchaseInvoicesPage() {
         ) : (
           <LayoutSection variant="raised" flushHead fit={sparse}>
             <TableRegion fit={sparse}>
-              <Table columns={columns} data={rows} compact emptyMsg="No purchase invoices" />
+              <Table columns={columns} data={rows} compact emptyMsg={t('purchasing.noPurchaseInvoices')} />
             </TableRegion>
           </LayoutSection>
         )
       ) : tab === 'from-receipt' ? (
-        <LayoutSection variant="raised" title="Exceptional billing">
+        <LayoutSection variant="raised" title={t('purchasing.exceptionalBilling')}>
           <CreateInvoiceFromReceiptPanel onSuccess={() => loadList()} />
         </LayoutSection>
       ) : (
-        <LayoutSection variant="raised" title="New purchase invoice">
+        <LayoutSection variant="raised" title={t('purchasing.newPurchaseInvoice')}>
           <form className="inv-form form-region" onSubmit={onSubmit}>
             <label>
-              Supplier
+              {t('purchasing.table.supplier')}
               <select
                 className="input"
                 value={supplier}
                 onChange={(e) => setSupplier(e.target.value)}
                 required
               >
-                <option value="">Select</option>
+                <option value="">{t('common.select')}</option>
                 {suppliers.map((s) => (
                   <option key={s.name} value={s.name}>
                     {s.supplier_name || s.name}
@@ -166,7 +168,7 @@ export default function PurchaseInvoicesPage() {
               </select>
             </label>
             <label>
-              Supplier bill #
+              {t('purchasing.supplierBillNo')}
               <input className="input" value={billNo} onChange={(e) => setBillNo(e.target.value)} />
             </label>
             {lines.map((line, index) => (
@@ -183,7 +185,7 @@ export default function PurchaseInvoicesPage() {
                   type="number"
                   min="0.001"
                   step="any"
-                  placeholder="Qty"
+                  placeholder={t('inventory.stockEntry.qty')}
                   value={line.qty}
                   onChange={(e) => updateLine(index, { qty: e.target.value })}
                   required
@@ -193,7 +195,7 @@ export default function PurchaseInvoicesPage() {
                   type="number"
                   min="0"
                   step="0.01"
-                  placeholder="Rate"
+                  placeholder={t('purchasing.rate')}
                   value={line.rate}
                   onChange={(e) => updateLine(index, { rate: e.target.value })}
                 />
@@ -205,10 +207,10 @@ export default function PurchaseInvoicesPage() {
               ))}
             </datalist>
             <Btn type="button" variant="ghost" size="sm" onClick={() => setLines((p) => [...p, emptyLine()])}>
-              + Line
+              + {t('purchasing.line')}
             </Btn>
             <Btn type="submit" variant="primary" size="md" loading={saving}>
-              Submit invoice
+              {t('purchasing.submitInvoice')}
             </Btn>
             {msg && <p className="inv-success">{msg}</p>}
             {err && <ApiErrorCard message={err} />}

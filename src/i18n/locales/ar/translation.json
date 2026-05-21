@@ -1,0 +1,364 @@
+{
+  "common": {
+    "admin": "الإدارة",
+    "cancel": "إلغاء",
+    "checkout": "إتمام البيع",
+    "clear": "مسح",
+    "edit": "تعديل",
+    "invoices": "الفواتير",
+    "logout": "تسجيل الخروج",
+    "or": "أو",
+    "pos": "نقطة البيع",
+    "refresh": "تحديث",
+    "remove": "إزالة",
+    "save": "حفظ",
+    "select": "اختر",
+    "view": "عرض",
+    "submit": "إرسال"
+  },
+  "roles": {
+    "administrator": "مدير النظام",
+    "storeManager": "مدير المتجر",
+    "cashier": "كاشير",
+    "manager": "مدير",
+    "deskUser": "مستخدم مكتب"
+  },
+  "ui": {
+    "loading": "جاري التحميل...",
+    "partialData": "تعذر تحميل بعض البيانات. يتم عرض نتائج جزئية.",
+    "error": {
+      "couldNotLoad": "تعذر تحميل البيانات",
+      "tryAgain": "حاول مرة أخرى"
+    },
+    "errorBoundary": {
+      "title": "حدث خطأ",
+      "desc": "حدث خطأ غير متوقع. أعد تحميل الصفحة أو حاول مرة أخرى.",
+      "reloadPage": "إعادة تحميل الصفحة"
+    },
+    "empty": {
+      "nothingHere": "لا يوجد شيء هنا"
+    },
+    "table": {
+      "noData": "لا توجد بيانات",
+      "actions": "الإجراءات"
+    },
+    "pagination": {
+      "range": "{{start}}-{{end}} من {{total}}",
+      "previous": "السابق",
+      "next": "التالي",
+      "page": "صفحة {{page}} / {{pageCount}}"
+    },
+    "search": {
+      "placeholder": "بحث...",
+      "clear": "مسح البحث"
+    },
+    "toast": {
+      "close": "إغلاق التنبيه"
+    },
+    "export": {
+      "print": "طباعة"
+    },
+    "selector": {
+      "suggested": "مقترح",
+      "score": "درجة"
+    }
+  },
+  "language": {
+    "label": "اللغة",
+    "english": "English",
+    "arabic": "العربية"
+  },
+  "nav": {
+    "activity": "النشاط",
+    "alerts": "التنبيهات",
+    "analytics": "التحليلات",
+    "approvals": "الموافقات",
+    "batches": "الدفعات",
+    "customers": "العملاء",
+    "dashboard": "لوحة التحكم",
+    "finance": "المالية",
+    "history": "السجل",
+    "inventory": "المخزون",
+    "invoiceMatching": "مطابقة الفواتير",
+    "items": "الأصناف",
+    "ledger": "دفتر الحركة",
+    "matching": "المطابقة",
+    "overview": "نظرة عامة",
+    "products": "المنتجات",
+    "purchaseRates": "أسعار الشراء",
+    "purchasing": "المشتريات",
+    "receive": "استلام",
+    "reconcile": "تسوية",
+    "reorder": "إعادة الطلب",
+    "reports": "التقارير",
+    "returns": "المرتجعات",
+    "settings": "الإعدادات",
+    "shifts": "الشيفتات",
+    "stock": "المخزون",
+    "stockEntry": "إدخال مخزون",
+    "supplierPayments": "مدفوعات الموردين",
+    "suppliers": "الموردون",
+    "transfer": "تحويل",
+    "users": "المستخدمون",
+    "warehouses": "المخازن"
+  },
+  "pos": {
+    "card": "بطاقة",
+    "cart": "السلة",
+    "checkoutDisabled": "البيع غير متاح",
+    "cash": "نقدي",
+    "confirmOpenShift": "تأكيد وفتح الشيفت",
+    "dismissDraft": "تجاهل المسودة",
+    "endShift": "إنهاء الشيفت",
+    "myInvoices": "فواتيري",
+    "noShift": "لا يوجد شيفت",
+    "openingAmountLabel": "المبلغ (ج.م)",
+    "openingBalance": "الرصيد الافتتاحي",
+    "modeLabel": "طريقة الدفع",
+    "profileLabel": "الملف الشخصي",
+    "retrySubmit": "إعادة الإرسال",
+    "sell": "بيع",
+    "shiftOpen": "الشيفت مفتوح",
+    "split": "تقسيم",
+    "startShift": "بدء الشيفت"
+  },
+  "shifts": {
+    "closeShift": "إغلاق الشيفت",
+    "openShift": "فتح الشيفت",
+    "shiftControl": "إدارة الشيفت",
+    "subtitle": "تسوية النقدية · ERPNext POS فتح/إغلاق"
+  },
+  "approvals": {
+    "approveAndSubmit": "موافقة وإرسال",
+    "fullHistory": "السجل الكامل",
+    "reject": "رفض",
+    "requestedBy": "طلب بواسطة",
+    "total": "الإجمالي",
+    "viewOnly": "عرض فقط — أرسل من مركز الموافقات",
+    "table": {
+      "item": "الصنف",
+      "qty": "الكمية",
+      "expected": "المتوقع",
+      "entered": "المُدخل",
+      "varPct": "الانحراف %",
+      "amount": "المبلغ"
+    }
+  },
+  "inventory": {
+    "subtitle": "لقطة المخزون من ERPNext",
+    "searchItems": "بحث عن الأصناف",
+    "allWarehouses": "كل المخازن",
+    "newItem": "صنف جديد",
+    "emptyFiltered": "لا توجد صفوف مخزون تطابق الفلاتر.",
+    "itemsCount": "{{count}} صنف",
+    "available": "المتاح",
+    "noProductsFound": "لا توجد منتجات مخزون",
+    "tryDifferentSearch": "جرّب كلمة بحث مختلفة.",
+    "kpi": {
+      "products": "المنتجات",
+      "qtyOnHand": "الكمية المتوفرة",
+      "value": "القيمة",
+      "lowStock": "مخزون منخفض"
+    },
+    "table": {
+      "warehouse": "المخزن",
+      "product": "المنتج",
+      "id": "المعرّف",
+      "name": "الاسم",
+      "type": "النوع",
+      "company": "الشركة",
+      "parent": "الأصل",
+      "onHand": "المتوفر فعليًا",
+      "reorderAt": "إعادة الطلب عند",
+      "orderQty": "كمية الطلب",
+      "sellable": "القابل للبيع",
+      "valuation": "التقييم",
+      "currentQty": "الكمية الحالية",
+      "time": "الوقت",
+      "qtyChange": "تغير الكمية",
+      "balance": "الرصيد",
+      "voucher": "المستند",
+      "no": "الرقم",
+      "value": "القيمة",
+      "price": "السعر",
+      "inStock": "متوفر",
+      "stockValue": "قيمة المخزون"
+    },
+    "stockEntry": {
+      "title": "إدخال مخزون",
+      "subtitle": "إنشاء وإرسال حركات المخزون",
+      "entryType": "نوع الإدخال",
+      "item": "الصنف",
+      "itemCode": "كود الصنف",
+      "qty": "الكمية",
+      "quantity": "الكمية",
+      "sourceWarehouse": "مخزن المصدر",
+      "targetWarehouse": "مخزن الهدف",
+      "selectSource": "اختر المصدر",
+      "selectTarget": "اختر الهدف",
+      "createSubmit": "إنشاء وإرسال",
+      "failed": "فشل إدخال المخزون"
+    },
+    "transfer": {
+      "title": "تحويل مخزون",
+      "subtitle": "نقل المخزون بين المخازن",
+      "from": "من",
+      "to": "إلى",
+      "submit": "إرسال التحويل"
+    },
+    "warehouses": {
+      "search": "بحث في المخازن...",
+      "allTypes": "كل الأنواع",
+      "allCompanies": "كل الشركات",
+      "noMatching": "لا توجد مخازن مطابقة",
+      "none": "لا توجد مخازن"
+    },
+    "alerts": {
+      "title": "تنبيهات المخزون",
+      "subtitle": "تحذيرات انخفاض المخزون ومستوى إعادة الطلب",
+      "lowStock": "مخزون منخفض",
+      "reorderLevel": "مستوى إعادة الطلب",
+      "maxQtyThreshold": "أقصى حد للكمية",
+      "load": "تحميل التنبيهات",
+      "none": "لا توجد تنبيهات",
+      "adjustFilters": "عدّل الفلاتر ثم حمّل النتائج."
+    },
+    "reorder": {
+      "title": "اقتراحات إعادة الطلب",
+      "subtitle": "الأصناف عند أو أقل من مستوى إعادة الطلب من جدول ERPNext",
+      "suggestedOrder": "الطلب المقترح",
+      "suggestedQty": "الكمية المقترحة",
+      "load": "تحميل الاقتراحات",
+      "empty": "حمّل النتائج لرؤية اقتراحات إعادة الطلب"
+    },
+    "ledger": {
+      "title": "دفتر حركة المخزون",
+      "subtitle": "سجل الحركة من Stock Ledger Entry",
+      "filterItemCode": "فلترة بكود الصنف",
+      "load": "تحميل الحركات",
+      "emptyTitle": "لم يتم تحميل حركات",
+      "emptyDesc": "استخدم الفلتر واضغط تحميل الحركات."
+    },
+    "reports": {
+      "title": "تقارير المخزون",
+      "subtitle": "رصيد المخزون والحركة والتصدير والطباعة",
+      "load": "تحميل",
+      "exportCsv": "تصدير CSV",
+      "print": "طباعة",
+      "filterItemCode": "فلترة كود الصنف",
+      "movementFromDate": "الحركة من تاريخ",
+      "groupByWarehouse": "تجميع حسب المخزن",
+      "noRows": "لا توجد صفوف",
+      "stockBalance": "رصيد المخزون",
+      "stockMovement": "حركة المخزون",
+      "noMovementRows": "لا توجد صفوف حركة"
+    }
+  },
+  "purchasing": {
+    "subtitle": "الموردون · الاستلامات · المستحقات",
+    "totalPurchases": "إجمالي المشتريات",
+    "thisMonth": "هذا الشهر",
+    "workflow": "سير العمل",
+    "receiveStock": "استلام مخزون",
+    "receiveStockSubtitle": "إيصال شراء — يزيد مخزون المخزن عند الإرسال",
+    "newInvoice": "فاتورة جديدة",
+    "topSuppliers": "أهم الموردين",
+    "byInvoiceValue": "حسب قيمة فواتير الشراء",
+    "fullReport": "التقرير الكامل",
+    "noInvoicesYet": "لا توجد فواتير شراء بعد. استلم مخزونًا أو أنشئ فاتورة شراء للبدء.",
+    "newSupplier": "مورد جديد",
+    "searchSuppliers": "بحث في الموردين...",
+    "noSuppliers": "لا يوجد موردون",
+    "noSuppliersDesc": "أنشئ أول مورد لبدء المشتريات.",
+    "purchaseInvoices": "فواتير الشراء",
+    "purchaseInvoicesSubtitle": "مستحقات الموردين ومطابقة الفواتير",
+    "exceptionalBilling": "فوترة استثنائية",
+    "newPurchaseInvoice": "فاتورة شراء جديدة",
+    "noPurchaseInvoices": "لا توجد فواتير شراء",
+    "supplierBillNo": "رقم فاتورة المورد",
+    "rate": "السعر",
+    "line": "سطر",
+    "submitInvoice": "إرسال الفاتورة",
+    "selectSupplier": "اختر المورد",
+    "receivingWarehouse": "مخزن الاستلام",
+    "lineItems": "بنود الأصناف",
+    "lineTotal": "إجمالي السطر",
+    "buyingRate": "سعر الشراء",
+    "expected": "المتوقع",
+    "orderTotal": "إجمالي الطلب",
+    "addLine": "إضافة سطر",
+    "receiveFailed": "فشل الاستلام",
+    "trackStatusIn": "تابع الحالة في",
+    "purchaseHistory": "سجل المشتريات",
+    "matching": {
+      "selectDraftInvoice": "اختر فاتورة مسودة...",
+      "link": "ربط",
+      "searchDraftInvoice": "بحث في مسودات فواتير الشراء...",
+      "noDraftInvoices": "لا توجد فواتير مسودة لهذا المورد والشركة.",
+      "linked": "مربوطة"
+    },
+    "table": {
+      "supplier": "المورد",
+      "inv": "فاتورة",
+      "group": "المجموعة",
+      "mobile": "الهاتف",
+      "email": "البريد الإلكتروني"
+    }
+  },
+  "finance": {
+    "workspaceTitle": "مساحة المالية",
+    "workspaceSubtitle": "الموافقات والمدفوعات والتقارير — بدون بيع POS أو تنفيذ مخزون.",
+    "workspaceHint": "النطاق مرتبط بصلاحيات الشركة والمخزن في ERP. التحويلات والتسوية غير متاحة في هذه المساحة.",
+    "purchaseApprovals": "موافقات الشراء",
+    "shiftApprovals": "موافقات الشيفت",
+    "highVariance": "انحراف مرتفع",
+    "quickLinks": "روابط سريعة",
+    "outstanding": "المتبقي",
+    "unpaidInvoices": "فواتير غير مدفوعة",
+    "overdueCount": "عدد المتأخر",
+    "agingTitle": "الأعمار (المتبقي)",
+    "links": {
+      "invoiceMatching": "إنشاء فواتير من الاستلامات",
+      "supplierPayments": "حسابات دائنة وأعمار ومدفوعات ERP",
+      "approvalsHub": "مركز الموافقات",
+      "approvalsDesc": "مشتريات وشيفتات وانحرافات وسجل",
+      "salesInvoices": "فواتير المبيعات",
+      "salesInvoicesDesc": "فواتير مبيعات العملاء",
+      "financialReports": "التقارير المالية",
+      "financialReportsDesc": "تقارير المشتريات والمبيعات",
+      "shiftApprovals": "موافقات الشيفت",
+      "shiftApprovalsDesc": "مراجعة إغلاقات الكاشير",
+      "purchaseRatesDesc": "قائمة انحراف أسعار الشراء"
+    },
+    "payments": {
+      "subtitle": "حسابات دائنة — فواتير غير مدفوعة وأعمار ومدفوعات ERPNext",
+      "closeForm": "إغلاق النموذج",
+      "newPayment": "دفعة جديدة",
+      "recordPayment": "تسجيل دفعة مورد",
+      "allSuppliers": "كل الموردين",
+      "history": "سجل المدفوعات",
+      "noInvoices": "لا توجد فواتير",
+      "noInvoicesDesc": "لا توجد فواتير شراء تطابق هذا الفلتر.",
+      "noPayments": "لا توجد مدفوعات",
+      "noPaymentsDesc": "ستظهر مدفوعات الموردين المرسلة هنا."
+    },
+    "status": {
+      "all": "الكل",
+      "overdue": "متأخر",
+      "unpaid": "غير مدفوع",
+      "partial": "جزئي",
+      "paid": "مدفوع"
+    },
+    "aging": {
+      "current": "حالي"
+    },
+    "table": {
+      "invoice": "الفاتورة",
+      "due": "الاستحقاق",
+      "date": "التاريخ",
+      "total": "الإجمالي",
+      "paidPct": "نسبة الدفع",
+      "status": "الحالة"
+    }
+  }
+}
