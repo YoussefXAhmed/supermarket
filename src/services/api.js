@@ -324,10 +324,6 @@ export const updateUser = (name, data) =>
 export const setUserEnabled = (name, enabled) =>
   api.put(`/api/resource/User/${encodeURIComponent(name)}`, { enabled: enabled ? 1 : 0 });
 
-/** @deprecated Do not use from SPA — disable users instead. */
-export const deleteUser = (name) =>
-  api.delete(`/api/resource/User/${encodeURIComponent(name)}`);
-
 export const createUserPermission = ({
   user,
   allow,

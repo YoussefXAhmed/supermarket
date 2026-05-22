@@ -232,8 +232,22 @@ export default function App() {
                 </CapabilityRoute>
               )}
             />
-            <Route path="inventory" element={<LazyPage><InventoryPage /></LazyPage>} />
-            <Route path="invoices" element={<LazyPage><InvoicesPage /></LazyPage>} />
+            <Route
+              path="inventory"
+              element={(
+                <CapabilityRoute cap="canAccessInventory">
+                  <LazyPage><InventoryPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="invoices"
+              element={(
+                <CapabilityRoute cap="canViewInvoices">
+                  <LazyPage><InvoicesPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
             <Route
               path="returns"
               element={(
@@ -242,7 +256,14 @@ export default function App() {
                 </CapabilityRoute>
               )}
             />
-            <Route path="customers" element={<LazyPage><CustomersPage /></LazyPage>} />
+            <Route
+              path="customers"
+              element={(
+                <CapabilityRoute cap="canViewReports">
+                  <LazyPage><CustomersPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
             <Route
               path="users"
               element={(
@@ -259,8 +280,22 @@ export default function App() {
                 </CapabilityRoute>
               )}
             />
-            <Route path="reports" element={<LazyPage><ReportsPage /></LazyPage>} />
-            <Route path="activity" element={<LazyPage><ActivityLogPage /></LazyPage>} />
+            <Route
+              path="reports"
+              element={(
+                <CapabilityRoute cap="canViewReports">
+                  <LazyPage><ReportsPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="activity"
+              element={(
+                <CapabilityRoute cap="canManageSystem">
+                  <LazyPage><ActivityLogPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
             <Route
               path="settings"
               element={(

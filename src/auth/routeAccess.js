@@ -30,6 +30,11 @@ export const ROUTE_ACCESS = [
   { prefix: '/admin/settings', anyOf: ['canManageSettings', 'canManageSystem'] },
   { prefix: '/admin/warehouses', anyOf: ['canManageSystem'] },
   { prefix: '/admin/shifts', anyOf: ['canViewShiftReports'] },
+  { prefix: '/admin/invoices', anyOf: ['canViewInvoices', 'canManageSystem'] },
+  { prefix: '/admin/inventory', anyOf: ['canAccessInventory', 'canManageSystem'] },
+  { prefix: '/admin/customers', anyOf: ['canViewReports', 'canManageSystem'] },
+  { prefix: '/admin/reports', anyOf: ['canViewReports', 'canManageSystem'] },
+  { prefix: '/admin/activity', anyOf: ['canManageSystem'] },
   { prefix: '/admin', anyOf: ['canAccessAdminWorkspace', 'canManageSystem'] },
 ];
 
