@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { PageHeader, Btn, ApiErrorCard, PageLoading } from '../../components/ui';
 import { FormPageLayout, LayoutSection, TableRegion } from '../../components/layout/page-layouts';
 import { useAuth } from '../../hooks/useAuth';
@@ -7,6 +7,7 @@ import {
   approveAndSubmitReturn,
   createReturnDraft,
   formatErpMoney,
+  listMyReturnableInvoices,
   listPendingReturns,
   loadReturnContext,
   searchReturnableInvoices,
@@ -15,9 +16,13 @@ import {
 import { getRefundMethods } from '../../utils/returnsValidation';
 import { getUserFriendlyMessage } from '../../utils/errorHandling';
 
-export default function ReturnsPage() {
+export default function ReturnsPage({ cashierMode = false }) {
+  const navigate = useNavigate();
   const { user, canCreateReturns, canApproveReturns, canViewReturns } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  const canUsePage = cashierMode ? canCreateReturns : canViewReturns;
+  const ownerScope = cashierMode ? (user?.name || user?.email || '') : '';
 
   const [sourceName, setSourceName] = useState(searchParams.get('invoice') || '');
   const [loadingSource, setLoadingSource] = useState(false);
@@ -27,6 +32,8 @@ export default function ReturnsPage() {
   const [reason, setReason] = useState('');
   const [refundMethod, setRefundMethod] = useState('Cash');
   const [lookupResults, setLookupResults] = useState([]);
+  const [myInvoices, setMyInvoices] = useState([]);
+  const [myInvoicesLoading, setMyInvoicesLoading] = useState(false);
   const [pending, setPending] = useState([]);
   const [err, setErr] = useState('');
   const [msg, setMsg] = useState('');
@@ -50,7 +57,10 @@ export default function ReturnsPage() {
     setErr('');
     setMsg('');
     try {
-      const ctx = await loadReturnContext(trimmed);
+      const ctx = await loadReturnContext(trimmed, {
+        scopeToOwner: Boolean(cashierMode && ownerScope),
+        operator: ownerScope,
+      });
       if (ctx.errors?.length) {
         setSource(null);
         setReturnableLines([]);
@@ -74,7 +84,20 @@ export default function ReturnsPage() {
     } finally {
       setLoadingSource(false);
     }
-  }, [setSearchParams]);
+  }, [cashierMode, ownerScope, setSearchParams]);
+
+  const refreshMyInvoices = useCallback(async () => {
+    if (!cashierMode || !ownerScope) return;
+    setMyInvoicesLoading(true);
+    try {
+      const rows = await listMyReturnableInvoices(ownerScope, { limit: 30 });
+      setMyInvoices(rows);
+    } catch {
+      setMyInvoices([]);
+    } finally {
+      setMyInvoicesLoading(false);
+    }
+  }, [cashierMode, ownerScope]);
 
   const refreshPending = useCallback(async () => {
     if (!canApproveReturns) return;
@@ -87,9 +110,14 @@ export default function ReturnsPage() {
   }, [canApproveReturns]);
 
   useEffect(() => {
-    if (!canViewReturns) return;
+    if (!canViewReturns || cashierMode) return;
     refreshPending();
-  }, [canViewReturns, refreshPending]);
+  }, [canViewReturns, cashierMode, refreshPending]);
+
+  useEffect(() => {
+    if (!cashierMode) return;
+    refreshMyInvoices();
+  }, [cashierMode, refreshMyInvoices]);
 
   useEffect(() => {
     const inv = searchParams.get('invoice');
@@ -100,7 +128,9 @@ export default function ReturnsPage() {
   const onLookup = async () => {
     setErr('');
     try {
-      const rows = await searchReturnableInvoices(sourceName);
+      const rows = await searchReturnableInvoices(sourceName, {
+        owner: cashierMode ? ownerScope : undefined,
+      });
       setLookupResults(rows);
     } catch (e) {
       setLookupResults([]);
@@ -122,11 +152,13 @@ export default function ReturnsPage() {
         refundMethod,
         operator,
         canCreate: canCreateReturns,
+        scopeToOwner: Boolean(cashierMode && ownerScope),
       });
       setMsg(
         `Draft return ${result.returnDoc.name} created. ERP refund total: ${formatErpMoney(result.erpGrandTotal, source.currency)}. Awaiting approval.`,
       );
       await loadSource(source.name);
+      if (cashierMode) await refreshMyInvoices();
       await refreshPending();
     } catch (e2) {
       setErr(getUserFriendlyMessage(e2));
@@ -158,7 +190,7 @@ export default function ReturnsPage() {
     }
   };
 
-  if (!canViewReturns) {
+  if (!canUsePage) {
     return (
       <FormPageLayout>
         <PageHeader title="Returns" subtitle="Access denied" dense />
@@ -170,51 +202,119 @@ export default function ReturnsPage() {
   return (
     <FormPageLayout>
       <PageHeader
-        title="Customer returns"
-        subtitle="Sales return against submitted POS invoices — ERP reverses stock on submit"
+        title={cashierMode ? 'Customer return' : 'Customer returns'}
+        subtitle={
+          cashierMode
+            ? 'Return against your submitted POS invoices — manager approval required'
+            : 'Sales return against submitted POS invoices — ERP reverses stock on submit'
+        }
         dense
+        actions={
+          cashierMode ? (
+            <Btn type="button" variant="ghost" size="sm" onClick={() => navigate('/pos')}>
+              Back to POS
+            </Btn>
+          ) : null
+        }
       />
 
       {err && <ApiErrorCard message={err} onRetry={() => sourceName && loadSource(sourceName)} />}
       {msg && <p className="inv-success">{msg}</p>}
 
-      <LayoutSection title="Source invoice" subtitle="Submitted POS invoice required">
-        <LookupRow
-          sourceName={sourceName}
-          setSourceName={setSourceName}
-          loadingSource={loadingSource}
-          onLoad={() => loadSource(sourceName)}
-          onLookup={onLookup}
-        />
-        {lookupResults.length > 0 && (
-          <TableRegion fit className="returns-lookup">
-            <table className="data-table data-table--compact">
-              <thead>
-                <tr>
-                  <th>Invoice</th>
-                  <th>Customer</th>
-                  <th>Date</th>
-                  <th>Total</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {lookupResults.map((row) => (
-                  <tr key={row.name}>
-                    <td className="mono">{row.name}</td>
-                    <td>{row.customer}</td>
-                    <td>{row.posting_date}</td>
-                    <td>{formatErpMoney(row.grand_total)}</td>
-                    <td>
-                      <Btn type="button" size="sm" variant="ghost" onClick={() => loadSource(row.name)}>
-                        Select
-                      </Btn>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </TableRegion>
+      <LayoutSection
+        title={cashierMode ? 'Your invoices' : 'Source invoice'}
+        subtitle={
+          cashierMode
+            ? 'Select one of your submitted sales invoices'
+            : 'Submitted POS invoice required'
+        }
+      >
+        {cashierMode ? (
+          <>
+            {myInvoicesLoading ? (
+              <PageLoading size={24} />
+            ) : myInvoices.length === 0 ? (
+              <p className="page-header__sub">No submitted invoices found for your account.</p>
+            ) : (
+              <TableRegion fit className="returns-lookup">
+                <table className="data-table data-table--compact">
+                  <thead>
+                    <tr>
+                      <th>Invoice</th>
+                      <th>Customer</th>
+                      <th>Date</th>
+                      <th>Total</th>
+                      <th />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {myInvoices.map((row) => (
+                      <tr key={row.name}>
+                        <td className="mono">{row.name}</td>
+                        <td>{row.customer}</td>
+                        <td>{row.posting_date}</td>
+                        <td>{formatErpMoney(row.grand_total)}</td>
+                        <td>
+                          <Btn type="button" size="sm" variant="ghost" onClick={() => loadSource(row.name)}>
+                            Select
+                          </Btn>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </TableRegion>
+            )}
+            <LookupRow
+              sourceName={sourceName}
+              setSourceName={setSourceName}
+              loadingSource={loadingSource}
+              onLoad={() => loadSource(sourceName)}
+              onLookup={onLookup}
+              loadLabel="Load my invoice"
+              placeholder="Your POS invoice number"
+            />
+          </>
+        ) : (
+          <>
+            <LookupRow
+              sourceName={sourceName}
+              setSourceName={setSourceName}
+              loadingSource={loadingSource}
+              onLoad={() => loadSource(sourceName)}
+              onLookup={onLookup}
+            />
+            {lookupResults.length > 0 && (
+              <TableRegion fit className="returns-lookup">
+                <table className="data-table data-table--compact">
+                  <thead>
+                    <tr>
+                      <th>Invoice</th>
+                      <th>Customer</th>
+                      <th>Date</th>
+                      <th>Total</th>
+                      <th />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lookupResults.map((row) => (
+                      <tr key={row.name}>
+                        <td className="mono">{row.name}</td>
+                        <td>{row.customer}</td>
+                        <td>{row.posting_date}</td>
+                        <td>{formatErpMoney(row.grand_total)}</td>
+                        <td>
+                          <Btn type="button" size="sm" variant="ghost" onClick={() => loadSource(row.name)}>
+                            Select
+                          </Btn>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </TableRegion>
+            )}
+          </>
         )}
         {source && (
           <p className="page-header__sub">
@@ -371,13 +471,21 @@ export default function ReturnsPage() {
   );
 }
 
-function LookupRow({ sourceName, setSourceName, loadingSource, onLoad, onLookup }) {
+function LookupRow({
+  sourceName,
+  setSourceName,
+  loadingSource,
+  onLoad,
+  onLookup,
+  loadLabel = 'Load invoice',
+  placeholder = 'POS-INV-2026-00042',
+}) {
   return (
     <div className="toolbar returns-lookup-row">
       <div className="toolbar__group returns-lookup-row__inputs">
         <input
           className="input toolbar__input-md"
-          placeholder="POS-INV-2026-00042"
+          placeholder={placeholder}
           value={sourceName}
           onChange={(e) => setSourceName(e.target.value)}
         />
@@ -385,7 +493,7 @@ function LookupRow({ sourceName, setSourceName, loadingSource, onLoad, onLookup 
           Search
         </Btn>
         <Btn type="button" variant="primary" onClick={onLoad} loading={loadingSource}>
-          Load invoice
+          {loadLabel}
         </Btn>
       </div>
     </div>

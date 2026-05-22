@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { fmtCurrency } from '../../utils/format';
 import {
@@ -19,6 +20,7 @@ import {
 import { getUserFriendlyMessage } from '../../utils/errorHandling';
 
 export default function PurchaseApprovalsPage() {
+  const { t } = useTranslation();
   const { capabilities, user } = useAuth();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -62,7 +64,7 @@ export default function PurchaseApprovalsPage() {
   };
 
   const onReject = async (name) => {
-    if (!window.confirm(`Reject purchase receipt ${name}?`)) return;
+    if (!window.confirm(t('approvals.rejectPurchaseConfirm', { name }))) return;
     setActionId(name);
     setActionError('');
     try {
@@ -79,51 +81,55 @@ export default function PurchaseApprovalsPage() {
   return (
     <TablePageLayout>
       <PageHeader
-        title="Purchase approvals"
-        subtitle="Managers and accountants approve buying rates before stock is received."
+        title={t('purchasing.purchaseApprovals')}
+        subtitle={t('purchasing.purchaseApprovalsSubtitle')}
         dense
         actions={
           capabilities.canViewApprovalsDashboard ? (
             <Link to="/admin/approvals" className="btn btn--ghost btn--sm">
-              All approvals
+              {t('approvals.allApprovals')}
             </Link>
           ) : null
         }
       />
       <LayoutSection variant="raised">
         <label className="approval-notes-field">
-          Approval notes (optional)
+          {t('approvals.approvalNotes')}
           <input
             className="input"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Reason or reference"
+            placeholder={t('approvals.reasonPlaceholder')}
           />
         </label>
         {approveSuccess?.purchase_invoice && (
           <div className="inv-success" role="status">
-            Receipt submitted. Payable{' '}
-            <span className="mono">{approveSuccess.purchase_invoice}</span>
+            {t('approvals.receiptSubmitted', { invoice: approveSuccess.purchase_invoice })}{' '}
             {approveSuccess.purchase_invoice_outstanding != null && (
-              <> · {fmtCurrency(approveSuccess.purchase_invoice_outstanding)} outstanding</>
+              <> · {t('approvals.outstanding')} {fmtCurrency(approveSuccess.purchase_invoice_outstanding)}</>
             )}
-            .{' '}
-            <Link to="/admin/accounting/payments">Record payment →</Link>
+            .
+            {capabilities.canManageSupplierPayments && (
+              <>
+                {' '}
+                <Link to="/admin/accounting/payments">{t('approvals.recordPayment')}</Link>
+              </>
+            )}
           </div>
         )}
         {approveSuccess && !approveSuccess.purchase_invoice && approveSuccess.purchase_invoice_message && (
           <p className="inv-error" role="alert">
-            Receipt approved but payable was not created: {approveSuccess.purchase_invoice_message}. Check{' '}
-            <Link to="/admin/purchasing/matching">Invoice matching</Link> to retry.
+            {t('approvals.receiptApprovedNoPayable', { message: approveSuccess.purchase_invoice_message })}{' '}
+            <Link to="/admin/purchasing/matching">{t('nav.invoiceMatching')}</Link>
           </p>
         )}
         {loading && <PageLoading />}
-        {!loading && error && <ApiErrorCard title="Could not load approvals" message={error} />}
+        {!loading && error && <ApiErrorCard title={t('approvals.couldNotLoad')} message={error} />}
         {!loading && actionError && (
-          <ApiErrorCard title="Could not complete approval" message={actionError} />
+          <ApiErrorCard title={t('approvals.couldNotComplete')} message={actionError} />
         )}
         {!loading && !error && rows.length === 0 && (
-          <EmptyState icon="✓" title="No pending approvals" desc="All purchase receipts are up to date." />
+          <EmptyState icon="✓" title={t('approvals.noPendingPurchases')} desc={t('approvals.noPendingPurchasesDesc')} />
         )}
         {!loading && !error && rows.length > 0 && (
           <div className="approval-list">

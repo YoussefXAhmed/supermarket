@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Btn } from '../ui';
 import { getERPPrintviewUrl } from '../../utils/erpLinks';
 
@@ -7,6 +8,7 @@ const ARABIC_TEXT_RE = /[\u0600-\u06FF]/;
 const hasArabicText = (value) => ARABIC_TEXT_RE.test(String(value || ''));
 
 export default function POSThermalReceipt({ invoice, companyName = 'Elmahdi Supermarket', onClose }) {
+  const { t } = useTranslation();
   const printRef = useRef(null);
 
   if (!invoice) return null;
@@ -82,7 +84,7 @@ export default function POSThermalReceipt({ invoice, companyName = 'Elmahdi Supe
   return (
     <div className="pos-receipt-wrap">
       <div className="pos-receipt-actions no-print">
-        <Btn variant="primary" size="sm" onClick={handlePrint}>Print receipt</Btn>
+        <Btn variant="primary" size="sm" onClick={handlePrint}>{t('pos.printReceipt')}</Btn>
         {invoice.name && (
           <a
             className="btn btn--ghost btn--sm"
@@ -90,24 +92,24 @@ export default function POSThermalReceipt({ invoice, companyName = 'Elmahdi Supe
             target="_blank"
             rel="noreferrer"
           >
-            ERP print
+            {t('pos.erpPrint')}
           </a>
         )}
         {onClose && (
-          <Btn variant="ghost" size="sm" onClick={onClose}>Close</Btn>
+          <Btn variant="ghost" size="sm" onClick={onClose}>{t('common.close')}</Btn>
         )}
       </div>
 
       <article ref={printRef} className="pos-receipt thermal-receipt" dir={receiptDir}>
         <header className="pos-receipt__header center">
           <p className="pos-receipt__brand"><bdi dir="auto">{companyName}</bdi></p>
-          <p className="pos-receipt__tag pos-receipt__ltr">Tax Invoice / Receipt</p>
+          <p className="pos-receipt__tag pos-receipt__ltr">{t('pos.taxInvoice')}</p>
         </header>
 
         <div className="pos-receipt__meta">
-          <p><span>Invoice</span> <strong className="pos-receipt__num">{invoice.name}</strong></p>
-          <p><span>Date</span> <span className="pos-receipt__num">{date} {time}</span></p>
-          <p><span>Customer</span> <bdi className="pos-receipt__text" dir="auto">{invoice.customer || 'Walk-in Customer'}</bdi></p>
+          <p><span>{t('pos.receiptInvoice')}</span> <strong className="pos-receipt__num">{invoice.name}</strong></p>
+          <p><span>{t('pos.receiptDate')}</span> <span className="pos-receipt__num">{date} {time}</span></p>
+          <p><span>{t('pos.receiptCustomer')}</span> <bdi className="pos-receipt__text" dir="auto">{invoice.customer || t('pos.walkInCustomer')}</bdi></p>
           {invoice.pos_profile && <p><span>POS</span> <bdi className="pos-receipt__text" dir="auto">{invoice.pos_profile}</bdi></p>}
         </div>
 
@@ -116,9 +118,9 @@ export default function POSThermalReceipt({ invoice, companyName = 'Elmahdi Supe
         <table className="pos-receipt__table">
           <thead>
             <tr>
-              <th>Item</th>
-              <th className="right">Qty</th>
-              <th className="right">Amt</th>
+              <th>{t('pos.receiptItem')}</th>
+              <th className="right">{t('pos.receiptQty')}</th>
+              <th className="right">{t('pos.receiptAmt')}</th>
             </tr>
           </thead>
           <tbody>
@@ -142,7 +144,7 @@ export default function POSThermalReceipt({ invoice, companyName = 'Elmahdi Supe
         <div className="pos-receipt__line" />
 
         <div className="pos-receipt__total">
-          <span>TOTAL</span>
+          <span>{t('pos.receiptTotal')}</span>
           <strong className="pos-receipt__num">{fmt(total)}</strong>
         </div>
 
@@ -161,8 +163,8 @@ export default function POSThermalReceipt({ invoice, companyName = 'Elmahdi Supe
         )}
 
         <footer className="pos-receipt__footer center">
-          <p className="pos-receipt__ltr">Thank you for shopping!</p>
-          <p className="pos-receipt__muted pos-receipt__ltr">Please keep this receipt</p>
+          <p className="pos-receipt__ltr">{t('pos.thankYou')}</p>
+          <p className="pos-receipt__muted pos-receipt__ltr">{t('pos.keepReceipt')}</p>
         </footer>
       </article>
     </div>

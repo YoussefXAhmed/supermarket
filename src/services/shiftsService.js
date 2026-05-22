@@ -137,6 +137,7 @@ export function buildAuditRemarks({
     `severity=${severity}`,
     `approval_status=${approvalStatus}`,
     `sales_count=${summary.salesCount ?? 0}`,
+    `sales_total=${roundMoney(summary.salesTotal ?? 0)}`,
     `returns_count=${summary.returnsCount ?? 0}`,
     `void_count=${summary.voidCount ?? 0}`,
   ];
@@ -564,8 +565,13 @@ export async function listShiftSessions({
   const sessions = buildShiftSessions(openings, closings);
 
   if (enrichOpenSummaries) {
+    // Open shifts AND closed/pending sessions need ERP summary — POS Closing Entry
+    // grand_total is not sales; without this, Sales today stays 0 after approve.
     const enrichTargets = sessions.filter(
-      (s) => s.openingName && (s.sessionStatus === 'open' || s.openingDocstatus === 0),
+      (s) =>
+        s.openingName &&
+        s.openingDocstatus === 1 &&
+        (s.sessionStatus === 'open' || Boolean(s.closing)),
     );
     await Promise.all(
       enrichTargets.map(async (session) => {

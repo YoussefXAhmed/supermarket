@@ -60,6 +60,9 @@ def _require_ap_read():
 
 def _require_payment_create():
 	frappe.has_permission("Payment Entry", "create", throw=True)
+	from elmahdi.api.payment_authorization import assert_may_record_supplier_payment
+
+	assert_may_record_supplier_payment()
 
 
 def _default_company():
@@ -95,9 +98,11 @@ def _paid_pct(inv: dict) -> float:
 	return round(max(0.0, min(100.0, paid / grand * 100)), 2)
 
 
-def _base_invoice_filters(company=None, supplier=None):
-	# Finance payables only: submitted + outstanding > 0
-	filters = [["docstatus", "=", 1], ["outstanding_amount", ">", 0]]
+def _base_invoice_filters(company=None, supplier=None, include_paid=False):
+	# Submitted only; restrict to open balances unless caller explicitly wants paid invoices
+	filters = [["docstatus", "=", 1]]
+	if not include_paid:
+		filters.append(["outstanding_amount", ">", 0])
 	if company:
 		filters.append(["company", "=", company])
 	if supplier:
@@ -106,7 +111,10 @@ def _base_invoice_filters(company=None, supplier=None):
 
 
 def _fetch_invoices(company=None, supplier=None, status=None, limit=200):
-	filters = _base_invoice_filters(company, supplier)
+	# Paid invoices (outstanding=0) must be included when listing "paid" or "all" tabs;
+	# dashboard calls (status=None) stay open-payables-only so aging buckets are correct.
+	include_paid = status in (PAY_STATUS_PAID, "all")
+	filters = _base_invoice_filters(company, supplier, include_paid=include_paid)
 	rows = frappe.get_all(
 		"Purchase Invoice",
 		filters=filters,
@@ -292,7 +300,7 @@ def list_ap_invoices(
 ):
 	_require_ap_read()
 	company = company or _default_company()
-	rows = _fetch_invoices(company=company, supplier=supplier, status=None if status == "all" else status, limit=limit)
+	rows = _fetch_invoices(company=company, supplier=supplier, status=status, limit=limit)
 	if due_from:
 		rows = [r for r in rows if r.get("due_date") and r["due_date"] >= str(due_from)]
 	if due_to:

@@ -8,6 +8,7 @@ const LINKS = [
   { to: 'open', labelKey: 'shifts.openShift', cap: 'canOpenShift' },
   { to: 'close', labelKey: 'shifts.closeShift', cap: 'canCloseShift' },
   { to: 'history', labelKey: 'nav.history', cap: 'canViewShiftReports' },
+  { to: '/pos/returns', labelKey: 'nav.returns', cap: 'canCreateReturns' },
   { to: '/pos', labelKey: 'common.pos', cap: 'canViewPOS' },
 ];
 

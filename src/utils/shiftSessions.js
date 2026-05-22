@@ -116,9 +116,12 @@ export function buildShiftSession(opening, closing = null) {
       : 'ok';
 
   const salesCount = Number(audit?.sales_count ?? closing?.salesCount ?? 0) || 0;
-  const salesTotal = roundMoney(
-    closing?.grand_total ?? closing?.salesTotal ?? audit?.sales_total ?? 0,
-  );
+  const auditSalesTotal =
+    audit?.sales_total != null && audit.sales_total !== ''
+      ? roundMoney(audit.sales_total)
+      : null;
+  // POS Closing Entry grand_total is cash reconciliation, not shift sales — never use it here.
+  const salesTotal = roundMoney(closing?.salesTotal ?? auditSalesTotal ?? 0);
 
   const approvalStatus = deriveApprovalStatus({ closing, audit, varianceSeverity });
 
@@ -215,9 +218,17 @@ export function computeShiftHistoryKpis(sessions = []) {
   for (const s of sessions) {
     if (s.sessionStatus === 'open') openShifts += 1;
     if (s.awaitingSubmission) pendingApprovals += 1;
-    if (isSessionToday(s, today)) {
+    if (!isSessionToday(s, today)) continue;
+
+    // Open shifts accrue live sales; closed shifts count only after manager submit (docstatus 1).
+    // Pending draft closings are excluded so "Sales today" increases when a shift is approved.
+    const countsForSalesToday =
+      s.sessionStatus === 'open' || s.closing?.docstatus === 1;
+    if (countsForSalesToday) {
       totalSalesToday = roundMoney(totalSalesToday + (s.salesTotal || 0));
-      if (s.closing) totalVariance = roundMoney(totalVariance + Math.abs(s.variance || 0));
+    }
+    if (s.closing?.docstatus === 1) {
+      totalVariance = roundMoney(totalVariance + Math.abs(s.variance || 0));
     }
   }
 

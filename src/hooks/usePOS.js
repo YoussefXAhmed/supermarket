@@ -14,7 +14,6 @@ import { getOpenPOSOpeningEntry } from '../services/shiftsApi';
 import { openShift as openShiftService } from '../services/shiftsService';
 import {
   validateCartStock,
-  canAddToCart,
   validateLineStock,
   firstCartAlternateHint,
 } from '../utils/posStock';
@@ -55,6 +54,7 @@ export function usePOS(user) {
   const shiftRef = useRef(null);
   const cartRef = useRef([]);
   const checkoutInFlightRef = useRef(false);
+  const checkoutIdempotencyKeyRef = useRef(null);
 
   profileRef.current = profile;
   shiftRef.current = shift;
@@ -223,13 +223,15 @@ export function usePOS(user) {
     setCart((prev) => {
       const existing = prev.find((c) => c.item_code === item.item_code);
       const nextQty = (existing?.qty || 0) + qty;
-      const check = canAddToCart(
+      // Validate the full requested quantity (existing + qty), not just +1, so that
+      // scanning or bulk-adding more than 1 unit is also caught before overselling.
+      const issue = validateLineStock(
         { ...liveItem, sellable_qty: liveItem.sellable_qty },
-        existing?.qty || 0,
-        wh
+        nextQty,
+        wh,
       );
-      if (!check.ok && qty > 0) {
-        setCartWarning(check.message);
+      if (issue && qty > 0) {
+        setCartWarning(issue.message);
         return prev;
       }
       if (existing) {
@@ -352,6 +354,13 @@ export function usePOS(user) {
 
         setPendingInvoice(null);
 
+        if (!checkoutIdempotencyKeyRef.current) {
+          checkoutIdempotencyKeyRef.current =
+            typeof crypto !== 'undefined' && crypto.randomUUID
+              ? crypto.randomUUID()
+              : `pos-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+        }
+
         const payments = buildPayments(paymentState, cartTotal);
         const payload = {
           customer: customer || p.defaultCustomer || 'Walk-in Customer',
@@ -359,6 +368,7 @@ export function usePOS(user) {
           pos_profile: p.name,
           pos_opening_entry: s.name,
           set_warehouse: p.warehouse,
+          idempotency_key: checkoutIdempotencyKeyRef.current,
           // Critical: stock must be updated by ERP on submit.
           update_stock: 1,
           selling_price_list: p.selling_price_list,
@@ -377,6 +387,7 @@ export function usePOS(user) {
         };
 
         const invoice = await checkoutPOSInvoice(payload);
+        checkoutIdempotencyKeyRef.current = null;
         setCheckoutError(null);
         setLastInvoice(invoice);
         clearCart();
@@ -453,6 +464,7 @@ export function usePOS(user) {
       setLastInvoice({ name: pendingInvoice });
     }
     setPendingInvoice(null);
+    checkoutIdempotencyKeyRef.current = null;
     clearCart();
   }, [pendingInvoice, clearCart]);
 

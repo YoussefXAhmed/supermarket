@@ -40,11 +40,14 @@ export function fetchPOSInvoiceFull(name) {
   return api.get(`/api/resource/${POS_INVOICE}/${encodeURIComponent(name)}`);
 }
 
-export function listPOSInvoicesForReturnLookup({ query, limit = 25 } = {}) {
+export function listPOSInvoicesForReturnLookup({ query, limit = 25, owner } = {}) {
   const filters = [
     ['docstatus', '=', 1],
     ['is_return', '=', 0],
   ];
+  if (owner?.trim()) {
+    filters.push(['owner', '=', owner.trim()]);
+  }
   if (query?.trim()) {
     filters.push(['name', 'like', `%${query.trim()}%`]);
   }

@@ -939,12 +939,18 @@ def list_receipts_pending_invoice(company=None, supplier=None, limit=50):
 @frappe.whitelist()
 def retry_auto_payable_for_receipt(receipt_name):
 	"""Retry payable creation when auto-invoice failed after approval."""
+	from elmahdi.api.payment_authorization import assert_may_manage_supplier_payable_via_api
+
+	assert_may_manage_supplier_payable_via_api()
 	return auto_create_and_submit_purchase_invoice_for_receipt(receipt_name)
 
 
 @frappe.whitelist()
 def create_purchase_invoice_from_receipt(receipt_name, submit=0):
 	"""Manual billing for exceptional cases; normal receipts use auto_create on approval."""
+	from elmahdi.api.payment_authorization import assert_may_manage_supplier_payable_via_api
+
+	assert_may_manage_supplier_payable_via_api()
 	pr = _validate_receipt_for_matching(receipt_name)
 	frappe.has_permission("Purchase Invoice", "create", throw=True)
 	ws_before = _build_receipt_workspace_row(pr)

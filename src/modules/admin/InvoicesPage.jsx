@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getSalesInvoices } from '../../services/api';
 import { PageHeader, PageLoading, ApiErrorCard, EmptyState, Badge, Table } from '../../components/ui';
 import { TablePageLayout, LayoutSection, TableRegion } from '../../components/layout/page-layouts';
@@ -13,6 +14,7 @@ const STATUS_COLOR = {
 };
 
 export default function InvoicesPage() {
+  const { t } = useTranslation();
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState('');
@@ -26,7 +28,7 @@ export default function InvoicesPage() {
       .then(r => setInvoices(r.data.data || []))
       .catch((e) => {
         setInvoices([]);
-        setError(getUserFriendlyMessage(e, 'Failed to load invoices'));
+        setError(getUserFriendlyMessage(e, t('finance.loadInvoicesError')));
       })
       .finally(() => setLoading(false));
   };
@@ -35,24 +37,24 @@ export default function InvoicesPage() {
 
   const columns = [
     {
-      key: 'name', label: 'Invoice #',
+      key: 'name', label: t('finance.invoiceNumber'),
       render: v => <span className="mono" style={{ fontSize: '0.78rem', color: 'var(--accent)' }}>{v}</span>
     },
-    { key: 'customer', label: 'Customer' },
+    { key: 'customer', label: t('finance.customer') },
     {
-      key: 'posting_date', label: 'Date',
+      key: 'posting_date', label: t('finance.date'),
       render: v => <span style={{ color: 'var(--text-2)', fontSize: '0.8rem' }}>{v}</span>
     },
     {
-      key: 'grand_total', label: 'Total',
+      key: 'grand_total', label: t('finance.totalLabel'),
       render: v => <span className="mono" style={{ fontWeight: 600 }}>{fmt(v)}</span>
     },
     {
-      key: 'outstanding_amount', label: 'Outstanding',
+      key: 'outstanding_amount', label: t('finance.outstandingLabel'),
       render: v => <span className="mono" style={{ color: v > 0 ? 'var(--red)' : 'var(--text-3)' }}>{fmt(v)}</span>
     },
     {
-      key: 'status', label: 'Status',
+      key: 'status', label: t('finance.status'),
       render: v => <Badge color={STATUS_COLOR[v] || 'default'}>{v}</Badge>
     },
   ];
@@ -61,14 +63,14 @@ export default function InvoicesPage() {
 
   return (
     <TablePageLayout tableConstrain={sparse}>
-      <PageHeader title="Sales Invoices" subtitle="All invoices from ERPNext" dense />
+      <PageHeader title={t('finance.salesInvoices')} subtitle={t('finance.salesInvoicesSubtitle')} dense />
 
       {loading ? (
         <PageLoading size={26} />
       ) : error ? (
         <ApiErrorCard message={error} onRetry={() => load(page)} />
       ) : invoices.length === 0 ? (
-        <EmptyState icon="🧾" title="No invoices found" />
+        <EmptyState icon="🧾" title={t('finance.noInvoicesFound')} />
       ) : (
         <>
           <LayoutSection variant="raised" flushHead fit={sparse}>
@@ -81,15 +83,15 @@ export default function InvoicesPage() {
               className="btn btn--ghost btn--sm"
               disabled={page === 0}
               onClick={() => setPage(p => p - 1)}
-            >← Prev</button>
+            >← {t('ui.pagination.previous')}</button>
             <span style={{ padding: '6px 12px', fontSize: '0.82rem', color: 'var(--text-2)' }}>
-              Page {page + 1}
+              {t('ui.pagination.pageSimple', { page: page + 1 })}
             </span>
             <button
               className="btn btn--ghost btn--sm"
               disabled={invoices.length < PAGE_SIZE}
               onClick={() => setPage(p => p + 1)}
-            >Next →</button>
+            >{t('ui.pagination.next')} →</button>
           </div>
         </>
       )}

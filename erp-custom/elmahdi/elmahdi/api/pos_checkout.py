@@ -10,7 +10,11 @@ import frappe
 from frappe import _
 from frappe.utils import cint, flt, today
 
-from elmahdi.api.erp_submit import document_response, native_submit
+from elmahdi.api.erp_submit import consolidate_pos_invoice, document_response, native_submit
+
+IDEMPOTENCY_FIELD = "elmahdi_idempotency_key"
+IDEMPOTENCY_CACHE_PREFIX = "pos_idempotency:"
+IDEMPOTENCY_CACHE_TTL = 120
 
 
 def _parse_payload(payload) -> dict:
@@ -126,7 +130,7 @@ def _build_pos_invoice(payload: dict):
 	return doc
 
 
-def _invoice_response(doc) -> dict:
+def _invoice_response(doc, *, idempotent_replay=False) -> dict:
 	out = document_response(doc)
 	out.update(
 		{
@@ -136,24 +140,104 @@ def _invoice_response(doc) -> dict:
 			"pos_profile": doc.pos_profile,
 			"owner": doc.owner,
 			"is_pos": cint(doc.is_pos),
+			"idempotent_replay": bool(idempotent_replay),
 		}
 	)
 	return out
 
 
+def _normalize_idempotency_key(payload: dict) -> str | None:
+	key = (payload.get("idempotency_key") or payload.get("client_request_id") or "").strip()
+	if not key:
+		return None
+	if len(key) > 140:
+		frappe.throw(_("Idempotency key is too long."), frappe.ValidationError)
+	return key
+
+
+def _find_pos_invoice_by_idempotency_key(company: str, key: str) -> str | None:
+	if not key or not _pos_invoice_has_field(IDEMPOTENCY_FIELD):
+		return None
+	filters = {IDEMPOTENCY_FIELD: key, "docstatus": ["!=", 2]}
+	if company:
+		filters["company"] = company
+	return frappe.db.get_value("POS Invoice", filters, "name")
+
+
+def _submit_and_consolidate(doc):
+	if cint(doc.docstatus) == 0:
+		doc = native_submit(doc, force_update_stock=True)
+	if cint(doc.docstatus) == 1 and not doc.get("consolidated_invoice"):
+		consolidate_pos_invoice(doc)
+		doc.reload()
+	return doc
+
+
+def _idempotency_cache_key(company: str, key: str) -> str:
+	return f"{IDEMPOTENCY_CACHE_PREFIX}{company}:{key}"
+
+
+def _resolve_idempotent_pos_invoice(company: str, key: str):
+	existing_name = _find_pos_invoice_by_idempotency_key(company, key)
+	if not existing_name:
+		return None
+	doc = frappe.get_doc("POS Invoice", existing_name)
+	return _submit_and_consolidate(doc)
+
+
 @frappe.whitelist()
 def create_and_submit_pos_invoice(payload):
 	"""
-	Create POS Invoice, force update_stock=1, insert(), submit() via ERPNext API.
-	Verifies Stock Ledger Entry rows exist when stock items were sold.
+	Create POS Invoice, insert(), submit(), then consolidate it immediately so
+	stock and accounting post in real time (see consolidate_pos_invoice).
+
+	When idempotency_key is supplied, a retry with the same key returns the
+	existing invoice instead of creating a duplicate (network timeout safe).
+
+	If consolidation fails (e.g. insufficient stock / oversell), the whole
+	request rolls back — leaving no submitted POS Invoice behind.
 	"""
 	data = _parse_payload(payload)
 	frappe.has_permission("POS Invoice", "create", throw=True)
 
-	doc = _build_pos_invoice(data)
-	doc.insert()
-	doc = native_submit(doc, force_update_stock=True)
-	return _invoice_response(doc)
+	company = (data.get("company") or "").strip()
+	idempotency_key = _normalize_idempotency_key(data)
+	cache_key = None
+
+	if idempotency_key and company:
+		existing = _resolve_idempotent_pos_invoice(company, idempotency_key)
+		if existing:
+			return _invoice_response(existing, idempotent_replay=True)
+
+		cache_key = _idempotency_cache_key(company, idempotency_key)
+		if frappe.cache().get_value(cache_key):
+			existing = _resolve_idempotent_pos_invoice(company, idempotency_key)
+			if existing:
+				return _invoice_response(existing, idempotent_replay=True)
+			frappe.throw(
+				_("Checkout already in progress for this sale. Please wait."),
+				frappe.ValidationError,
+			)
+		frappe.cache().set_value(cache_key, 1, expires_in_sec=IDEMPOTENCY_CACHE_TTL)
+
+	try:
+		doc = _build_pos_invoice(data)
+		if idempotency_key and _pos_invoice_has_field(IDEMPOTENCY_FIELD):
+			doc.set(IDEMPOTENCY_FIELD, idempotency_key)
+		try:
+			doc.insert()
+		except frappe.UniqueValidationError:
+			frappe.db.rollback()
+			if idempotency_key and company:
+				existing = _resolve_idempotent_pos_invoice(company, idempotency_key)
+				if existing:
+					return _invoice_response(existing, idempotent_replay=True)
+			raise
+		doc = _submit_and_consolidate(doc)
+		return _invoice_response(doc)
+	finally:
+		if cache_key:
+			frappe.cache().delete_value(cache_key)
 
 
 @frappe.whitelist()

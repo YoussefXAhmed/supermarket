@@ -1,6 +1,23 @@
 """
 Full ERP/POS integration flow test.
 
+ERPNext v15 POS lifecycle (authoritative):
+  POS Invoice submit  → docstatus=1, NO SLE, NO GL, Bin.actual_qty UNCHANGED.
+                         ERPNext does NOT write to Bin.reserved_qty_for_pos.
+                         Reservation is tracked via a live SQL query:
+                           get_pos_reserved_qty(item_code, warehouse)
+                           = SUM(stock_qty) from submitted unconsolidated
+                             POS Invoice Items (consolidated_invoice IS NULL).
+                         validate_stock_availablility() calls this at validate()
+                         time: available = actual_qty - pos_reserved_qty.
+                         Overselling is blocked there, not via a Bin write.
+  POS Closing submit  → consolidated Sales Invoice created, SLE posted,
+                         GL posted, Bin.actual_qty decremented.
+
+  pos_opening_entry is NOT a column on tabPOS Invoice in v15.
+  Shift membership is tracked via pos_profile + posting_date + owner
+  (see shifts._opening_filters).
+
 Run:
   bench --site <site> execute elmahdi.tests.run_full_pos_stock_flow.execute \
     --kwargs '{"item_code":"Pepsi 0001","receive_qty":5,"stop_on_fail":1}'
@@ -12,24 +29,30 @@ import json
 
 import frappe
 from frappe import _
-from frappe.utils import cint, flt, today
+from frappe.utils import cint, flt, getdate, today
 
 from elmahdi.api.accounts_payable import create_supplier_payment
 from elmahdi.api.erp_submit import native_submit
 from elmahdi.api.invoice_matching import auto_create_and_submit_purchase_invoice_for_receipt
 from elmahdi.api.pos_checkout import create_and_submit_pos_invoice
-from elmahdi.api.shifts import open_pos_shift
+from elmahdi.api.pos_closing_approval import approve_pos_closing_entry
+from elmahdi.api.shifts import open_pos_shift, prepare_closing_entry
+from erpnext.accounts.doctype.pos_invoice.pos_invoice import get_pos_reserved_qty
 from elmahdi.tests.pos_stock_flow_audit import (
 	audit_record,
 	bin_state,
 	classify_failure,
 	frontend_display_qty,
+	gle_count,
 	print_report,
 	sle_count,
-	gle_count,
 	summarize_report,
 )
 
+
+# ---------------------------------------------------------------------------
+# Resolvers (unchanged)
+# ---------------------------------------------------------------------------
 
 def _resolve_company(company=None):
 	if company and frappe.db.exists("Company", company):
@@ -102,7 +125,6 @@ def _resolve_item(item_code=None):
 			if not cint(frappe.db.get_value("Item", code, "is_stock_item")):
 				frappe.db.set_value("Item", code, "is_stock_item", 1)
 			return code
-	# create fallback item
 	code = item_code or "ITEM-E2E-STOCK-FLOW"
 	it = frappe.new_doc("Item")
 	it.item_code = code
@@ -116,11 +138,50 @@ def _resolve_item(item_code=None):
 	return it.name
 
 
+def _find_consolidated_si(pos_closing_name: str) -> str | None:
+	"""
+	Return the consolidated Sales Invoice created by POS Closing Entry.
+
+	Tries two locations:
+	1. Sales Invoice with pos_closing_entry == closing_name  (primary)
+	2. POS Invoice Merge Log.sales_invoice                  (fallback)
+	"""
+	# primary: direct field on Sales Invoice (ERPNext v15)
+	if frappe.db.has_column("Sales Invoice", "pos_closing_entry"):
+		si = frappe.db.get_value(
+			"Sales Invoice",
+			{"pos_closing_entry": pos_closing_name, "docstatus": 1},
+			"name",
+		)
+		if si:
+			return si
+
+	# fallback: POS Invoice Merge Log
+	if frappe.db.table_exists("POS Invoice Merge Log"):
+		si = frappe.db.get_value(
+			"POS Invoice Merge Log",
+			{"pos_closing_entry": pos_closing_name},
+			"sales_invoice",
+		)
+		if si:
+			return si
+
+	return None
+
+
+# ---------------------------------------------------------------------------
+# Step helper (unchanged)
+# ---------------------------------------------------------------------------
+
 def _step(report, row, stop_on_fail=True):
 	report.append(row)
 	if stop_on_fail and not row.get("pass"):
 		raise frappe.ValidationError(row.get("message") or row.get("step"))
 
+
+# ---------------------------------------------------------------------------
+# Main execute
+# ---------------------------------------------------------------------------
 
 def execute(
 	item_code=None,
@@ -146,7 +207,9 @@ def execute(
 	rate = flt(frappe.db.get_value("Item", item_code, "standard_rate")) or 10.0
 	qty_in = max(1.0, flt(receive_qty))
 
-	# baseline
+	# ------------------------------------------------------------------ #
+	# Step 00 — baseline                                                   #
+	# ------------------------------------------------------------------ #
 	base = bin_state(item_code, warehouse)
 	base_actual = flt(base["actual_qty"])
 	_step(
@@ -165,7 +228,9 @@ def execute(
 		stop_on_fail=False,
 	)
 
-	# Purchase Receipt + native submit
+	# ------------------------------------------------------------------ #
+	# Step 01 — Purchase Receipt                                           #
+	# ------------------------------------------------------------------ #
 	pr = frappe.new_doc("Purchase Receipt")
 	pr.supplier = supplier
 	pr.company = company
@@ -207,28 +272,31 @@ def execute(
 		stop_on_fail=stop_on_fail,
 	)
 	after_pr = bin_state(item_code, warehouse)
+	actual_after_pr = flt(after_pr["actual_qty"])
 	_step(
 		report,
 		audit_record(
 			step="01_purchase_receipt_bin",
-			passed=flt(after_pr["actual_qty"]) >= base_actual + qty_in - 0.01,
+			passed=actual_after_pr >= base_actual + qty_in - 0.01,
 			item_code=item_code,
 			warehouse=warehouse,
 			qty_before=base_actual,
-			qty_after=flt(after_pr["actual_qty"]),
-			actual_qty=flt(after_pr["actual_qty"]),
+			qty_after=actual_after_pr,
+			actual_qty=actual_after_pr,
 			reserved_qty=flt(after_pr["reserved_qty"]),
 			projected_qty=flt(after_pr["projected_qty"]),
 			backend_sellable_qty=flt(after_pr["sellable_qty"]),
 			frontend_display_qty=frontend_display_qty(item_code, warehouse),
 			root_cause="frontend_backend_inconsistency"
-			if flt(after_pr["actual_qty"]) < base_actual + qty_in - 0.01
+			if actual_after_pr < base_actual + qty_in - 0.01
 			else None,
 		),
 		stop_on_fail=stop_on_fail,
 	)
 
-	# Purchase Invoice auto-create + submit
+	# ------------------------------------------------------------------ #
+	# Step 02 — Purchase Invoice                                           #
+	# ------------------------------------------------------------------ #
 	pi_result = auto_create_and_submit_purchase_invoice_for_receipt(pr.name)
 	pi_name = pi_result.get("name")
 	pi = frappe.get_doc("Purchase Invoice", pi_name) if pi_name else None
@@ -245,7 +313,9 @@ def execute(
 		stop_on_fail=stop_on_fail,
 	)
 
-	# Supplier payment
+	# ------------------------------------------------------------------ #
+	# Step 03 — Supplier payment                                           #
+	# ------------------------------------------------------------------ #
 	out_before = flt(frappe.db.get_value("Purchase Invoice", pi_name, "outstanding_amount"))
 	pe = create_supplier_payment(
 		supplier=supplier,
@@ -269,7 +339,9 @@ def execute(
 		stop_on_fail=stop_on_fail,
 	)
 
-	# Open POS shift
+	# ------------------------------------------------------------------ #
+	# Step 04 — Open POS shift                                             #
+	# ------------------------------------------------------------------ #
 	shift = open_pos_shift(pos_profile=pos_profile, company=company, user=frappe.session.user, opening_amount=0)
 	_step(
 		report,
@@ -282,20 +354,44 @@ def execute(
 		),
 		stop_on_fail=stop_on_fail,
 	)
+	shift_name = shift.get("name", "")
+	# period_start_date is the earliest posting_date that counts as part of this shift
+	shift_posting_date = str(
+		frappe.db.get_value("POS Opening Entry", shift_name, "period_start_date") or today()
+	)
 
-	# Sell until zero
-	sales = 0
-	while sales < int(max_pos_sales):
-		st = bin_state(item_code, warehouse)
-		sellable = flt(st["sellable_qty"])
-		if sellable <= 0.0001:
+	# ------------------------------------------------------------------ #
+	# Steps 05_sale_N — POS sales loop                                     #
+	#                                                                      #
+	# ERPNext v15 POS Invoice submit:                                      #
+	#   - docstatus → 1 (submitted)                                        #
+	#   - NO SLE created  (actual_qty UNCHANGED until POS Closing)         #
+	#   - NO GL created   (deferred to POS Closing consolidation)          #
+	#   - NO Bin write    (reserved_qty_for_pos column does not exist)     #
+	#                                                                      #
+	# Oversell protection: validate_stock_availablility() runs at          #
+	# validate() time via get_pos_reserved_qty() — a live SQL sum of       #
+	# stock_qty from submitted unconsolidated POS Invoice Items.           #
+	# available = Bin.actual_qty - get_pos_reserved_qty()                  #
+	#                                                                      #
+	# Shift membership: tracked via pos_profile + posting_date + owner     #
+	# (pos_opening_entry is not a column on tabPOS Invoice in v15).        #
+	# ------------------------------------------------------------------ #
+	qty_sold = 0
+	pos_invoice_names: list[str] = []
+
+	while qty_sold < qty_in and len(pos_invoice_names) < int(max_pos_sales):
+		# Available for POS = actual_qty − live reserved (submitted unconsolidated invoices)
+		pos_reserved_before = get_pos_reserved_qty(item_code, warehouse)
+		pos_available_before = flt(bin_state(item_code, warehouse)["actual_qty"]) - pos_reserved_before
+		if pos_available_before <= 0.0001:
 			break
-		before = flt(st["actual_qty"])
+
 		payload = {
 			"customer": customer,
 			"company": company,
 			"pos_profile": pos_profile,
-			"pos_opening_entry": shift.get("name"),
+			"pos_opening_entry": shift_name,
 			"set_warehouse": warehouse,
 			"is_pos": 1,
 			"update_stock": 1,
@@ -308,52 +404,92 @@ def execute(
 			_step(
 				report,
 				audit_record(
-					step=f"05_sale_{sales+1}",
+					step=f"05_sale_{qty_sold + 1}",
 					passed=False,
 					item_code=item_code,
 					warehouse=warehouse,
 					message=str(exc),
-					root_cause=classify_failure(exc, context={"frontend_qty": frontend_display_qty(item_code, warehouse), "backend_qty": sellable}),
+					root_cause=classify_failure(
+						exc,
+						context={
+							"frontend_qty": frontend_display_qty(item_code, warehouse),
+							"backend_qty": pos_available_before,
+						},
+					),
 				),
 				stop_on_fail=stop_on_fail,
 			)
 			break
-		sales += 1
+
+		qty_sold += 1
+		pos_invoice_names.append(inv["name"])
 		inv_doc = frappe.get_doc("POS Invoice", inv["name"])
-		after = bin_state(item_code, warehouse)
+
+		pos_reserved_after = get_pos_reserved_qty(item_code, warehouse)
+		actual_after_sale = flt(bin_state(item_code, warehouse)["actual_qty"])
+
+		# --- per-sale assertions ---
+		# 1. Invoice submitted.
+		invoice_submitted = cint(inv_doc.docstatus) == 1
+		# 2. Invoice is a POS invoice.
+		invoice_is_pos = cint(inv_doc.is_pos) == 1
+		# 3. Shift membership via pos_profile + posting_date + owner.
+		#    pos_opening_entry is not a column on tabPOS Invoice in v15;
+		#    _opening_filters() in shifts.py uses these three fields instead.
+		linked_to_shift = (
+			inv_doc.pos_profile == pos_profile
+			and inv_doc.owner == frappe.session.user
+			and getdate(inv_doc.posting_date) >= getdate(shift_posting_date)
+		)
+		# 4. ERPNext live reservation increased: get_pos_reserved_qty() now
+		#    includes this invoice's stock_qty in its SQL sum.
+		#    actual_qty is intentionally NOT expected to change here.
+		reservation_increased = pos_reserved_after >= pos_reserved_before + 0.99
+
 		_step(
 			report,
 			audit_record(
-				step=f"05_sale_{sales}",
-				passed=(
-					cint(inv_doc.docstatus) == 1
-					and cint(inv_doc.update_stock) == 1
-					and sle_count("POS Invoice", inv_doc.name) > 0
-					and flt(after["actual_qty"]) <= before - 0.99
-				),
+				step=f"05_sale_{qty_sold}",
+				passed=invoice_submitted and invoice_is_pos and linked_to_shift and reservation_increased,
 				document=inv_doc.name,
 				doctype="POS Invoice",
 				item_code=item_code,
 				warehouse=warehouse,
-				qty_before=before,
-				qty_after=flt(after["actual_qty"]),
-				actual_qty=flt(after["actual_qty"]),
-				reserved_qty=flt(after["reserved_qty"]),
-				projected_qty=flt(after["projected_qty"]),
-				backend_sellable_qty=flt(after["sellable_qty"]),
+				# actual_qty recorded for traceability; NOT asserted (deferred to closing)
+				actual_qty=actual_after_sale,
+				qty_before=actual_after_sale,
+				qty_after=actual_after_sale,
+				reserved_qty=flt(bin_state(item_code, warehouse)["reserved_qty"]),
+				projected_qty=flt(bin_state(item_code, warehouse)["projected_qty"]),
+				backend_sellable_qty=actual_after_sale - pos_reserved_after,
 				frontend_display_qty=frontend_display_qty(item_code, warehouse),
-				sle_count=sle_count("POS Invoice", inv_doc.name),
-				root_cause="missing_sle" if sle_count("POS Invoice", inv_doc.name) <= 0 else None,
+				# SLE count is 0 by design — not checked
+				message=(
+					f"submitted={invoice_submitted}, is_pos={invoice_is_pos}, "
+					f"shift_link={linked_to_shift} "
+					f"(profile={inv_doc.pos_profile}=={pos_profile}, "
+					f"owner={inv_doc.owner}=={frappe.session.user}, "
+					f"date={inv_doc.posting_date}>={shift_posting_date}), "
+					f"pos_reserved {pos_reserved_before:.2f}→{pos_reserved_after:.2f}"
+				),
+				root_cause=(
+					"draft_document" if not invoice_submitted
+					else "invoice_not_linked_to_shift" if not linked_to_shift
+					else "pos_reservation_not_updated" if not reservation_increased
+					else None
+				),
 			),
 			stop_on_fail=stop_on_fail,
 		)
 
-	# oversell attempt
+	# ------------------------------------------------------------------ #
+	# Step 06 — Oversell prevention                                        #
+	# ------------------------------------------------------------------ #
 	oversell_payload = {
 		"customer": customer,
 		"company": company,
 		"pos_profile": pos_profile,
-		"pos_opening_entry": shift.get("name"),
+		"pos_opening_entry": shift_name,
 		"set_warehouse": warehouse,
 		"is_pos": 1,
 		"items": [{"item_code": item_code, "qty": 1, "rate": rate, "warehouse": warehouse}],
@@ -375,7 +511,10 @@ def execute(
 			item_code=item_code,
 			warehouse=warehouse,
 			actual_qty=flt(bin_state(item_code, warehouse)["actual_qty"]),
-			backend_sellable_qty=flt(bin_state(item_code, warehouse)["sellable_qty"]),
+			backend_sellable_qty=(
+				flt(bin_state(item_code, warehouse)["actual_qty"])
+				- get_pos_reserved_qty(item_code, warehouse)
+			),
 			frontend_display_qty=frontend_display_qty(item_code, warehouse),
 			message=oversell_message,
 			root_cause=None if oversell_blocked else "negative_stock_blocked",
@@ -383,6 +522,119 @@ def execute(
 		stop_on_fail=stop_on_fail,
 	)
 
+	# ------------------------------------------------------------------ #
+	# Step 07 — POS Closing Entry                                          #
+	#                                                                      #
+	# prepare_closing_entry creates the draft.                             #
+	# approve_pos_closing_entry submits it (Administrator = break-glass,   #
+	# bypasses both the self-approval guard and the cashier gate).         #
+	# ERPNext then creates a consolidated Sales Invoice, posts SLE and GL. #
+	# ------------------------------------------------------------------ #
+	actual_cash_collected = flt(rate) * qty_sold
+	closing_draft = prepare_closing_entry(
+		pos_opening_entry=shift_name,
+		actual_cash=actual_cash_collected,
+	)
+	closing_draft_name = closing_draft.get("name", "")
+
+	closing_result = approve_pos_closing_entry(closing_draft_name)
+	closing_submitted = cint(closing_result.get("docstatus")) == 1
+
+	_step(
+		report,
+		audit_record(
+			step="07_pos_closing_submit",
+			passed=closing_submitted,
+			document=closing_draft_name,
+			doctype="POS Closing Entry",
+			message=(
+				f"docstatus={closing_result.get('docstatus')}, "
+				f"status={closing_result.get('status')}, "
+				f"invoices_closed={qty_sold}"
+			),
+			root_cause="missing_erp_native_submit" if not closing_submitted else None,
+		),
+		stop_on_fail=stop_on_fail,
+	)
+	frappe.db.commit()
+
+	# ------------------------------------------------------------------ #
+	# Steps 08 — Post-closing stock and ledger integrity                   #
+	#                                                                      #
+	# After POS Closing, the consolidated Sales Invoice carries the SLE    #
+	# and GL entries.  Bin.actual_qty must now reflect all sold units.     #
+	# ------------------------------------------------------------------ #
+	consolidated_si = _find_consolidated_si(closing_draft_name)
+
+	after_closing = bin_state(item_code, warehouse)
+	actual_after_closing = flt(after_closing["actual_qty"])
+	expected_actual_after = actual_after_pr - qty_sold
+
+	actual_qty_ok = abs(actual_after_closing - expected_actual_after) < 0.5
+	_step(
+		report,
+		audit_record(
+			step="08_post_closing_actual_qty",
+			passed=actual_qty_ok,
+			item_code=item_code,
+			warehouse=warehouse,
+			qty_before=actual_after_pr,
+			qty_after=actual_after_closing,
+			actual_qty=actual_after_closing,
+			reserved_qty=flt(after_closing["reserved_qty"]),
+			projected_qty=flt(after_closing["projected_qty"]),
+			backend_sellable_qty=flt(after_closing["sellable_qty"]),
+			frontend_display_qty=frontend_display_qty(item_code, warehouse),
+			message=(
+				f"after_pr={actual_after_pr}, qty_sold={qty_sold}, "
+				f"expected={expected_actual_after:.2f}, actual={actual_after_closing:.2f}"
+			),
+			root_cause="missing_sle" if not actual_qty_ok else None,
+		),
+		stop_on_fail=stop_on_fail,
+	)
+
+	# SLE: expected on consolidated Sales Invoice
+	si_sle = sle_count("Sales Invoice", consolidated_si) if consolidated_si else 0
+	sle_ok = si_sle > 0
+	_step(
+		report,
+		audit_record(
+			step="08_post_closing_sle",
+			passed=sle_ok,
+			document=consolidated_si or "",
+			doctype="Sales Invoice",
+			sle_count=si_sle,
+			message=(
+				f"consolidated_si={consolidated_si or 'NOT_FOUND'}, sle_count={si_sle}"
+			),
+			root_cause="missing_sle" if not sle_ok else None,
+		),
+		stop_on_fail=stop_on_fail,
+	)
+
+	# GL: expected on consolidated Sales Invoice
+	si_gl = gle_count("Sales Invoice", consolidated_si) if consolidated_si else 0
+	gl_ok = si_gl > 0
+	_step(
+		report,
+		audit_record(
+			step="08_post_closing_gl",
+			passed=gl_ok,
+			document=consolidated_si or "",
+			doctype="Sales Invoice",
+			gl_count=si_gl,
+			message=(
+				f"consolidated_si={consolidated_si or 'NOT_FOUND'}, gl_count={si_gl}"
+			),
+			root_cause="accounting_mismatch" if not gl_ok else None,
+		),
+		stop_on_fail=stop_on_fail,
+	)
+
+	# ------------------------------------------------------------------ #
+	# Report                                                               #
+	# ------------------------------------------------------------------ #
 	summary = summarize_report(report)
 	summary["config"] = {
 		"item_code": item_code,
@@ -391,7 +643,10 @@ def execute(
 		"supplier": supplier,
 		"pos_profile": pos_profile,
 		"receive_qty": qty_in,
-		"sales_done": sales,
+		"sales_done": qty_sold,
+		"pos_invoices": pos_invoice_names,
+		"consolidated_si": consolidated_si,
+		"pos_closing": closing_draft_name,
 	}
 	print_report(summary)
 

@@ -100,6 +100,18 @@ CUSTOM_FIELDS = [
 		"read_only": 1,
 		"hidden": 1,
 	},
+	# POS Invoice — checkout idempotency (retry-safe)
+	{
+		"dt": "POS Invoice",
+		"fieldname": "elmahdi_idempotency_key",
+		"label": "Elmahdi Idempotency Key",
+		"fieldtype": "Data",
+		"insert_after": "pos_profile",
+		"read_only": 1,
+		"unique": 1,
+		"hidden": 1,
+		"no_copy": 1,
+	},
 	# POS Closing Entry
 	{
 		"dt": "POS Closing Entry",

@@ -192,24 +192,19 @@ def get_shift_summary(pos_opening_entry):
         filters=filters,
         fields=["name", "grand_total", "is_return", "owner", "posting_date", "status"],
     )
-    if not invoices and filters.get("pos_opening_entry"):
-        filters.pop("pos_opening_entry", None)
-        invoices = frappe.get_all(
-            "POS Invoice",
-            filters=filters,
-            fields=["name", "grand_total", "is_return", "owner", "posting_date", "status"],
-        )
 
-    void_count = frappe.db.count(
-        "POS Invoice",
-        {
-            "docstatus": 2,
-            "is_pos": 1,
-            "pos_profile": opening.pos_profile,
-            "posting_date": [">=", opening.period_start_date],
-            **({"owner": opening.user} if opening.user else {}),
-        },
-    )
+    # Void count must be scoped to the same opening entry so that multi-shift-per-day
+    # scenarios do not bleed cancelled invoices from a prior shift into this summary.
+    void_filters = {
+        "docstatus": 2,
+        "is_pos": 1,
+        "pos_profile": opening.pos_profile,
+        "posting_date": [">=", opening.period_start_date],
+        **({"owner": opening.user} if opening.user else {}),
+    }
+    if frappe.get_meta("POS Invoice").has_field("pos_opening_entry"):
+        void_filters["pos_opening_entry"] = opening.name
+    void_count = frappe.db.count("POS Invoice", void_filters)
 
     payment_totals = {}
     sales_total = 0.0

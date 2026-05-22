@@ -9,36 +9,42 @@ from __future__ import annotations
 
 import frappe
 from frappe import _
-from frappe.utils import cint
+from frappe.utils import cint, flt, nowtime, today
 
 
 STOCK_MOVEMENT_ERROR = "{doctype} submitted without stock movement"
 GL_MOVEMENT_ERROR = "{doctype} submitted without accounting entries"
 
-# Always posts stock ledger when submitted with stock items
+# Always posts stock ledger when submitted with stock items.
+# Note: ERPNext v15 purchase/sales returns use the parent doctype with is_return=1;
+# there is no standalone "Purchase Return" or "Sales Return" doctype.
 STOCK_DOCTYPES_ALWAYS = frozenset(
 	{
 		"Stock Entry",
 		"Stock Reconciliation",
 		"Purchase Receipt",
 		"Delivery Note",
-		"Purchase Return",
 	}
 )
 
-# Stock ledger only when update_stock is enabled
+# Stock ledger only when update_stock is enabled.
+# IMPORTANT: POS Invoice is intentionally excluded.
+# In ERPNext v15, POSInvoice.on_submit() does NOT call update_stock_ledger() or
+# make_gl_entries() — it overrides SalesInvoice.on_submit() without calling super().
+# Both SLE and GL entries are deferred to POS Closing Entry consolidation
+# (POS Invoice Merge Log → consolidated Sales Invoice). Requiring them immediately
+# after individual invoice submit would always fail and block every sale.
 INVOICE_STOCK_DOCTYPES = frozenset(
 	{
-		"POS Invoice",
 		"Sales Invoice",
 		"Purchase Invoice",
 	}
 )
 
-# General ledger expected on submit
+# General ledger expected on submit.
+# POS Invoice excluded — see INVOICE_STOCK_DOCTYPES comment above.
 GL_DOCTYPES = frozenset(
 	{
-		"POS Invoice",
 		"Sales Invoice",
 		"Purchase Invoice",
 		"Payment Entry",
@@ -135,6 +141,72 @@ def native_submit(doc, *, force_update_stock: bool | None = None):
 	return doc
 
 
+def consolidate_pos_invoice(doc):
+	"""
+	Immediately consolidate a single submitted POS Invoice so stock (SLE) and
+	accounting (GL) post in real time.
+
+	ERPNext v15 POSInvoice.on_submit() posts neither a Stock Ledger Entry nor
+	GL entries — both are produced only by the consolidated Sales Invoice that
+	a POS Invoice Merge Log creates (update_stock=1). Normally that runs at POS
+	Closing Entry submission; running it per sale gives the cashier live stock.
+
+	Returns the consolidated Sales Invoice (or credit note for returns) name.
+	Idempotent: a POS Invoice that is already consolidated is left untouched.
+	"""
+	if cint(doc.docstatus) != 1:
+		frappe.throw(_("Only a submitted POS Invoice can be consolidated"), frappe.ValidationError)
+	if doc.get("consolidated_invoice"):
+		return doc.consolidated_invoice
+
+	is_return = cint(doc.get("is_return"))
+	merge = frappe.new_doc("POS Invoice Merge Log")
+	merge.posting_date = doc.posting_date or today()
+	merge.posting_time = nowtime()
+	merge.company = doc.company
+	merge.customer = doc.customer
+	merge.merge_invoices_based_on = "Customer"
+	merge.append(
+		"pos_invoices",
+		{
+			"pos_invoice": doc.name,
+			"customer": doc.customer,
+			"posting_date": doc.posting_date or today(),
+			"grand_total": flt(doc.grand_total),
+			"is_return": is_return,
+			"return_against": doc.get("return_against"),
+		},
+	)
+
+	# The cashier owns the POS Invoice but not the consolidated Sales Invoice /
+	# Merge Log. Consolidation is a trusted server-side side effect of the sale;
+	# run it as Administrator so the Merge Log and Sales Invoice can be created
+	# and submitted regardless of the cashier's roles.
+	prev_user = frappe.session.user
+	frappe.set_user("Administrator")
+	try:
+		merge.insert(ignore_permissions=True)
+		merge.submit()
+	finally:
+		frappe.set_user(prev_user)
+
+	doc.reload()
+	consolidated = doc.get("consolidated_invoice")
+	if not consolidated:
+		frappe.throw(
+			_("POS Invoice {0} was not consolidated — stock did not post").format(doc.name),
+			frappe.ValidationError,
+		)
+
+	si_doctype = "Sales Invoice"
+	if _sle_count(si_doctype, consolidated) <= 0 and not is_return:
+		frappe.throw(
+			_(STOCK_MOVEMENT_ERROR.format(doctype="POS sale")),
+			frappe.ValidationError,
+		)
+	return consolidated
+
+
 def document_response(doc) -> dict:
 	out = {
 		"name": doc.name,
@@ -203,6 +275,8 @@ def submit_pos_invoice(name):
 	if cint(getattr(doc, "is_return", 0)):
 		frappe.throw(_("Use submit_pos_invoice_return for return documents"), frappe.ValidationError)
 	doc = native_submit(doc, force_update_stock=True)
+	consolidate_pos_invoice(doc)
+	doc.reload()
 	return document_response(doc)
 
 
@@ -213,6 +287,8 @@ def submit_pos_invoice_return(name):
 	if not cint(getattr(doc, "is_return", 0)):
 		frappe.throw(_("Document is not a POS return"), frappe.ValidationError)
 	doc = native_submit(doc, force_update_stock=True)
+	consolidate_pos_invoice(doc)
+	doc.reload()
 	return document_response(doc)
 
 
@@ -228,6 +304,9 @@ def submit_purchase_return(name):
 
 @frappe.whitelist()
 def submit_payment_entry(name):
+	from elmahdi.api.payment_authorization import assert_may_record_supplier_payment
+
+	assert_may_record_supplier_payment()
 	return _submit_named(name, "Payment Entry")
 
 

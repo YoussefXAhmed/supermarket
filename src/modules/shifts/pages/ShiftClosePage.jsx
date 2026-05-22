@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ApiErrorCard, Btn, PageHeader, PageLoading } from '../../../components/ui';
 import { FormPageLayout, LayoutSection } from '../../../components/layout/page-layouts';
@@ -16,6 +17,7 @@ import VarianceBanner from '../components/VarianceBanner';
 import ShiftStatusBadge from '../components/ShiftStatusBadge';
 
 export default function ShiftClosePage() {
+  const { t } = useTranslation();
   const { user, canCloseShift, canApproveShift } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -75,18 +77,17 @@ export default function ShiftClosePage() {
         canSubmitClosing: canApproveShift,
       });
       if (result.submitted) {
-        setMsg(`Shift closed — ${result.closing?.name} submitted in ERPNext.`);
+        setMsg(t('shifts.closedSubmitted', { name: result.closing?.name }));
         setTimeout(() => navigate('/pos'), 1500);
       } else if (result.needsVarianceApproval) {
-        setMsg(
-          `Closing ${result.closing?.name} saved as draft — manager must approve variance (EGP ${result.variance.variance.toFixed(2)}).`,
-        );
+        setMsg(t('shifts.closingNeedsVariance', {
+          name: result.closing?.name,
+          variance: result.variance.variance.toFixed(2),
+        }));
       } else if (result.needsManagerSubmit) {
-        setMsg(
-          `Closing ${result.closing?.name} saved as draft — a store manager must submit it in ERPNext.`,
-        );
+        setMsg(t('shifts.closingNeedsManager', { name: result.closing?.name }));
       } else {
-        setMsg(result.message || 'Closing draft saved — check ERPNext Desk.');
+        setMsg(result.message || t('shifts.closingDraftSaved'));
       }
     } catch (e2) {
       setError(getUserFriendlyMessage(e2));
@@ -98,8 +99,8 @@ export default function ShiftClosePage() {
   if (!canCloseShift) {
     return (
       <FormPageLayout>
-        <PageHeader title="Close shift" subtitle="Access denied" dense />
-        <ApiErrorCard message="You do not have permission to close shifts." />
+        <PageHeader title={t('shifts.closeShift')} subtitle={t('common.accessDenied')} dense />
+        <ApiErrorCard message={t('shifts.noPermissionClose')} />
       </FormPageLayout>
     );
   }
@@ -107,12 +108,12 @@ export default function ShiftClosePage() {
   return (
     <FormPageLayout>
       <PageHeader
-        title="Close shift"
-        subtitle="Cash reconciliation against ERP sales"
+        title={t('shifts.closeShift')}
+        subtitle={t('shifts.closeSubtitle')}
         dense
         actions={
           <Link to="/pos" className="btn btn--ghost btn--sm">
-            POS
+            {t('common.pos')}
           </Link>
         }
       />
@@ -121,14 +122,14 @@ export default function ShiftClosePage() {
         <PageLoading size={26} />
       ) : !summary?.opening ? (
         <LayoutSection variant="raised">
-          <p className="page-header__sub">No open shift found for your register.</p>
+          <p className="page-header__sub">{t('shifts.noOpenShift')}</p>
           <Link to="/shifts/open" className="btn btn--primary btn--sm">
-            Open shift
+            {t('shifts.openShift')}
           </Link>
         </LayoutSection>
       ) : (
         <>
-          <LayoutSection variant="raised" title="Shift status" flushHead>
+          <LayoutSection variant="raised" title={t('shifts.shiftStatus')} flushHead>
             <div className="toolbar">
               <ShiftStatusBadge status={summary.opening.status} docstatus={summary.opening.docstatus} />
               <span className="mono page-header__sub">{summary.opening.name}</span>
@@ -147,7 +148,7 @@ export default function ShiftClosePage() {
             />
           )}
 
-          <LayoutSection variant="raised" title="Cash count">
+          <LayoutSection variant="raised" title={t('shifts.cashCount')}>
             <CashCountForm
               actualCash={actualCash}
               onActualCashChange={setActualCash}

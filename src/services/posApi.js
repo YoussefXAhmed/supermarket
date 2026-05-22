@@ -235,7 +235,10 @@ async function attachStock(items, warehouse) {
       const row = stockMap[item.item_code];
       const actual_qty = isStock ? Number(row?.actual_qty ?? 0) : null;
       const reserved_qty = isStock ? Number(row?.reserved_qty ?? 0) : null;
-      const sellable_qty = isStock ? Number(row?.sellable_qty ?? 0) : null;
+      // Backend returns actual_qty - reserved_qty which can be negative when reserved_qty
+      // exceeds actual (e.g. oversold SO reservation). Clamp to 0 so UI never displays or
+      // acts on a negative sellable quantity.
+      const sellable_qty = isStock ? Math.max(0, Number(row?.sellable_qty ?? 0)) : null;
       return {
         ...item,
         sellable_qty,

@@ -10,7 +10,7 @@ const NAV = [
   { to: '/admin/purchasing/receive', labelKey: 'nav.receive' },
   { to: '/admin/purchasing/approvals', labelKey: 'nav.approvals', cap: 'canViewPurchaseApprovals' },
   { to: '/admin/purchasing/invoices', labelKey: 'common.invoices' },
-  { to: '/admin/purchasing/matching', labelKey: 'nav.matching' },
+  { to: '/admin/purchasing/matching', labelKey: 'nav.matching', cap: 'canAccessInvoiceMatching' },
   { to: '/admin/purchasing/reports', labelKey: 'nav.reports' },
 ];
 

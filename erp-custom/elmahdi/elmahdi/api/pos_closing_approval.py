@@ -97,6 +97,29 @@ def on_update_pos_closing(doc, method=None):
 		)
 
 
+def _merge_shift_sales_audit_remarks(doc, notes=""):
+	"""Persist sales totals on closing remarks so shift history KPIs stay accurate after submit."""
+	if not doc.pos_opening_entry:
+		return
+	try:
+		from elmahdi.api.shifts import get_shift_summary
+
+		summary = get_shift_summary(doc.pos_opening_entry)
+	except Exception:
+		return
+
+	prefix = "Elmahdi-Shift-Audit"
+	existing = doc.remarks or ""
+	parts = [p for p in existing.split(";") if p.strip() and not p.strip().startswith(prefix)]
+	parts.append(prefix)
+	parts.append(f"approval_status=approved")
+	parts.append(f"sales_count={int(summary.get('sales_count') or 0)}")
+	parts.append(f"sales_total={flt(summary.get('sales_total') or 0)}")
+	if notes:
+		parts.append(f"notes={notes}")
+	doc.remarks = ";".join(parts)
+
+
 @frappe.whitelist()
 def approve_pos_closing_entry(name, notes=""):
 	assert_may_act_as_pos_closing_approver()
@@ -107,6 +130,7 @@ def approve_pos_closing_entry(name, notes=""):
 
 	assert_not_self_approval(doc)
 
+	_merge_shift_sales_audit_remarks(doc, notes=notes or "Shift close approved")
 	_set_audit_fields(doc, pending=False, approved=True, reason=notes or "Shift close approved")
 	frappe.flags.elmahdi_pos_closing_skip_pending = True
 	try:

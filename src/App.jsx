@@ -66,6 +66,19 @@ export default function App() {
           <Route path="/login" element={<LazyPage><LoginPage /></LazyPage>} />
 
           <Route
+            path="/pos/returns"
+            element={
+              <ProtectedRoute require="pos">
+                <CapabilityRoute cap="canCreateReturns">
+                  <ErrorBoundary>
+                    <LazyPage><ReturnsPage cashierMode /></LazyPage>
+                  </ErrorBoundary>
+                </CapabilityRoute>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
             path="/pos"
             element={
               <ProtectedRoute require="pos">
@@ -176,7 +189,14 @@ export default function App() {
                 )}
               />
               <Route path="invoices" element={<LazyPage><PurchaseInvoicesPage /></LazyPage>} />
-              <Route path="matching" element={<LazyPage><InvoiceMatchingPage /></LazyPage>} />
+              <Route
+                path="matching"
+                element={(
+                  <CapabilityRoute cap="canAccessInvoiceMatching">
+                    <LazyPage><InvoiceMatchingPage /></LazyPage>
+                  </CapabilityRoute>
+                )}
+              />
               <Route path="reports" element={<LazyPage><PurchaseReportsPage /></LazyPage>} />
             </Route>
           </Route>
@@ -232,8 +252,22 @@ export default function App() {
                 </CapabilityRoute>
               )}
             />
-            <Route path="inventory" element={<LazyPage><InventoryPage /></LazyPage>} />
-            <Route path="invoices" element={<LazyPage><InvoicesPage /></LazyPage>} />
+            <Route
+              path="inventory"
+              element={(
+                <CapabilityRoute cap="canAccessInventory">
+                  <LazyPage><InventoryPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="invoices"
+              element={(
+                <CapabilityRoute cap="canViewInvoices">
+                  <LazyPage><InvoicesPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
             <Route
               path="returns"
               element={(
@@ -242,7 +276,14 @@ export default function App() {
                 </CapabilityRoute>
               )}
             />
-            <Route path="customers" element={<LazyPage><CustomersPage /></LazyPage>} />
+            <Route
+              path="customers"
+              element={(
+                <CapabilityRoute cap="canViewReports">
+                  <LazyPage><CustomersPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
             <Route
               path="users"
               element={(
@@ -259,8 +300,22 @@ export default function App() {
                 </CapabilityRoute>
               )}
             />
-            <Route path="reports" element={<LazyPage><ReportsPage /></LazyPage>} />
-            <Route path="activity" element={<LazyPage><ActivityLogPage /></LazyPage>} />
+            <Route
+              path="reports"
+              element={(
+                <CapabilityRoute cap="canViewReports">
+                  <LazyPage><ReportsPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="activity"
+              element={(
+                <CapabilityRoute cap="canViewReports">
+                  <LazyPage><ActivityLogPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
             <Route
               path="settings"
               element={(

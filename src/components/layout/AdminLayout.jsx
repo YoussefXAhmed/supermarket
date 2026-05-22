@@ -26,6 +26,17 @@ const NAV_FULL = [
   { to: '/admin/settings', labelKey: 'nav.settings', icon: '⚙️', cap: 'canManageSettings' },
 ];
 
+const NAV_STORE_MANAGER = [
+  { to: '/admin', labelKey: 'nav.dashboard', icon: '◈', exact: true, cap: 'canAccessAdminWorkspace' },
+  { to: '/admin/approvals', labelKey: 'nav.approvals', icon: '✓', cap: 'canViewApprovalsDashboard' },
+  { to: '/admin/shifts/history', labelKey: 'nav.shifts', icon: '◷', cap: 'canViewShiftReports' },
+  { to: '/admin/purchasing/approvals', labelKey: 'nav.purchaseRates', icon: '🛍️', cap: 'canViewPurchaseApprovals' },
+  { to: '/admin/invoices', labelKey: 'common.invoices', icon: '🧾', cap: 'canViewInvoices' },
+  { to: '/admin/reports', labelKey: 'nav.reports', icon: '📊', cap: 'canViewReports' },
+  { to: '/admin/returns', labelKey: 'nav.returns', icon: '↩', cap: 'canViewReturns' },
+  { to: '/pos', labelKey: 'common.pos', icon: '💳', cap: 'canViewPOS' },
+];
+
 const NAV_ACCOUNTANT = [
   { to: '/admin/accounting', labelKey: 'nav.finance', icon: '💼', exact: true, cap: 'canAccessAccountantWorkspace' },
   { to: '/admin/accounting/matching', labelKey: 'nav.invoiceMatching', icon: '🧾', cap: 'canAccessInvoiceMatching' },
@@ -57,6 +68,11 @@ export default function AdminLayout({ purchasingWorkspace = false }) {
     let pool = NAV_FULL;
     if (purchasingWorkspace && !hasCapability(capabilities, 'canManageSystem')) {
       pool = NAV_PURCHASING_WORKSPACE;
+    } else if (
+      capabilities.operationalPersona === 'store_manager' &&
+      !hasCapability(capabilities, 'canManageSystem')
+    ) {
+      pool = NAV_STORE_MANAGER;
     } else if (
       capabilities.operationalPersona === 'accountant' &&
       !hasCapability(capabilities, 'canManageSystem')

@@ -161,7 +161,6 @@ function finalizeCapabilities(caps) {
 
   c.canAccessInvoiceMatching = Boolean(
     c.canAccessInvoiceMatching ||
-      c.canAccessPurchasing ||
       c.canAccessAccountantWorkspace ||
       c.canManageSystem,
   );
@@ -231,13 +230,15 @@ function capabilitiesFromRoleProfile(roleProfileName, roleList = []) {
   const inventoryLayer =
     profileCaps.canAccessInventory || profileCaps.canInventoryReceipt
       ? {}
-      : deriveInventoryCapabilities(
-          {
-            canManageSystem: false,
-            canAccessInventory: Boolean(profileCaps.canAccessInventory),
-          },
-          roleList,
-        );
+      : profileCaps.operationalPersona === 'store_manager'
+        ? { ...EMPTY_INVENTORY_CAPABILITIES }
+        : deriveInventoryCapabilities(
+            {
+              canManageSystem: false,
+              canAccessInventory: Boolean(profileCaps.canAccessInventory),
+            },
+            roleList,
+          );
 
   return mergeCaps(
     { roleProfileName, ...profileCaps },

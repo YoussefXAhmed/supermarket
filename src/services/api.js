@@ -358,28 +358,30 @@ export const getPriceLists = (params = {}) =>
 ══════════════════════════════════════ */
 export const getDashboardStats = async () => {
   const monthStart = getMonthStart();
-  const lastMonthStart = getLastMonthStart();
   const warnings = [];
-
   const silent = { silentApi: true };
-  const [invoices, lastMonthInv, items, customers] = await Promise.allSettled([
-    api.get('/api/resource/Sales Invoice', {
+
+  let kpi = null;
+  try {
+    const kpiRes = await api.get('/api/method/elmahdi.api.manager_dashboard.get_manager_kpis', {
+      ...silent,
+      params: { from_date: monthStart },
+    });
+    kpi = kpiRes?.data?.message || kpiRes?.data;
+  } catch {
+    warnings.push('Could not load ERP profit KPIs — using estimated margin.');
+  }
+
+  const [posInvoices, items, customers] = await Promise.allSettled([
+    api.get('/api/resource/POS Invoice', {
       ...silent,
       params: {
         fields: JSON.stringify(['name', 'grand_total', 'status', 'posting_date', 'customer']),
-        filters: JSON.stringify([['docstatus', '!=', 2], ['posting_date', '>=', monthStart]]),
-        limit_page_length: 500,
-      },
-    }),
-    api.get('/api/resource/Sales Invoice', {
-      ...silent,
-      params: {
-        fields: JSON.stringify(['grand_total', 'posting_date']),
         filters: JSON.stringify([
-          ['docstatus', '!=', 2],
-          ['posting_date', '>=', lastMonthStart],
-          ['posting_date', '<', monthStart],
+          ['docstatus', '=', 1],
+          ['posting_date', '>=', monthStart],
         ]),
+        order_by: 'posting_date desc',
         limit_page_length: 500,
       },
     }),
@@ -395,70 +397,64 @@ export const getDashboardStats = async () => {
     }),
   ]);
 
-  let invoiceData = invoices.status === 'fulfilled' ? invoices.value?.data?.data || [] : [];
-  let lastMonthData = lastMonthInv.status === 'fulfilled' ? lastMonthInv.value?.data?.data || [] : [];
-
-  if (invoices.status === 'rejected') {
-    try {
-      const posRes = await api.get('/api/resource/POS Invoice', {
-        silentApi: true,
-        params: {
-          fields: JSON.stringify(['name', 'grand_total', 'status', 'posting_date', 'customer']),
-          filters: JSON.stringify([
-            ['docstatus', '=', 1],
-            ['is_pos', '=', 1],
-            ['posting_date', '>=', monthStart],
-          ]),
-          limit_page_length: 500,
-        },
-      });
-      invoiceData = posRes?.data?.data || [];
-      warnings.push('Sales invoices unavailable — using POS invoices for overview.');
-    } catch {
-      warnings.push('Could not load sales or POS invoices for dashboard.');
-    }
-  }
+  const invoiceData =
+    posInvoices.status === 'fulfilled' ? posInvoices.value?.data?.data || [] : [];
   const itemCount = items.status === 'fulfilled' ? (items.value.data.data?.length || 0) : 0;
   const customerCount = customers.status === 'fulfilled' ? (customers.value.data.data?.length || 0) : 0;
 
-  const revenue = invoiceData.reduce((s, i) => s + (Number(i.grand_total) || 0), 0);
-  const lastMonthRevenue = lastMonthData.reduce((s, i) => s + (Number(i.grand_total) || 0), 0);
+  if (!invoiceData.length && posInvoices.status === 'rejected') {
+    warnings.push('Could not load POS invoices for dashboard.');
+  }
+
+  const revenue = kpi?.revenue ?? invoiceData.reduce((s, i) => s + (Number(i.grand_total) || 0), 0);
+  const salesCount = kpi?.sales_count ?? invoiceData.length;
+  const salesToday = kpi?.sales_today ?? 0;
+  const salesTodayCount = kpi?.sales_today_count ?? 0;
+  const cogs = kpi?.cogs ?? 0;
+  const netProfit = kpi?.net_profit ?? revenue * 0.28;
+  const grossMarginPct = kpi?.gross_margin_pct ?? (revenue > 0 ? (netProfit / revenue) * 100 : 0);
+  const revenueTrend = kpi?.revenue_trend ?? 0;
+  const lastMonthRevenue = kpi?.last_month_revenue ?? 0;
+  const avgTicket = kpi?.avg_ticket ?? (salesCount ? revenue / salesCount : 0);
+
+  let salesTrend = kpi?.sales_trend || [];
+  if (!salesTrend.length) {
+    const dailyMap = new Map();
+    for (const inv of invoiceData) {
+      const day = (inv.posting_date || '').slice(5, 10);
+      if (!day) continue;
+      dailyMap.set(day, (dailyMap.get(day) || 0) + (Number(inv.grand_total) || 0));
+    }
+    salesTrend = [...dailyMap.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .slice(-14)
+      .map(([label, value]) => ({ label, value }));
+  }
+
   const paid = invoiceData.filter((i) => i.status === 'Paid').length;
   const unpaid = invoiceData.filter((i) => i.status === 'Unpaid' || i.status === 'Overdue').length;
-  const revenueTrend = lastMonthRevenue > 0
-    ? Math.round(((revenue - lastMonthRevenue) / lastMonthRevenue) * 100)
-    : revenue > 0 ? 100 : 0;
-
-  const GROSS_MARGIN_PCT = 0.28;
-  const estimatedProfit = revenue * GROSS_MARGIN_PCT;
-  const avgTicket = invoiceData.length ? revenue / invoiceData.length : 0;
-
-  const dailyMap = new Map();
-  for (const inv of invoiceData) {
-    const day = (inv.posting_date || '').slice(5, 10);
-    if (!day) continue;
-    dailyMap.set(day, (dailyMap.get(day) || 0) + (Number(inv.grand_total) || 0));
-  }
-  const salesTrend = [...dailyMap.entries()]
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .slice(-14)
-    .map(([label, value]) => ({ label, value }));
 
   return {
     revenue,
+    salesCount,
+    salesToday,
+    salesTodayCount,
+    cogs,
+    netProfit,
+    estimatedProfit: netProfit,
+    grossMarginPct,
     lastMonthRevenue,
     revenueTrend,
-    invoiceCount: invoiceData.length,
+    invoiceCount: salesCount,
     paidCount: paid,
     unpaidCount: unpaid,
     itemCount,
     customerCount,
-    estimatedProfit,
-    grossMarginPct: GROSS_MARGIN_PCT * 100,
     avgTicket,
     invoiceData,
     salesTrend,
     warnings,
+    kpiSource: kpi ? 'erp' : 'fallback',
   };
 };
 

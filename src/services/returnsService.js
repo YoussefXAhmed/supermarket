@@ -164,8 +164,10 @@ function applyPartialLinesToReturnDoc(erpDoc, source, lines) {
 
 /**
  * Load source invoice + existing returns for validation context.
+ * @param {string} sourceName
+ * @param {{ scopeToOwner?: boolean, operator?: string }} [options]
  */
-export async function loadReturnContext(sourceName) {
+export async function loadReturnContext(sourceName, options = {}) {
   const name = String(sourceName || '').trim();
   if (!name) {
     return { source: null, existingReturns: [], returnedQtyMap: new Map(), errors: ['Invoice name is required.'] };
@@ -178,6 +180,19 @@ export async function loadReturnContext(sourceName) {
     return { source, existingReturns: [], returnedQtyMap: new Map(), errors: eligibility.errors };
   }
 
+  if (options.scopeToOwner && options.operator) {
+    const owner = String(source.owner || '').trim();
+    const operator = String(options.operator || '').trim();
+    if (!owner || owner !== operator) {
+      return {
+        source: null,
+        existingReturns: [],
+        returnedQtyMap: new Map(),
+        errors: ['You can only return against your own invoices.'],
+      };
+    }
+  }
+
   const retRes = await listReturnsAgainstSource(name);
   const existingReturns = (retRes?.data?.data || []).map((d) => normalizeReturnInvoice(d));
   const returnedQtyMap = aggregateReturnedQty(existingReturns);
@@ -185,8 +200,8 @@ export async function loadReturnContext(sourceName) {
   return { source, existingReturns, returnedQtyMap, errors: [] };
 }
 
-export async function searchReturnableInvoices(query) {
-  const res = await listPOSInvoicesForReturnLookup({ query, limit: 30 });
+export async function searchReturnableInvoices(query, { owner } = {}) {
+  const res = await listPOSInvoicesForReturnLookup({ query, limit: 30, owner });
   return (res?.data?.data || []).map((row) => ({
     name: row.name,
     customer: row.customer,
@@ -194,6 +209,12 @@ export async function searchReturnableInvoices(query) {
     grand_total: Number(row.grand_total) || 0,
     set_warehouse: row.set_warehouse,
   }));
+}
+
+/** Submitted sales POS invoices owned by the current cashier (returns workflow). */
+export async function listMyReturnableInvoices(owner, { query, limit = 30 } = {}) {
+  if (!owner?.trim()) return [];
+  return searchReturnableInvoices(query, { owner: owner.trim() });
 }
 
 export async function listPendingReturns() {
@@ -211,11 +232,15 @@ export async function createReturnDraft({
   refundMethod,
   operator,
   canCreate = false,
+  scopeToOwner = false,
 }) {
   if (!canCreate) {
     throw new Error('You are not permitted to create returns.');
   }
-  const ctx = await loadReturnContext(sourceName);
+  const ctx = await loadReturnContext(sourceName, {
+    scopeToOwner,
+    operator: scopeToOwner ? operator : undefined,
+  });
   if (ctx.errors?.length) throw new Error(ctx.errors.join(' '));
 
   const formCheck = validateReturnForm(

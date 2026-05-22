@@ -27,17 +27,18 @@ import '../../styles/pos.css';
 
 const DEFAULT_PAYMENT = { mode: 'cash', singleMode: 'Cash', cashAmount: '', cardAmount: '', cashMode: 'Cash', cardMode: 'Card' };
 
-function stockLabel(item) {
+function stockLabel(item, t) {
   const avail = availableQty(item);
   if (avail === null) return null;
-  if (avail <= 0) return { text: 'Out of stock', className: 'item-card__stock--out' };
-  if (avail < 5) return { text: `${avail} left`, className: 'item-card__stock--low' };
-  return { text: `In stock: ${avail}`, className: 'item-card__stock--ok' };
+  if (avail <= 0) return { text: t('pos.outOfStock'), className: 'item-card__stock--out' };
+  if (avail < 5) return { text: t('pos.leftInStock', { count: avail }), className: 'item-card__stock--low' };
+  return { text: t('pos.inStock', { count: avail }), className: 'item-card__stock--ok' };
 }
 
 function ItemCard({ item, onAdd, disabled }) {
+  const { t } = useTranslation();
   const img = getERPImageUrl(item.image);
-  const stock = stockLabel(item);
+  const stock = stockLabel(item, t);
   const out = stock?.className === 'item-card__stock--out';
   const dev = IS_DEV;
   return (
@@ -62,13 +63,14 @@ function ItemCard({ item, onAdd, disabled }) {
 }
 
 function CartRow({ item, onQty, onRemove, maxQty }) {
+  const { t } = useTranslation();
   const avail = availableQty(item);
   return (
     <div className="cart-row">
       <div className="cart-row__info">
         <p className="cart-row__name">{item.item_name}</p>
-        <p className="cart-row__rate">EGP {item.rate.toFixed(2)} each</p>
-        {avail !== null && <p className="cart-row__stock">Available: {avail}</p>}
+        <p className="cart-row__rate">{t('pos.rateEach', { rate: item.rate.toFixed(2) })}</p>
+        {avail !== null && <p className="cart-row__stock">{t('pos.available', { count: avail })}</p>}
       </div>
       <div className="cart-row__qty">
         <button type="button" className="cart-row__qty-btn" aria-label="Decrease" onClick={() => onQty(item.item_code, item.qty - 1)}>−</button>
@@ -92,6 +94,7 @@ export default function POSPage() {
   const { t } = useTranslation();
   const {
     canOperatePOS,
+    canCreateReturns,
     canManageShift,
     canMonitorCashiers,
     canAccessInventory,
@@ -135,7 +138,7 @@ export default function POSPage() {
       try {
         const item = await pos.resolveItemByScan(code);
         if (item) pos.addToCart(item);
-        else setCheckoutErr(`No product for barcode: ${code}`);
+        else setCheckoutErr(t('pos.noBarcodeProduct', { code }));
       } catch (e) {
         setCheckoutErr(getUserFriendlyMessage(e));
       }
@@ -220,13 +223,13 @@ export default function POSPage() {
 
   const handleClearCart = () => {
     if (!pos.cart.length) return;
-    if (window.confirm('Clear all items from the cart?')) pos.clearCart();
+    if (window.confirm(t('pos.clearCartConfirm'))) pos.clearCart();
   };
 
   const handleCheckout = async () => {
     setCheckoutErr('');
     if (!pos.shiftOpen) {
-      setCheckoutErr('Start a shift before checkout.');
+      setCheckoutErr(t('pos.startShiftBeforeCheckout'));
       return;
     }
     try {
@@ -239,7 +242,7 @@ export default function POSPage() {
           ? { national_id: nationalId, custom_national_id: nationalId, tax_id: nationalId }
           : {},
       });
-      notify.success(`Sale complete — ${invoice?.name || 'invoice submitted'}`);
+      notify.success(t('pos.saleComplete', { name: invoice?.name || t('pos.invoiceSubmitted') }));
     } catch (e) {
       const msg = pos.checkoutError || getUserFriendlyMessage(e);
       if (e?.isStockError) notify.error(msg);
@@ -288,7 +291,7 @@ export default function POSPage() {
               <SearchInput
                 value={pos.query}
                 onChange={handleSearch}
-                placeholder="Search or scan barcode…"
+                placeholder={t('pos.searchPlaceholder')}
                 inputRef={pos.searchRef}
                 autoFocus
               />
@@ -300,6 +303,7 @@ export default function POSPage() {
             user={user}
             compact
             links={[
+              ...(canCreateReturns ? [{ label: t('nav.returns'), onClick: () => navigate('/pos/returns') }] : []),
               ...(canAccessInventory ? [{ label: t('nav.stock'), onClick: () => navigate('/inventory') }] : []),
               ...(canAccessAdminWorkspace ? [{ label: t('common.admin'), onClick: () => navigate('/admin') }] : []),
             ]}
@@ -310,17 +314,13 @@ export default function POSPage() {
 
       {readOnlyPOS && (
         <p className="pos-cart__shift-warn" style={{ margin: '0 1rem' }}>
-          {canMonitorCashiers
-            ? 'Monitor mode — checkout and shift controls are disabled.'
-            : 'View-only — you do not have permission to operate the register.'}
+          {canMonitorCashiers ? t('pos.monitorMode') : t('pos.viewOnly')}
         </p>
       )}
 
       {pos.shift?.pendingClose && (
         <div className="pos-operational-banner" role="status">
-          <p>
-            Shift close is pending manager approval — selling is disabled until the closing is submitted.
-          </p>
+          <p>{t('pos.pendingClose')}</p>
         </div>
       )}
 
@@ -351,8 +351,7 @@ export default function POSPage() {
       {pos.pendingInvoice && (
         <div className="pos-pending card">
           <p>
-            Draft invoice <strong className="mono">{pos.pendingInvoice}</strong> exists in ERP but is not submitted.
-            Retry only if stock or validation issues are resolved.
+            {t('pos.draftInvoicePre')} <strong className="mono">{pos.pendingInvoice}</strong> {t('pos.draftInvoicePost')} {t('pos.draftInvoiceHint')}
           </p>
           <div className="pos-pending__actions">
             <Btn variant="primary" size="sm" loading={pos.checkoutLoading} onClick={() => pos.recoverPendingInvoice()}>{t('pos.retrySubmit')}</Btn>
@@ -365,12 +364,12 @@ export default function POSPage() {
         <div className="pos-body">
           <section className="pos-products">
             {pos.productsError && (
-              <ApiErrorCard title="Could not load products" message={pos.productsError} onRetry={() => pos.loadItems(pos.query)} />
+              <ApiErrorCard title={t('pos.couldNotLoadProducts')} message={pos.productsError} onRetry={() => pos.loadItems(pos.query)} />
             )}
             {pos.loading && !pos.items.length ? (
               <PageLoading size={28} className="pos-loading" />
             ) : pos.items.length === 0 ? (
-              <EmptyState icon="🔍" title="No products found" desc={pos.shiftOpen ? 'Search or scan a barcode' : 'Start your shift first'} />
+              <EmptyState icon="🔍" title={t('pos.noProductsFound')} desc={pos.shiftOpen ? t('pos.searchOrScan') : t('pos.startShiftFirst')} />
             ) : (
               <div className={`pos-grid ${pos.loading ? 'pos-grid--loading' : ''}`}>
                 {pos.items.map((item) => (
@@ -382,21 +381,21 @@ export default function POSPage() {
 
           <aside className="pos-cart">
             <div className="pos-cart__header">
-              <h2 className="pos-cart__title">Cart</h2>
-              <span className="pos-cart__count">{pos.cartCount} items</span>
+              <h2 className="pos-cart__title">{t('pos.cartTitle')}</h2>
+              <span className="pos-cart__count">{t('pos.itemsCount', { count: pos.cartCount })}</span>
               {pos.cartCount > 0 && (
                 <button type="button" className="pos-cart__clear" onClick={handleClearCart}>{t('common.clear')}</button>
               )}
             </div>
 
             {!pos.shiftOpen && (
-              <p className="pos-cart__shift-warn">Start shift to enable checkout (F2)</p>
+              <p className="pos-cart__shift-warn">{t('pos.startShiftCheckout')}</p>
             )}
 
             <div className="pos-cart__customer">
-              <label className="pos-cart__customer-label" htmlFor="pos-customer">Customer</label>
+              <label className="pos-cart__customer-label" htmlFor="pos-customer">{t('pos.customerLabel')}</label>
               <select id="pos-customer" className="pos-cart__customer-input" value={customer} onChange={(e) => setCustomer(e.target.value)} disabled={sellDisabled}>
-                <option value="Walk-in Customer">Walk-in Customer</option>
+                <option value="Walk-in Customer">{t('pos.walkInCustomer')}</option>
                 {customers.filter((c) => c.name !== 'Walk-in Customer').map((c) => (
                   <option key={c.name} value={c.name}>{c.customer_name || c.name}</option>
                 ))}
@@ -413,7 +412,7 @@ export default function POSPage() {
 
             <div className="pos-cart__items">
               {pos.cart.length === 0 ? (
-                <EmptyState icon="🛒" title="Cart is empty" desc="Tap a product or scan barcode" />
+                <EmptyState icon="🛒" title={t('pos.cartEmpty')} desc={t('pos.tapOrScan')} />
               ) : (
                 pos.cart.map((item) => (
                   <CartRow
@@ -438,7 +437,7 @@ export default function POSPage() {
 
             <div className="pos-cart__footer">
               <div className="pos-cart__total">
-                <span>Total</span>
+                <span>{t('pos.total')}</span>
                 <span className="pos-cart__total-amount mono">EGP {pos.cartTotal.toFixed(2)}</span>
               </div>
               {(checkoutErr || pos.checkoutError) && (
@@ -454,7 +453,7 @@ export default function POSPage() {
               >
                 {canOperatePOS ? `${t('common.checkout')} · EGP ${pos.cartTotal.toFixed(2)}` : t('pos.checkoutDisabled')}
               </Btn>
-              <p className="pos-cart__shortcuts mono">F2 checkout · Esc clear cart</p>
+              <p className="pos-cart__shortcuts mono">{t('pos.shortcuts')}</p>
             </div>
           </aside>
         </div>
@@ -462,13 +461,13 @@ export default function POSPage() {
         <div className="pos-invoices-page">
           <section className="card pos-invoices-page__list">
             <div className="pos-cart__history-head">
-              <h3>My Invoices</h3>
+              <h3>{t('pos.myInvoicesTitle')}</h3>
               <button type="button" className="pos-cart__history-refresh" onClick={loadMyInvoices}>{t('common.refresh')}</button>
             </div>
             {invoicesLoading ? (
               <div className="pos-cart__history-loading"><Spinner size={18} /></div>
             ) : myInvoices.length === 0 ? (
-              <p className="pos-cart__history-empty">No invoices yet.</p>
+              <p className="pos-cart__history-empty">{t('pos.noInvoicesYet')}</p>
             ) : (
               <div className="pos-cart__history-list pos-cart__history-list--full">
                 {myInvoices.map((inv) => (
@@ -481,7 +480,7 @@ export default function POSPage() {
                   >
                     <div>
                       <p className="pos-cart__history-id mono">{inv.name}</p>
-                      <p className="pos-cart__history-meta">{inv.customer || 'Walk-in'} · {inv.posting_date || '-'}</p>
+                      <p className="pos-cart__history-meta">{inv.customer || t('pos.walkIn')} · {inv.posting_date || '-'}</p>
                     </div>
                     <span className="pos-cart__history-total">
                       {invoiceLoadingId === inv.name ? '…' : `EGP ${Number(inv.grand_total || 0).toFixed(2)}`}
@@ -501,8 +500,8 @@ export default function POSPage() {
               />
             ) : (
               <div className="card pos-invoice-panel__empty">
-                <h3>Select an invoice</h3>
-                <p>View receipt and print from the list.</p>
+                <h3>{t('pos.selectInvoice')}</h3>
+                <p>{t('pos.viewReceiptHint')}</p>
               </div>
             )}
           </div>

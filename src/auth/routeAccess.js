@@ -11,7 +11,8 @@ const PUBLIC = ['/login'];
  * First matching prefix wins. `anyOf` = user needs at least one capability.
  */
 export const ROUTE_ACCESS = [
-  { prefix: '/pos', anyOf: ['canOperatePOS'] },
+  { prefix: '/pos/returns', anyOf: ['canCreateReturns'] },
+  { prefix: '/pos', anyOf: ['canOperatePOS', 'canViewPOS'] },
   { prefix: '/shifts/open', anyOf: ['canOpenShift'] },
   { prefix: '/shifts/close', anyOf: ['canCloseShift'] },
   { prefix: '/shifts', anyOf: ['canOpenShift', 'canCloseShift', 'canViewShiftReports'] },
@@ -19,6 +20,7 @@ export const ROUTE_ACCESS = [
   { prefix: '/inventory/reconciliation', anyOf: ['canInventoryReconcile'] },
   { prefix: '/inventory', anyOf: ['canAccessInventory'] },
   { prefix: '/admin/purchasing/approvals', anyOf: ['canViewPurchaseApprovals'] },
+  { prefix: '/admin/purchasing/matching', anyOf: ['canAccessInvoiceMatching', 'canManageSystem'] },
   { prefix: '/admin/purchasing/receive', anyOf: ['canAccessPurchasing'] },
   { prefix: '/admin/purchasing', anyOf: ['canAccessPurchasing', 'canManageSystem'] },
   { prefix: '/admin/approvals', anyOf: ['canViewApprovalsDashboard'] },
@@ -30,6 +32,11 @@ export const ROUTE_ACCESS = [
   { prefix: '/admin/settings', anyOf: ['canManageSettings', 'canManageSystem'] },
   { prefix: '/admin/warehouses', anyOf: ['canManageSystem'] },
   { prefix: '/admin/shifts', anyOf: ['canViewShiftReports'] },
+  { prefix: '/admin/inventory', anyOf: ['canAccessInventory', 'canManageSystem'] },
+  { prefix: '/admin/invoices', anyOf: ['canViewInvoices', 'canManageSystem'] },
+  { prefix: '/admin/reports', anyOf: ['canViewReports', 'canManageSystem'] },
+  { prefix: '/admin/customers', anyOf: ['canViewReports', 'canManageSystem'] },
+  { prefix: '/admin/activity', anyOf: ['canViewReports', 'canManageSystem'] },
   { prefix: '/admin', anyOf: ['canAccessAdminWorkspace', 'canManageSystem'] },
 ];
 

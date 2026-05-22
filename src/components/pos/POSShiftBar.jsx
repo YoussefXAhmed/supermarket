@@ -32,7 +32,7 @@ export default function POSShiftBar({
         <span className="pos-shift-bar__label">{t('pos.profileLabel')}</span>
         <strong>{profile?.name || '—'}</strong>
         {profile?.warehouse && (
-          <span className="pos-shift-bar__entry mono">WH: {profile.warehouse}</span>
+          <span className="pos-shift-bar__entry mono">{t('pos.whLabel')} {profile.warehouse}</span>
         )}
         {shiftOpen ? (
           <Badge color="green">{t('pos.shiftOpen')}</Badge>
