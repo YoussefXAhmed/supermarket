@@ -1,6 +1,15 @@
 """
 Authoritative warehouse stock reads for SPA (POS + inventory).
-Source: Bin.actual_qty minus reserved_qty per warehouse.
+
+Source: Bin.actual_qty minus reserved_qty per warehouse, PLUS an adjustment for
+submitted-but-not-yet-consolidated POS Invoices (ERPNext v15 POS flow).
+
+In ERPNext v15 the individual POS Invoice submit does NOT create a Stock Ledger Entry.
+SLE and GL entries are created later when the POS Closing Entry is submitted and
+invoices are consolidated into a Sales Invoice.  During the open shift, Bin.actual_qty
+therefore does not reflect sold quantities yet.  We subtract the sum of all item
+quantities from submitted, unconsolidated POS Invoices for the same warehouse so
+that the POS product grid shows realistic availability throughout the shift.
 """
 
 from __future__ import annotations
@@ -11,6 +20,8 @@ import frappe
 from frappe import _
 from frappe.utils import flt
 
+from elmahdi.api.pos_profile_auth import assert_user_authorized_for_pos_profile
+
 
 def _parse_item_codes(item_codes):
 	if isinstance(item_codes, str):
@@ -18,7 +29,36 @@ def _parse_item_codes(item_codes):
 	return [str(c).strip() for c in (item_codes or []) if str(c).strip()]
 
 
-def _bin_row(item_code: str, warehouse: str) -> dict:
+def _pos_sold_qty_map(warehouse: str) -> dict[str, float]:
+	"""
+	Return { item_code: total_qty_sold } for submitted, unconsolidated POS Invoices
+	in the given warehouse.  This corrects Bin.actual_qty for the ERPNext v15 POS flow
+	where individual invoice submit does not create a Stock Ledger Entry.
+	"""
+	if not warehouse:
+		return {}
+	try:
+		rows = frappe.db.sql(
+			"""
+			SELECT psi.item_code, SUM(psi.qty * psi.conversion_factor) AS qty
+			FROM `tabPOS Invoice Item` psi
+			INNER JOIN `tabPOS Invoice` pi ON pi.name = psi.parent
+			WHERE pi.docstatus = 1
+			  AND IFNULL(pi.consolidated_invoice, '') = ''
+			  AND IFNULL(pi.is_return, 0) = 0
+			  AND (psi.warehouse = %(wh)s OR pi.set_warehouse = %(wh)s)
+			GROUP BY psi.item_code
+			""",
+			{"wh": warehouse},
+			as_dict=True,
+		)
+		return {r.item_code: flt(r.qty) for r in rows}
+	except Exception:
+		# Fail open — return empty map rather than blocking stock reads
+		return {}
+
+
+def _bin_row(item_code: str, warehouse: str, sold_map: dict | None = None) -> dict:
 	row = frappe.db.get_value(
 		"Bin",
 		{"item_code": item_code, "warehouse": warehouse},
@@ -40,7 +80,8 @@ def _bin_row(item_code: str, warehouse: str) -> dict:
 	actual_qty = flt(row.actual_qty)
 	reserved_qty = flt(row.reserved_qty)
 	projected_qty = flt(row.projected_qty)
-	sellable_qty = actual_qty - reserved_qty
+	pos_sold = flt((sold_map or {}).get(item_code, 0.0))
+	sellable_qty = actual_qty - reserved_qty - pos_sold
 	return {
 		"item_code": item_code,
 		"warehouse": warehouse,
@@ -116,9 +157,10 @@ def get_sellable_stock_bulk(warehouse: str, item_codes=None) -> dict:
 	if not codes:
 		return out
 
+	sold_map = _pos_sold_qty_map(warehouse)
 	for code in codes:
 		try:
-			row = _bin_row(code, warehouse)
+			row = _bin_row(code, warehouse, sold_map)
 			out[code] = {
 				"item_code": row["item_code"],
 				"warehouse": row["warehouse"],
@@ -201,11 +243,17 @@ def list_sellable_bins(
 
 @frappe.whitelist()
 def get_warehouse_stock(warehouse, item_codes=None):
-	"""Return { item_code: { actual_qty, reserved_qty, projected_qty, sellable_qty, has_stock } } for one warehouse."""
+	"""Return { item_code: { actual_qty, reserved_qty, projected_qty, sellable_qty, has_stock } } for one warehouse.
+
+	sellable_qty = Bin.actual_qty - Bin.reserved_qty - qty_sold_in_open_pos_invoices
+	The POS Invoice correction prevents overselling during a shift in ERPNext v15, where
+	individual POS Invoice submit does not create Stock Ledger Entries.
+	"""
 	if not warehouse:
 		frappe.throw(_("Warehouse is required"), frappe.ValidationError)
 	_require_stock_read()
 
+	sold_map = _pos_sold_qty_map(warehouse)
 	codes = _parse_item_codes(item_codes)
 	out = {}
 	if not codes:
@@ -219,7 +267,8 @@ def get_warehouse_stock(warehouse, item_codes=None):
 			actual_qty = flt(row.actual_qty)
 			reserved_qty = flt(row.reserved_qty)
 			projected_qty = flt(row.projected_qty)
-			sellable_qty = actual_qty - reserved_qty
+			pos_sold = flt(sold_map.get(row.item_code, 0.0))
+			sellable_qty = actual_qty - reserved_qty - pos_sold
 			out[row.item_code] = {
 				"actual_qty": actual_qty,
 				"reserved_qty": reserved_qty,
@@ -230,7 +279,7 @@ def get_warehouse_stock(warehouse, item_codes=None):
 		return out
 
 	for code in codes:
-		row = _bin_row(code, warehouse)
+		row = _bin_row(code, warehouse, sold_map)
 		out[code] = {
 			"actual_qty": row["actual_qty"],
 			"reserved_qty": row["reserved_qty"],
@@ -247,6 +296,7 @@ def get_pos_profile_stock(pos_profile, item_codes=None):
 	if not pos_profile:
 		frappe.throw(_("POS Profile is required"), frappe.ValidationError)
 	_require_stock_read()
+	assert_user_authorized_for_pos_profile(pos_profile)
 	warehouse = frappe.db.get_value("POS Profile", pos_profile, "warehouse")
 	if not warehouse:
 		frappe.throw(_("POS Profile has no warehouse"), frappe.ValidationError)
@@ -262,6 +312,7 @@ def get_pos_profile_warehouse(pos_profile: str) -> dict:
 	"""Resolve the single authoritative POS warehouse for cashier flows."""
 	if not pos_profile:
 		frappe.throw(_("POS Profile is required"), frappe.ValidationError)
+	assert_user_authorized_for_pos_profile(pos_profile)
 	warehouse = frappe.db.get_value("POS Profile", pos_profile, "warehouse")
 	if not warehouse:
 		frappe.throw(_("POS Profile has no warehouse"), frappe.ValidationError)

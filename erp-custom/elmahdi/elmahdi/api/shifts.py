@@ -9,6 +9,7 @@ from frappe import _
 from frappe.utils import flt, today
 
 from elmahdi.api.erp_submit import native_submit
+from elmahdi.api.pos_profile_auth import assert_user_authorized_for_pos_profile
 from elmahdi.api.shift_authorization import (
 	assert_may_access_pos_opening_session,
 	is_break_glass_user,
@@ -59,6 +60,15 @@ def open_pos_shift(
         frappe.throw(_("POS profile and company are required"), frappe.ValidationError)
 
     frappe.has_permission("POS Opening Entry", "create", throw=True)
+    assert_user_authorized_for_pos_profile(pos_profile)
+
+    # Block cashiers from opening a shift on behalf of another user.
+    session_user = frappe.session.user
+    if user and user != session_user and not is_break_glass_user():
+        frappe.throw(
+            _("You cannot open a shift on behalf of another user."),
+            frappe.PermissionError,
+        )
 
     amount = flt(opening_amount)
     if amount < 0:

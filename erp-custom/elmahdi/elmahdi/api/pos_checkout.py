@@ -11,6 +11,10 @@ from frappe import _
 from frappe.utils import cint, flt, today
 
 from elmahdi.api.erp_submit import document_response, native_submit
+from elmahdi.api.pos_profile_auth import (
+	assert_invoice_warehouse_matches_profile,
+	assert_user_authorized_for_pos_profile,
+)
 
 
 def _parse_payload(payload) -> dict:
@@ -45,6 +49,11 @@ def _build_pos_invoice(payload: dict):
 		frappe.throw(_("POS Profile is required"), frappe.ValidationError)
 	if not warehouse:
 		frappe.throw(_("Warehouse is required"), frappe.ValidationError)
+
+	# Profile authorization — fail closed before any document construction.
+	assert_user_authorized_for_pos_profile(pos_profile)
+	# Warehouse scope — block payload spoofing to a different branch warehouse.
+	assert_invoice_warehouse_matches_profile(pos_profile, warehouse)
 
 	items = payload.get("items") or []
 	if not items:
@@ -165,5 +174,11 @@ def submit_pos_invoice(name):
 	doc = frappe.get_doc("POS Invoice", name)
 	if cint(getattr(doc, "is_return", 0)):
 		frappe.throw(_("Use submit_pos_invoice_return for return documents"), frappe.ValidationError)
+
+	# Re-assert profile authorization on the persisted document to block
+	# a cashier from retrying a draft that belongs to a different profile.
+	if doc.pos_profile:
+		assert_user_authorized_for_pos_profile(doc.pos_profile)
+
 	doc = native_submit(doc, force_update_stock=True)
 	return _invoice_response(doc)

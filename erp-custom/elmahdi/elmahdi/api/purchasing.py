@@ -23,18 +23,18 @@ STATUS_SUBMITTED = "submitted"
 
 
 def _normalize_level(level):
-	if not level:
-		return "none"
-	return str(level).strip().lower()
+  if not level:
+    return "none"
+  return str(level).strip().lower()
 
 
 def _status_for_pending(level):
-	level = _normalize_level(level)
-	if level == "accountant":
-		return STATUS_PENDING_ACCOUNTANT
-	if level == "manager":
-		return STATUS_PENDING_MANAGER
-	return STATUS_DRAFT
+  level = _normalize_level(level)
+  if level == "accountant":
+    return STATUS_PENDING_ACCOUNTANT
+  if level == "manager":
+    return STATUS_PENDING_MANAGER
+  return STATUS_DRAFT
 
 
 def _has_custom_field(fieldname):
@@ -244,16 +244,28 @@ def get_expected_buying_rate(item_code):
 
 @frappe.whitelist()
 def get_buying_rate_suggestions(item_codes):
+    frappe.has_permission("Purchase Receipt", "read", throw=True)
+
     if isinstance(item_codes, str):
         item_codes = json.loads(item_codes) if item_codes.startswith("[") else [item_codes]
+
     out = {}
+
     for code in item_codes or []:
         code = (code or "").strip()
+
         if not code:
             continue
+
         expected = get_expected_buying_rate(code)
-        out[code] = {"expected_rate": expected, "source": "item_price" if expected else "none"}
+
+        out[code] = {
+            "expected_rate": expected,
+            "source": "item_price" if expected else "none",
+        }
+
     return out
+
 
 
 def _build_line_audit(lines):

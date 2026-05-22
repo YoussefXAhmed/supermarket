@@ -938,7 +938,17 @@ def list_receipts_pending_invoice(company=None, supplier=None, limit=50):
 
 @frappe.whitelist()
 def retry_auto_payable_for_receipt(receipt_name):
-	"""Retry payable creation when auto-invoice failed after approval."""
+	"""Retry payable creation when auto-invoice failed after approval.
+
+	Restricted to manager/accountant roles — same authorization required as purchase approval.
+	"""
+	from elmahdi.api.purchasing import _can_approve_accountant, _can_approve_manager, _is_admin_user
+
+	if not (_can_approve_manager() or _can_approve_accountant() or _is_admin_user()):
+		frappe.throw(
+			_("You do not have permission to retry payable creation."),
+			frappe.PermissionError,
+		)
 	return auto_create_and_submit_purchase_invoice_for_receipt(receipt_name)
 
 

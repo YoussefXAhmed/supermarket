@@ -26,19 +26,21 @@ STOCK_DOCTYPES_ALWAYS = frozenset(
 	}
 )
 
-# Stock ledger only when update_stock is enabled
+# Stock ledger only when update_stock is enabled.
+# NOTE: POS Invoice (ERPNext v15) does NOT create SLE at individual submit —
+# stock and accounting entries are created during POS Closing Entry consolidation.
 INVOICE_STOCK_DOCTYPES = frozenset(
 	{
-		"POS Invoice",
 		"Sales Invoice",
 		"Purchase Invoice",
 	}
 )
 
-# General ledger expected on submit
+# General ledger expected on submit.
+# NOTE: POS Invoice excluded — in ERPNext v15 GL entries are created by the
+# POS Closing Entry process (consolidated Sales Invoice), not individual submit.
 GL_DOCTYPES = frozenset(
 	{
-		"POS Invoice",
 		"Sales Invoice",
 		"Purchase Invoice",
 		"Payment Entry",
@@ -165,9 +167,27 @@ def _submit_named(name: str, doctype: str, **kwargs):
 	return document_response(doc)
 
 
+_GENERIC_SUBMIT_ALLOWLIST = frozenset(
+	{
+		"Stock Entry",
+		"Stock Reconciliation",
+		"Delivery Note",
+	}
+)
+
+
 @frappe.whitelist()
 def submit_document(name, doctype):
-	"""Generic native submit with side-effect verification."""
+	"""Generic native submit — restricted to non-sensitive document types.
+
+	Use the specific typed wrappers (submit_pos_invoice, submit_purchase_receipt, etc.)
+	for doctypes that go through approval workflows.
+	"""
+	if doctype not in _GENERIC_SUBMIT_ALLOWLIST:
+		frappe.throw(
+			_("Use the specific submit endpoint for {0}.").format(doctype),
+			frappe.PermissionError,
+		)
 	return _submit_named(name, doctype)
 
 

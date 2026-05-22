@@ -22,10 +22,11 @@ SHIFT_CLOSING_APPROVER_ERP_ROLES = frozenset(
 		"Store Manager",
 		"POS Manager",
 		"Accounts Manager",
-		"Accounts User",
 		"Sales Manager",
 		"Stock Manager",
 		"Purchase Manager",
+		# "Accounts User" removed: data-entry role should not approve shift closings.
+		# Use "Accounts Manager" for accountant-level shift approval.
 	}
 )
 
