@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Btn } from '../ui';
 import BillingStatusPill from './BillingStatusPill';
@@ -6,7 +7,7 @@ import ApPaymentStatusPill from '../accounting/ApPaymentStatusPill';
 import InvoiceMatchSelector from './InvoiceMatchSelector';
 import { fmtCurrency } from '../../utils/format';
 import { canLinkReceipt, normalizeBillingStatus, BILLING_STATUS } from '../../utils/billingStatus';
-import { AP_STAGE_LABELS } from '../../utils/apPaymentStatus';
+import { erpApStageLabel } from '../../utils/erpLabelMapper';
 import {
   createPurchaseInvoiceFromReceipt,
   retryAutoPayableForReceipt,
@@ -22,6 +23,7 @@ export default function ReceiptMatchingCard({
   onRefreshLine,
   onInvoiceCreated,
 }) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [localErr, setLocalErr] = useState('');
   const [retrying, setRetrying] = useState(false);
@@ -81,13 +83,13 @@ export default function ReceiptMatchingCard({
       {row.ap_stage && (
         <p className="receipt-matching-card__lifecycle" role="status">
           <span className={`ap-lifecycle-pill ap-lifecycle-pill--${row.ap_stage}`}>
-            {AP_STAGE_LABELS[row.ap_stage] || row.ap_stage}
+            {erpApStageLabel(row.ap_stage, t)}
           </span>
           {row.lifecycle_hint}
           {(row.ap_stage === 'payment_pending' || row.ap_stage === 'partially_paid') && (
             <>
               {' '}
-              <Link to="/admin/accounting/payments">Record payment →</Link>
+              <Link to="/admin/accounting/payments">{t('receiptCard.recordPayment')}</Link>
             </>
           )}
         </p>
@@ -95,26 +97,26 @@ export default function ReceiptMatchingCard({
 
       <div className="receipt-matching-card__amounts">
         <div>
-          <span className="receipt-matching-card__label">Receipt total</span>
+          <span className="receipt-matching-card__label">{t('receiptCard.receiptTotal')}</span>
           <strong>{fmtCurrency(row.grand_total)}</strong>
         </div>
         <div>
-          <span className="receipt-matching-card__label">Billed</span>
+          <span className="receipt-matching-card__label">{t('receiptCard.billed')}</span>
           <strong>{fmtCurrency(row.billed_amount)}</strong>
         </div>
         <div>
-          <span className="receipt-matching-card__label">Remaining</span>
+          <span className="receipt-matching-card__label">{t('receiptCard.remaining')}</span>
           <strong>{fmtCurrency(row.remaining_amount)}</strong>
         </div>
         <div>
-          <span className="receipt-matching-card__label">Billed %</span>
+          <span className="receipt-matching-card__label">{t('receiptCard.billedPct')}</span>
           <strong>{row.billed_pct != null ? `${row.billed_pct}%` : '—'}</strong>
         </div>
       </div>
 
       {showPaymentActions && row.primary_invoice && (
         <div className="receipt-matching-card__payable">
-          <span className="receipt-matching-card__label">Supplier bill (ERP)</span>
+          <span className="receipt-matching-card__label">{t('receiptCard.supplierBill')}</span>
           <div className="receipt-matching-card__payable-row">
             <button
               type="button"
@@ -128,7 +130,7 @@ export default function ReceiptMatchingCard({
             )}
             {row.primary_invoice_outstanding > 0.009 && (
               <span className="receipt-matching-card__outstanding">
-                {fmtCurrency(row.primary_invoice_outstanding)} outstanding
+                {fmtCurrency(row.primary_invoice_outstanding)} {t('receiptCard.outstanding')}
               </span>
             )}
           </div>
@@ -137,14 +139,14 @@ export default function ReceiptMatchingCard({
 
       {row.linked_invoices?.length > 0 && (
         <div className="receipt-matching-card__history">
-          <span className="receipt-matching-card__label">Linked invoices</span>
+          <span className="receipt-matching-card__label">{t('receiptCard.linkedInvoices')}</span>
           <ul>
             {row.linked_invoices.map((inv) => (
               <li key={inv.name}>
                 <span className="mono">{inv.name}</span>
                 <span>
                   {fmtCurrency(inv.grand_total)} · {inv.posting_date}
-                  {inv.docstatus === 1 ? ' · Submitted' : ''}
+                  {inv.docstatus === 1 ? ` · ${t('erp.status.submitted')}` : ''}
                 </span>
                 {inv.payment_status && (
                   <ApPaymentStatusPill status={inv.payment_status} paidPct={inv.paid_pct} />
@@ -157,7 +159,7 @@ export default function ReceiptMatchingCard({
 
       {status === BILLING_STATUS.VARIANCE_DETECTED && (
         <p className="receipt-matching-card__warn" role="status">
-          Rate variance — use manual line matching below or review in ERP.
+          {t('receiptCard.rateVariance')}
         </p>
       )}
 
@@ -171,10 +173,10 @@ export default function ReceiptMatchingCard({
             loading={retrying}
             onClick={handleRetryAutoPayable}
           >
-            Retry create payable
+            {t('receiptCard.retryPayable')}
           </Btn>
           <span className="page-header__sub">
-            Payable auto-creation failed after approval — retry or contact support.
+            {t('receiptCard.retryPayableHint')}
           </span>
         </div>
       )}
@@ -187,10 +189,10 @@ export default function ReceiptMatchingCard({
             loading={creating === row.receipt}
             onClick={handleCreatePayable}
           >
-            Create &amp; submit invoice (exceptional)
+            {t('receiptCard.createInvoice')}
           </Btn>
           <span className="page-header__sub">
-            Exceptional billing only — normal receipts are invoiced automatically on approval.
+            {t('receiptCard.createInvoiceHint')}
           </span>
         </div>
       )}
@@ -207,11 +209,11 @@ export default function ReceiptMatchingCard({
 
       <footer className="receipt-matching-card__foot">
         <Btn variant="ghost" size="sm" onClick={() => setExpanded((v) => !v)}>
-          {expanded ? 'Hide lines' : 'Line details'}
+          {expanded ? t('receiptCard.hideLines') : t('receiptCard.lineDetails')}
         </Btn>
         {onRefreshLine && (
           <Btn variant="ghost" size="sm" onClick={() => onRefreshLine(row.receipt)}>
-            Refresh
+            {t('receiptCard.refresh')}
           </Btn>
         )}
       </footer>
@@ -220,12 +222,12 @@ export default function ReceiptMatchingCard({
         <table className="receipt-matching-card__lines">
           <thead>
             <tr>
-              <th>Item</th>
-              <th>Qty</th>
-              <th>Billed</th>
-              <th>Remaining</th>
-              <th>Rate</th>
-              <th>Status</th>
+              <th>{t('receiptCard.lineItem')}</th>
+              <th>{t('receiptCard.lineQty')}</th>
+              <th>{t('receiptCard.lineBilled')}</th>
+              <th>{t('receiptCard.lineRemaining')}</th>
+              <th>{t('receiptCard.lineRate')}</th>
+              <th>{t('receiptCard.lineStatus')}</th>
             </tr>
           </thead>
           <tbody>
@@ -238,11 +240,11 @@ export default function ReceiptMatchingCard({
                 <td>{fmtCurrency(line.rate)}</td>
                 <td>
                   {line.variance ? (
-                    <span className="billing-pill billing-pill--variance">Variance</span>
+                    <span className="billing-pill billing-pill--variance">{t('receiptCard.lineVariance')}</span>
                   ) : line.remaining_qty > 0 ? (
-                    <span className="billing-pill billing-pill--partial">Open</span>
+                    <span className="billing-pill billing-pill--partial">{t('receiptCard.lineOpen')}</span>
                   ) : (
-                    <span className="billing-pill billing-pill--billed">Closed</span>
+                    <span className="billing-pill billing-pill--billed">{t('receiptCard.lineClosed')}</span>
                   )}
                 </td>
               </tr>

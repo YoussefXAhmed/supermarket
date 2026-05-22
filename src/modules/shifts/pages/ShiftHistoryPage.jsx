@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ApiErrorCard,
   Btn,
@@ -31,6 +32,7 @@ import ShiftRejectConfirmModal from '../components/ShiftRejectConfirmModal';
 const DEFAULT_FILTERS = { cashier: '', register: '', status: 'all', date: '' };
 
 export default function ShiftHistoryPage() {
+  const { t } = useTranslation();
   const { user, canViewShiftReports, canApproveShift } = useAuth();
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -132,8 +134,8 @@ export default function ShiftHistoryPage() {
   if (!canViewShiftReports) {
     return (
       <TablePageLayout>
-        <PageHeader title="Shift history" subtitle="Access denied" dense />
-        <ApiErrorCard message="You do not have permission to view shift reports." />
+        <PageHeader title={t('nav.history')} subtitle={t('shifts.accessDenied')} dense />
+        <ApiErrorCard message={t('shifts.historyPermission')} />
       </TablePageLayout>
     );
   }
@@ -141,34 +143,34 @@ export default function ShiftHistoryPage() {
   return (
     <TablePageLayout className="page-layout--list-page shift-history-page">
       <PageHeader
-        title="Shift history"
-        subtitle="Shift sessions · POS Opening & Closing entries from ERPNext"
+        title={t('nav.history')}
+        subtitle={t('shifts.historySubtitle')}
         dense
         actions={
           <Btn variant="ghost" size="sm" onClick={load} disabled={loading}>
-            Refresh
+            {t('common.refresh')}
           </Btn>
         }
       />
 
       <div className="kpi-grid shift-history-kpis">
-        <StatCard label="Open shifts" value={kpis.openShifts} icon="◷" color="blue" compact />
+        <StatCard label={t('shifts.openShifts')} value={kpis.openShifts} icon="◷" color="blue" compact />
         <StatCard
-          label="Pending approvals"
+          label={t('shifts.pendingApprovals')}
           value={kpis.pendingApprovals}
           icon="⏳"
           color="amber"
           compact
         />
         <StatCard
-          label="Sales today"
+          label={t('shifts.salesToday')}
           value={fmtCurrency(kpis.totalSalesToday)}
           icon="💰"
           color="accent"
           compact
         />
         <StatCard
-          label="Variance today"
+          label={t('shifts.varianceToday')}
           value={fmtCurrency(kpis.totalVariance)}
           icon="⚖"
           color="red"
@@ -192,8 +194,8 @@ export default function ShiftHistoryPage() {
           {canApproveShift && pendingSessions.length > 0 && (
             <LayoutSection
               variant="raised"
-              title="Pending approval"
-              subtitle="Draft closings awaiting manager submit in ERPNext"
+              title={t('shifts.pendingApprovalSection')}
+              subtitle={t('shifts.pendingApprovalDesc')}
             >
               <div className="shift-session-list">
                 {pendingSessions.map((session) => (
@@ -205,18 +207,18 @@ export default function ShiftHistoryPage() {
 
           <LayoutSection
             variant="raised"
-            title="All shift sessions"
+            title={t('shifts.allSessions')}
             subtitle={`${historySessions.length} session${historySessions.length === 1 ? '' : 's'}`}
             flushHead
           >
             {historySessions.length === 0 ? (
               <EmptyState
                 icon="◷"
-                title="No shift sessions"
+                title={t('shifts.noSessions')}
                 desc={
                   filters.status !== 'all' || filters.cashier || filters.register || filters.date
-                    ? 'Try adjusting filters'
-                    : 'Shifts appear here after cashiers open and close registers in ERP'
+                    ? t('shifts.tryFilters')
+                    : t('shifts.shiftsAppearHere')
                 }
               />
             ) : (

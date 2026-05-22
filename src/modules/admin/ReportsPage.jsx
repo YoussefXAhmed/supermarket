@@ -1,40 +1,52 @@
+import { useTranslation } from 'react-i18next';
 import { PageHeader } from '../../components/ui';
 import { DashboardLayout, LayoutSection } from '../../components/layout/page-layouts';
 import { getERPQueryReportUrl } from '../../utils/erpLinks';
 
-const REPORTS = [
-  { name: 'Sales Register', desc: 'Detailed sales transactions with item-level breakdowns.', icon: '📊' },
-  { name: 'Stock Balance', desc: 'Current stock levels across all warehouses.', icon: '📦' },
-  { name: 'Customer Ledger', desc: 'Account payable / receivable per customer.', icon: '👥' },
-  { name: 'Profit & Loss', desc: 'Income, cost of goods, and net profit summary.', icon: '💹' },
-  { name: 'Item-wise Sales', desc: 'Top-selling products ranked by revenue.', icon: '🏆' },
-  { name: 'Daily Cash Register', desc: 'POS daily totals broken down by payment method.', icon: '💳' },
-];
-
 export default function ReportsPage() {
+  const { t } = useTranslation();
+
+  const REPORTS = [
+    { nameKey: 'admin.reports.salesRegister', descKey: 'admin.reports.salesRegisterDesc', icon: '📊' },
+    { nameKey: 'admin.reports.stockBalance', descKey: 'admin.reports.stockBalanceDesc', icon: '📦' },
+    { nameKey: 'admin.reports.customerLedger', descKey: 'admin.reports.customerLedgerDesc', icon: '👥' },
+    { nameKey: 'admin.reports.profitLoss', descKey: 'admin.reports.profitLossDesc', icon: '💹' },
+    { nameKey: 'admin.reports.itemWiseSales', descKey: 'admin.reports.itemWiseSalesDesc', icon: '🏆' },
+    { nameKey: 'admin.reports.dailyCashRegister', descKey: 'admin.reports.dailyCashRegisterDesc', icon: '💳' },
+  ];
+
+  const ERP_REPORT_NAMES = {
+    'admin.reports.salesRegister': 'Sales Register',
+    'admin.reports.stockBalance': 'Stock Balance',
+    'admin.reports.customerLedger': 'Customer Ledger',
+    'admin.reports.profitLoss': 'Profit and Loss Statement',
+    'admin.reports.itemWiseSales': 'Item-wise Sales Register',
+    'admin.reports.dailyCashRegister': 'Daily Cash Register Summary',
+  };
+
   return (
     <DashboardLayout>
       <PageHeader
-        title="Reports"
-        subtitle="ERPNext standard reports — opens in ERPNext portal"
+        title={t('admin.reports.title')}
+        subtitle={t('admin.reports.subtitle')}
         dense
       />
       <LayoutSection variant="raised" flushHead>
         <div className="reports-grid">
           {REPORTS.map((r) => (
-            <div key={r.name} className="report-card">
+            <div key={r.nameKey} className="report-card">
               <span className="report-card__icon">{r.icon}</span>
               <div>
-                <p className="report-card__name">{r.name}</p>
-                <p className="report-card__desc">{r.desc}</p>
+                <p className="report-card__name">{t(r.nameKey)}</p>
+                <p className="report-card__desc">{t(r.descKey)}</p>
               </div>
               <a
-                href={getERPQueryReportUrl(r.name)}
+                href={getERPQueryReportUrl(ERP_REPORT_NAMES[r.nameKey])}
                 target="_blank"
                 rel="noreferrer"
                 className="btn btn--ghost btn--sm report-card__action"
               >
-                Open ↗
+                {t('admin.reports.open')}
               </a>
             </div>
           ))}

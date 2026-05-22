@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Btn } from '../ui';
 import { fmtCurrency } from '../../utils/format';
 import {
@@ -14,6 +15,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { invoiceMatchingPath } from '../../utils/workspacePaths';
 
 export default function CreateSupplierPaymentPanel({ onSuccess, onCancel, preselectSupplier = '' }) {
+  const { t } = useTranslation();
   const { capabilities } = useAuth();
   const matchingTo = invoiceMatchingPath(capabilities);
   const [company, setCompany] = useState('');
@@ -104,11 +106,11 @@ export default function CreateSupplierPaymentPanel({ onSuccess, onCancel, presel
 
     if (isBankPayment) {
       if (!String(referenceNo || '').trim()) {
-        setErr('Reference No is required for Bank payments.');
+        setErr(t('finance.createPayment.refNoRequired'));
         return;
       }
       if (!String(referenceDate || '').trim()) {
-        setErr('Reference Date is required for Bank payments.');
+        setErr(t('finance.createPayment.refDateRequired'));
         return;
       }
     }
@@ -122,7 +124,7 @@ export default function CreateSupplierPaymentPanel({ onSuccess, onCancel, presel
       .filter((row) => row.amount > 0);
 
     if (!allocations.length) {
-      setErr('Select at least one invoice and enter a payment amount.');
+      setErr(t('finance.createPayment.selectInvoice'));
       return;
     }
 
@@ -149,20 +151,19 @@ export default function CreateSupplierPaymentPanel({ onSuccess, onCancel, presel
   return (
     <form className="ap-payment-form" onSubmit={onSubmit}>
       <p className="ap-payment-form__intro">
-        Creates a real ERPNext Payment Entry. GL entries, payables, and invoice outstanding are
-        updated by ERP when submitted.
+        {t('finance.createPayment.intro')}
       </p>
 
       <div className="ap-payment-form__grid">
         <label>
-          Supplier
+          {t('purchasing.table.supplier')}
           <select
             className="input"
             value={supplier}
             onChange={(e) => setSupplier(e.target.value)}
             required
           >
-            <option value="">Select supplier</option>
+            <option value="">{t('purchasing.selectSupplier')}</option>
             {suppliers.map((s) => (
               <option key={s.name} value={s.name}>
                 {s.supplier_name || s.name}
@@ -171,7 +172,7 @@ export default function CreateSupplierPaymentPanel({ onSuccess, onCancel, presel
           </select>
         </label>
         <label>
-          Pay from (cash / bank)
+          {t('finance.createPayment.payFrom')}
           <select
             className="input"
             value={paidFrom}
@@ -185,11 +186,11 @@ export default function CreateSupplierPaymentPanel({ onSuccess, onCancel, presel
             ))}
           </select>
           {isBankPayment && (
-            <span className="inv-hint">Bank payments require transfer/cheque reference and date.</span>
+            <span className="inv-hint">{t('finance.createPayment.bankHint')}</span>
           )}
         </label>
         <label>
-          Posting date
+          {t('finance.createPayment.postingDate')}
           <input
             className="input"
             type="date"
@@ -199,17 +200,17 @@ export default function CreateSupplierPaymentPanel({ onSuccess, onCancel, presel
           />
         </label>
         <label>
-          Reference no.{isBankPayment ? ' *' : ''}
+          {t('finance.createPayment.referenceNo')}{isBankPayment ? ' *' : ''}
           <input
             className="input"
             value={referenceNo}
             onChange={(e) => setReferenceNo(e.target.value)}
-            placeholder="Cheque / transfer ref"
+            placeholder={t('finance.createPayment.refPlaceholder')}
             required={isBankPayment}
           />
         </label>
         <label>
-          Reference date{isBankPayment ? ' *' : ''}
+          {t('finance.createPayment.referenceDate')}{isBankPayment ? ' *' : ''}
           <input
             className="input"
             type="date"
@@ -217,42 +218,40 @@ export default function CreateSupplierPaymentPanel({ onSuccess, onCancel, presel
             onChange={(e) => setReferenceDate(e.target.value)}
             required={isBankPayment}
             disabled={isCashPayment}
-            title={isCashPayment ? 'Optional for Cash payments' : 'Required for Bank payments'}
+            title={isCashPayment ? t('finance.createPayment.cashOptional') : t('finance.createPayment.bankRequired')}
           />
         </label>
       </div>
       <label>
-        Remarks
+        {t('finance.createPayment.remarks')}
         <input className="input" value={remarks} onChange={(e) => setRemarks(e.target.value)} />
       </label>
 
       <div className="ap-payment-form__invoices-head">
-        <span className="section-title">Allocate to invoices</span>
+        <span className="section-title">{t('finance.createPayment.allocate')}</span>
         <Btn type="button" variant="ghost" size="sm" onClick={payAllOutstanding}>
-          Select all open
+          {t('finance.createPayment.selectAllOpen')}
         </Btn>
       </div>
 
       {loading ? (
-        <p className="page-header__sub">Loading open invoices…</p>
+        <p className="page-header__sub">{t('finance.createPayment.loadingInvoices')}</p>
       ) : !supplier ? (
-        <p className="page-header__sub">Select a supplier to see unpaid invoices.</p>
+        <p className="page-header__sub">{t('finance.createPayment.selectSupplierHint')}</p>
       ) : openInvoices.length === 0 ? (
         <div className="ap-payment-form__empty-invoices">
           <p className="page-header__sub">
-            No submitted purchase invoices with an outstanding balance for this supplier.
+            {t('finance.createPayment.noOutstandingInvoices')}
           </p>
           {allocationHint?.awaiting_payable_count > 0 && (
             <p className="page-header__sub">
-              {allocationHint.awaiting_payable_count} approved receipt(s) are waiting for a
-              submitted payable (auto-created on manager approval). Check{' '}
-              <a href={matchingTo}>Invoice matching</a> and use <strong>Retry create payable</strong>{' '}
-              if needed.
+              {allocationHint.awaiting_payable_count} {t('finance.createPayment.awaitingPayable')}{' '}
+              <a href={matchingTo}>{t('nav.invoiceMatching')}</a>.
             </p>
           )}
           {allocationHint?.paid_invoice_count > 0 && (
             <p className="page-header__sub">
-              {allocationHint.paid_invoice_count} submitted invoice(s) are already fully paid
+              {allocationHint.paid_invoice_count} {t('finance.createPayment.alreadyPaid')}
               {allocationHint.paid_invoice_names?.length
                 ? ` (e.g. ${allocationHint.paid_invoice_names.join(', ')})`
                 : ''}
@@ -263,7 +262,7 @@ export default function CreateSupplierPaymentPanel({ onSuccess, onCancel, presel
             !allocationHint?.paid_invoice_count &&
             !allocationHint?.invoice_count && (
               <p className="page-header__sub">
-                No purchase invoices exist for this supplier yet.
+                {t('finance.createPayment.noInvoicesForSupplier')}
               </p>
             )}
         </div>
@@ -280,7 +279,7 @@ export default function CreateSupplierPaymentPanel({ onSuccess, onCancel, presel
                 <span className="mono">{inv.name}</span>
               </label>
               <span>{inv.due_date || inv.posting_date}</span>
-              <span>{fmtCurrency(inv.outstanding_amount)} due</span>
+              <span>{fmtCurrency(inv.outstanding_amount)} {t('finance.createPayment.due')}</span>
               <input
                 className="input ap-payment-form__amount"
                 type="number"
@@ -297,17 +296,17 @@ export default function CreateSupplierPaymentPanel({ onSuccess, onCancel, presel
       )}
 
       <p className="ap-payment-form__total">
-        Payment total: <strong>{fmtCurrency(totalPay)}</strong>
+        {t('finance.createPayment.paymentTotal')}: <strong>{fmtCurrency(totalPay)}</strong>
       </p>
 
       {err && <p className="inv-error" role="alert">{err}</p>}
 
       <div className="ap-payment-form__actions">
         <Btn type="button" variant="ghost" onClick={onCancel}>
-          Cancel
+          {t('common.cancel')}
         </Btn>
         <Btn type="submit" variant="primary" loading={saving} disabled={totalPay <= 0}>
-          Submit payment
+          {t('finance.createPayment.submit')}
         </Btn>
       </div>
     </form>

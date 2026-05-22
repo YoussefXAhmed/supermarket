@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ApiErrorCard, Badge, Btn, PageHeader, PageLoading, Table } from '../../../components/ui';
 import { TablePageLayout, LayoutSection, TableRegion } from '../../../components/layout/page-layouts';
 import { getBatchAlerts } from '../../../services/inventoryService';
 import { getUserFriendlyMessage } from '../../../utils/errorHandling';
 
 export default function BatchesPage() {
+  const { t } = useTranslation();
   const [daysAhead, setDaysAhead] = useState(30);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -25,20 +27,20 @@ export default function BatchesPage() {
   };
 
   const columns = [
-    { key: 'batch_no', label: 'Batch', render: (v) => <span className="mono">{v}</span> },
-    { key: 'item_code', label: 'Item', render: (v) => <span className="mono">{v}</span> },
-    { key: 'qty', label: 'Qty', render: (v) => Number(v || 0).toFixed(2) },
-    { key: 'expiry_date', label: 'Expiry' },
+    { key: 'batch_no', label: t('inventory.batches.batch'), render: (v) => <span className="mono">{v}</span> },
+    { key: 'item_code', label: t('inventory.batches.item'), render: (v) => <span className="mono">{v}</span> },
+    { key: 'qty', label: t('inventory.batches.qty'), render: (v) => Number(v || 0).toFixed(2) },
+    { key: 'expiry_date', label: t('inventory.batches.expiry') },
     {
       key: 'days_until_expiry',
-      label: 'Days left',
+      label: t('inventory.batches.daysLeft'),
       render: (v, row) => (
         <Badge color={row.status === 'expired' ? 'red' : 'amber'}>{v ?? '—'}</Badge>
       ),
     },
     {
       key: 'status',
-      label: 'Status',
+      label: t('inventory.batches.status'),
       render: (v) => <Badge color={v === 'expired' ? 'red' : 'amber'}>{v}</Badge>,
     },
   ];
@@ -48,15 +50,15 @@ export default function BatchesPage() {
   return (
     <TablePageLayout className="page-layout--list-page" tableConstrain={sparse}>
       <PageHeader
-        title="Batch & Expiry"
-        subtitle="Near-expiry and expired batches from ERPNext"
+        title={t('inventory.batches.title')}
+        subtitle={t('inventory.batches.subtitle')}
         dense
       />
 
       <LayoutSection variant="flat" flushHead>
         <div className="toolbar">
           <div className="toolbar__group">
-            <label className="page-header__sub">Alert within (days)</label>
+            <label className="page-header__sub">{t('inventory.batches.alertWithin')}</label>
             <input
               className="input toolbar__input-xs"
               type="number"
@@ -65,7 +67,7 @@ export default function BatchesPage() {
               onChange={(e) => setDaysAhead(e.target.value)}
             />
             <Btn variant="ghost" size="sm" onClick={load}>
-              Load batches
+              {t('inventory.batches.loadBatches')}
             </Btn>
           </div>
         </div>
@@ -82,7 +84,7 @@ export default function BatchesPage() {
               columns={columns}
               data={rows}
               compact
-              emptyMsg="No near-expiry batches — click Load batches"
+              emptyMsg={t('inventory.batches.noBatches')}
             />
           </TableRegion>
         </LayoutSection>

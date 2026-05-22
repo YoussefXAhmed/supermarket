@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ApiErrorCard,
   Badge,
@@ -29,15 +30,6 @@ import {
 } from '../../services/userManagementApi';
 import { getUserFriendlyMessage } from '../../utils/errorHandling';
 
-const EXPORT_COLUMNS = [
-  { key: 'full_name', label: 'Name' },
-  { key: 'email', label: 'Email' },
-  { key: 'name', label: 'Username' },
-  { key: 'role_profile_name', label: 'Role profile' },
-  { key: 'enabled', label: 'Status' },
-  { key: 'last_login', label: 'Last Login' },
-];
-
 const INITIAL_FORM = {
   templateId: 'cashier',
   email: '',
@@ -48,16 +40,8 @@ const INITIAL_FORM = {
   send_welcome_email: false,
 };
 
-function toStatusBadge(enabled) {
-  return enabled ? <Badge color="green">Enabled</Badge> : <Badge color="red">Disabled</Badge>;
-}
-
-function roleProfileLabel(roleProfileName) {
-  const t = getTemplateByRoleProfile(roleProfileName);
-  return t ? t.label : roleProfileName || '—';
-}
-
 export default function UsersPage() {
+  const { t } = useTranslation();
   const { user: currentUser } = useAuth();
   const submittingRef = useRef(false);
 
@@ -77,6 +61,26 @@ export default function UsersPage() {
 
   const template = getTemplateById(form.templateId);
 
+  const EXPORT_COLUMNS = [
+    { key: 'full_name', label: t('users.exportName') },
+    { key: 'email', label: t('users.exportEmail') },
+    { key: 'name', label: t('users.exportUsername') },
+    { key: 'role_profile_name', label: t('users.exportRoleProfile') },
+    { key: 'enabled', label: t('users.exportStatus') },
+    { key: 'last_login', label: t('users.exportLastLogin') },
+  ];
+
+  const toStatusBadge = (enabled) =>
+    enabled
+      ? <Badge color="green">{t('users.enabled')}</Badge>
+      : <Badge color="red">{t('users.disabled')}</Badge>;
+
+  const roleProfileLabel = (roleProfileName) => {
+    const tpl = getTemplateByRoleProfile(roleProfileName);
+    if (tpl) return t(tpl.labelKey) || tpl.label;
+    return roleProfileName || '—';
+  };
+
   const loadUsers = async () => {
     setLoading(true);
     setError('');
@@ -85,7 +89,7 @@ export default function UsersPage() {
       setUsers(res.data.data || []);
     } catch (e) {
       setUsers([]);
-      setError(getUserFriendlyMessage(e, 'Failed to load users'));
+      setError(getUserFriendlyMessage(e, t('users.failedLoad')));
     } finally {
       setLoading(false);
     }
@@ -130,7 +134,6 @@ export default function UsersPage() {
         row.email,
         row.role_profile_name,
         roleProfileLabel(row.role_profile_name),
-        Number(row.enabled) === 1 ? 'enabled' : 'disabled',
       ]
         .filter(Boolean)
         .join(' ')
@@ -145,7 +148,7 @@ export default function UsersPage() {
         ...row,
         full_name: row.full_name || row.name,
         role_profile_name: roleProfileLabel(row.role_profile_name),
-        enabled: Number(row.enabled) === 1 ? 'Enabled' : 'Disabled',
+        enabled: Number(row.enabled) === 1 ? t('users.enabled') : t('users.disabled'),
       })),
     [filtered]
   );
@@ -153,11 +156,11 @@ export default function UsersPage() {
   const setTemplateId = (templateId) => {
     setForm((f) => {
       const next = { ...f, templateId };
-      const t = getTemplateById(templateId);
-      if (t?.warehouseRule === 'exactly_one' && f.warehouses.length > 1) {
+      const tpl = getTemplateById(templateId);
+      if (tpl?.warehouseRule === 'exactly_one' && f.warehouses.length > 1) {
         next.warehouses = f.warehouses.slice(0, 1);
       }
-      if (t && !t.requiresPriceList) {
+      if (tpl && !tpl.requiresPriceList) {
         next.priceList = '';
       }
       return next;
@@ -188,7 +191,7 @@ export default function UsersPage() {
       warehouses: form.warehouses,
       priceList: form.priceList,
       company: form.company,
-    });
+    }, t);
     if (!validation.valid) {
       setError(validation.error);
       return;
@@ -211,7 +214,7 @@ export default function UsersPage() {
       setForm({ ...INITIAL_FORM, company: form.company });
       await loadUsers();
     } catch (e2) {
-      setError(getUserFriendlyMessage(e2, e2.message || 'Failed to create user'));
+      setError(getUserFriendlyMessage(e2, e2.message || t('users.failedCreate')));
     } finally {
       setSaving(false);
       submittingRef.current = false;
@@ -220,7 +223,7 @@ export default function UsersPage() {
 
   const startDisable = (row) => {
     if (currentUser?.name && row.name === currentUser.name) {
-      setError('You cannot disable your own account.');
+      setError(t('users.cannotDisableSelf'));
       return;
     }
     setDisableTarget(row);
@@ -242,66 +245,66 @@ export default function UsersPage() {
       cancelDisable();
       await loadUsers();
     } catch (e) {
-      setError(getUserFriendlyMessage(e, 'Failed to disable user'));
+      setError(getUserFriendlyMessage(e, t('users.failedDisable')));
     } finally {
       setDisabling(false);
     }
   };
 
   const handleEnable = async (row) => {
-    if (!window.confirm(`Enable user "${row.name}"?`)) return;
+    if (!window.confirm(`${t('users.enableBtn')} "${row.name}"?`)) return;
     setError('');
     try {
       await enableOperationalUser(row.name);
       await loadUsers();
     } catch (e) {
-      setError(getUserFriendlyMessage(e, 'Failed to enable user'));
+      setError(getUserFriendlyMessage(e, t('users.failedEnable')));
     }
   };
 
   const columns = [
     {
       key: 'full_name',
-      label: 'Name',
+      label: t('users.name'),
       render: (v, row) => v || row.name,
     },
     {
       key: 'email',
-      label: 'Email',
+      label: t('users.emailCol'),
       render: (v) => v || '—',
     },
     {
       key: 'name',
-      label: 'Username',
+      label: t('users.usernameCol'),
       render: (v) => <span className="mono mono-subtle">{v}</span>,
     },
     {
       key: 'role_profile_name',
-      label: 'Role',
+      label: t('users.roleCol'),
       render: (v) => roleProfileLabel(v),
     },
     {
       key: 'enabled',
-      label: 'Status',
+      label: t('users.statusCol'),
       render: (v) => toStatusBadge(Number(v) === 1),
     },
     {
       key: 'last_login',
-      label: 'Last Login',
+      label: t('users.lastLogin'),
       render: (v) => (v ? new Date(v).toLocaleString() : '—'),
     },
     {
       key: 'actions',
-      label: 'Actions',
+      label: t('ui.table.actions'),
       render: (_, row) => (
         <div className="row-actions">
           {Number(row.enabled) === 1 ? (
             <Btn variant="ghost" size="sm" onClick={() => startDisable(row)}>
-              Disable
+              {t('users.disableBtn')}
             </Btn>
           ) : (
             <Btn variant="ghost" size="sm" onClick={() => handleEnable(row)}>
-              Enable
+              {t('users.enableBtn')}
             </Btn>
           )}
         </div>
@@ -322,23 +325,20 @@ export default function UsersPage() {
   return (
     <AdminPageLayout tableConstrain={sparse} className={layoutClass}>
       <PageHeader
-        title="Users"
+        title={t('users.title')}
         subtitle={
           query.trim()
-            ? `${filtered.length} of ${totals.total} · ${totals.enabled} enabled · ${totals.disabled} disabled`
-            : `${totals.total} total · ${totals.enabled} enabled · ${totals.disabled} disabled`
+            ? `${filtered.length} / ${totals.total} · ${totals.enabled} ${t('users.enabled')}`
+            : `${totals.total} · ${totals.enabled} ${t('users.enabled')}`
         }
         dense
       />
 
-      <LayoutSection variant="raised" title="Add operational user">
-        <p className="user-form__hint">
-          Assign an ERP Role Profile and warehouse scope via template — roles are not set manually.
-        </p>
+      <LayoutSection variant="raised" title={t('users.addUser')}>
         <form onSubmit={handleCreate} className="user-form">
           <div className="user-form__row">
             <label className="user-form__label">
-              Role template
+              {t('users.template')}
               <select
                 className="input"
                 value={form.templateId}
@@ -347,17 +347,17 @@ export default function UsersPage() {
               >
                 {TEMPLATE_IDS.map((id) => (
                   <option key={id} value={id}>
-                    {OPERATIONAL_USER_TEMPLATES[id].label} → {OPERATIONAL_USER_TEMPLATES[id].roleProfileName}
+                    {t(OPERATIONAL_USER_TEMPLATES[id].labelKey)} → {OPERATIONAL_USER_TEMPLATES[id].roleProfileName}
                   </option>
                 ))}
               </select>
             </label>
             <label className="user-form__label">
-              Company
+              {t('purchasing.supplier.company')}
               <input
                 className="input"
                 type="text"
-                placeholder="Company"
+                placeholder={t('purchasing.supplier.company')}
                 value={form.company}
                 onChange={(e) => setForm((f) => ({ ...f, company: e.target.value }))}
                 required
@@ -367,22 +367,22 @@ export default function UsersPage() {
 
           <div className="user-form__row">
             <label className="user-form__label">
-              Full name
+              {t('users.firstName')}
               <input
                 className="input"
                 type="text"
-                placeholder="Full name"
+                placeholder={t('users.firstName')}
                 value={form.first_name}
                 onChange={(e) => setForm((f) => ({ ...f, first_name: e.target.value }))}
                 required
               />
             </label>
             <label className="user-form__label">
-              Email
+              {t('settings.email')}
               <input
                 className="input"
                 type="email"
-                placeholder="email@example.com"
+                placeholder={t('users.emailPlaceholder')}
                 value={form.email}
                 onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
                 required
@@ -392,7 +392,7 @@ export default function UsersPage() {
 
           <div className="user-form__row user-form__row--full">
             <label className="user-form__label">
-              {template?.warehouseRule === 'exactly_one' ? 'Warehouse' : 'Warehouses'}
+              {template?.warehouseRule === 'exactly_one' ? t('users.warehouse') : t('users.warehouses')}
               {template?.warehouseRule !== 'exactly_one' && warehouses.length > 1 && (
                 <Btn
                   type="button"
@@ -402,7 +402,7 @@ export default function UsersPage() {
                   onClick={selectAllWarehouses}
                   disabled={optionsLoading}
                 >
-                  Select all
+                  {t('common.select')}
                 </Btn>
               )}
               {template?.warehouseRule === 'exactly_one' ? (
@@ -413,7 +413,7 @@ export default function UsersPage() {
                   required
                   disabled={optionsLoading}
                 >
-                  <option value="">Select warehouse…</option>
+                  <option value="">{t('users.selectWarehouse')}</option>
                   {warehouses.map((w) => (
                     <option key={w.name} value={w.name}>
                       {w.warehouse_name || w.name}
@@ -443,7 +443,7 @@ export default function UsersPage() {
           {template?.requiresPriceList && (
             <div className="user-form__row user-form__row--full">
               <label className="user-form__label">
-                Price list
+                {t('users.priceList')}
                 <select
                   className="input"
                   value={form.priceList}
@@ -451,7 +451,7 @@ export default function UsersPage() {
                   required
                   disabled={optionsLoading}
                 >
-                  <option value="">Select price list…</option>
+                  <option value="">{t('users.selectPriceList')}</option>
                   {priceLists.map((pl) => (
                     <option key={pl.name} value={pl.name}>
                       {pl.name}
@@ -468,22 +468,21 @@ export default function UsersPage() {
               checked={form.send_welcome_email}
               onChange={(e) => setForm((f) => ({ ...f, send_welcome_email: e.target.checked }))}
             />
-            Send welcome email after provisioning
+            {t('users.sendWelcome')}
           </label>
 
           <div className="user-form__actions">
             <Btn type="submit" variant="primary" size="md" loading={saving} disabled={optionsLoading}>
-              Create user
+              {t('users.createUser')}
             </Btn>
           </div>
         </form>
       </LayoutSection>
 
       {disableTarget && (
-        <LayoutSection variant="raised" title="Disable user">
+        <LayoutSection variant="raised" title={t('users.disableUser')}>
           <p className="user-form__hint">
-            Disabling blocks login and preserves audit history. Type the username{' '}
-            <span className="mono">{disableTarget.name}</span> to confirm.
+            {t('users.disableConfirm')} <span className="mono">{disableTarget.name}</span>
           </p>
           <div className="user-form__row user-form__row--full">
             <input
@@ -493,7 +492,7 @@ export default function UsersPage() {
               value={disableConfirmText}
               onChange={(e) => setDisableConfirmText(e.target.value)}
               autoComplete="off"
-              aria-label="Type username to confirm disable"
+              aria-label={t('users.disableConfirm')}
             />
           </div>
           <div className="user-form__actions">
@@ -504,10 +503,10 @@ export default function UsersPage() {
               disabled={!disableReady}
               onClick={confirmDisable}
             >
-              Disable user
+              {t('users.disableBtn')}
             </Btn>
             <Btn variant="ghost" size="md" onClick={cancelDisable} disabled={disabling}>
-              Cancel
+              {t('common.cancel')}
             </Btn>
           </div>
         </LayoutSection>
@@ -519,15 +518,15 @@ export default function UsersPage() {
             <input
               className="input toolbar__input-md"
               type="search"
-              placeholder="Search users…"
+              placeholder={t('users.searchPlaceholder')}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              aria-label="Search users"
+              aria-label={t('users.searchLabel')}
             />
           </div>
           <ExportToolbar
             filename="users"
-            title="Users"
+            title={t('users.title')}
             columns={EXPORT_COLUMNS}
             rows={exportRows}
             disabled={!exportRows.length}
@@ -547,12 +546,8 @@ export default function UsersPage() {
       ) : filtered.length === 0 ? (
         <EmptyState
           icon="👤"
-          title={query.trim() ? 'No matching users' : 'No users found'}
-          desc={
-            query.trim()
-              ? 'Try a different search term.'
-              : 'Create an operational user using the form above.'
-          }
+          title={query.trim() ? t('users.noMatching') : t('users.noUsers')}
+          desc={query.trim() ? t('users.trySearch') : t('users.createFirst')}
         />
       ) : (
         <LayoutSection variant="raised" flushHead fit={sparse}>

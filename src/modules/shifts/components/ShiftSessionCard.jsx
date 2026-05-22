@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { fmtCurrency, fmtDateTime } from '../../../utils/format';
 import { canManagerActOnSession } from '../../../utils/shiftSessions';
 import ShiftStatusBadge from './ShiftStatusBadge';
@@ -19,6 +20,7 @@ export default function ShiftSessionCard({
   onApprove,
   onReject,
 }) {
+  const { t } = useTranslation();
   const varianceClass =
     session.varianceSeverity === 'approval_required'
       ? 'shift-session-card__variance--high'
@@ -44,14 +46,14 @@ export default function ShiftSessionCard({
       </header>
 
       <div className="shift-session-card__grid">
-        <Metric label="Opened" value={fmtDateTime(session.openedAt)} />
-        <Metric label="Closed" value={session.closedAt ? fmtDateTime(session.closedAt) : '—'} />
-        <Metric label="Invoices" value={session.invoicesCount ?? 0} mono />
-        <Metric label="Sales" value={fmtCurrency(session.salesTotal)} mono />
-        <Metric label="Expected cash" value={fmtCurrency(session.expectedCash)} mono />
-        <Metric label="Counted cash" value={session.countedCash != null ? fmtCurrency(session.countedCash) : '—'} mono />
+        <Metric label={t('shifts.card.opened')} value={fmtDateTime(session.openedAt)} />
+        <Metric label={t('shifts.card.closed')} value={session.closedAt ? fmtDateTime(session.closedAt) : '—'} />
+        <Metric label={t('shifts.card.invoices')} value={session.invoicesCount ?? 0} mono />
+        <Metric label={t('shifts.card.sales')} value={fmtCurrency(session.salesTotal)} mono />
+        <Metric label={t('shifts.card.expectedCash')} value={fmtCurrency(session.expectedCash)} mono />
+        <Metric label={t('shifts.card.countedCash')} value={session.countedCash != null ? fmtCurrency(session.countedCash) : '—'} mono />
         <Metric
-          label="Variance"
+          label={t('shifts.card.variance')}
           value={session.closing ? fmtCurrency(session.variance) : '—'}
           mono
         />
@@ -70,7 +72,7 @@ export default function ShiftSessionCard({
 
       <footer className="shift-session-card__actions">
         <button type="button" className="btn btn--ghost btn--sm" onClick={() => onSelect(session)}>
-          View details
+          {t('shifts.card.viewDetails')}
         </button>
         {showManagerActions && onApprove && (
           <button
@@ -78,7 +80,7 @@ export default function ShiftSessionCard({
             className="btn btn--primary btn--sm"
             onClick={() => onApprove(session)}
           >
-            Approve &amp; submit
+            {t('shifts.card.approveAndSubmit')}
           </button>
         )}
         {showManagerActions && onReject && (
@@ -87,7 +89,7 @@ export default function ShiftSessionCard({
             className="btn btn--danger btn--sm"
             onClick={() => onReject(session)}
           >
-            Reject
+            {t('shifts.card.reject')}
           </button>
         )}
       </footer>

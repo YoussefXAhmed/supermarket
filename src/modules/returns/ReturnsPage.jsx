@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { PageHeader, Btn, ApiErrorCard, PageLoading } from '../../components/ui';
 import { FormPageLayout, LayoutSection, TableRegion } from '../../components/layout/page-layouts';
 import { useAuth } from '../../hooks/useAuth';
@@ -16,6 +17,7 @@ import { getRefundMethods } from '../../utils/returnsValidation';
 import { getUserFriendlyMessage } from '../../utils/errorHandling';
 
 export default function ReturnsPage() {
+  const { t } = useTranslation();
   const { user, canCreateReturns, canApproveReturns, canViewReturns } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -43,7 +45,7 @@ export default function ReturnsPage() {
     if (!trimmed) {
       setSource(null);
       setReturnableLines([]);
-      setErr('Enter a POS invoice number.');
+      setErr(t('returns.enterInvoiceNumber'));
       return;
     }
     setLoadingSource(true);
@@ -74,7 +76,7 @@ export default function ReturnsPage() {
     } finally {
       setLoadingSource(false);
     }
-  }, [setSearchParams]);
+  }, [setSearchParams, t]);
 
   const refreshPending = useCallback(async () => {
     if (!canApproveReturns) return;
@@ -124,7 +126,7 @@ export default function ReturnsPage() {
         canCreate: canCreateReturns,
       });
       setMsg(
-        `Draft return ${result.returnDoc.name} created. ERP refund total: ${formatErpMoney(result.erpGrandTotal, source.currency)}. Awaiting approval.`,
+        `${t('returns.returnDoc')} ${result.returnDoc.name} created. ERP refund total: ${formatErpMoney(result.erpGrandTotal, source.currency)}. ${t('returns.pendingApproval')}.`,
       );
       await loadSource(source.name);
       await refreshPending();
@@ -147,7 +149,7 @@ export default function ReturnsPage() {
         canApprove: canApproveReturns,
       });
       setMsg(
-        `Return ${result.returnDoc.name} submitted. Stock reversed by ERP. Refund total: ${formatErpMoney(result.erpGrandTotal, result.source?.currency)}.`,
+        `${t('returns.returnDoc')} ${result.returnDoc.name} submitted. Stock reversed by ERP. Refund total: ${formatErpMoney(result.erpGrandTotal, result.source?.currency)}.`,
       );
       await refreshPending();
       if (source?.name) await loadSource(source.name);
@@ -161,8 +163,8 @@ export default function ReturnsPage() {
   if (!canViewReturns) {
     return (
       <FormPageLayout>
-        <PageHeader title="Returns" subtitle="Access denied" dense />
-        <ApiErrorCard message="You do not have permission to view returns." />
+        <PageHeader title={t('returns.accessDenied')} subtitle={t('returns.accessDeniedSubtitle')} dense />
+        <ApiErrorCard message={t('returns.noPermission')} />
       </FormPageLayout>
     );
   }
@@ -170,31 +172,32 @@ export default function ReturnsPage() {
   return (
     <FormPageLayout>
       <PageHeader
-        title="Customer returns"
-        subtitle="Sales return against submitted POS invoices — ERP reverses stock on submit"
+        title={t('returns.title')}
+        subtitle={t('returns.subtitle')}
         dense
       />
 
       {err && <ApiErrorCard message={err} onRetry={() => sourceName && loadSource(sourceName)} />}
       {msg && <p className="inv-success">{msg}</p>}
 
-      <LayoutSection title="Source invoice" subtitle="Submitted POS invoice required">
+      <LayoutSection title={t('returns.sourceInvoice')} subtitle={t('returns.sourceInvoiceSubtitle')}>
         <LookupRow
           sourceName={sourceName}
           setSourceName={setSourceName}
           loadingSource={loadingSource}
           onLoad={() => loadSource(sourceName)}
           onLookup={onLookup}
+          t={t}
         />
         {lookupResults.length > 0 && (
           <TableRegion fit className="returns-lookup">
             <table className="data-table data-table--compact">
               <thead>
                 <tr>
-                  <th>Invoice</th>
-                  <th>Customer</th>
-                  <th>Date</th>
-                  <th>Total</th>
+                  <th>{t('returns.invoice')}</th>
+                  <th>{t('returns.customer')}</th>
+                  <th>{t('returns.date')}</th>
+                  <th>{t('returns.total')}</th>
                   <th />
                 </tr>
               </thead>
@@ -207,7 +210,7 @@ export default function ReturnsPage() {
                     <td>{formatErpMoney(row.grand_total)}</td>
                     <td>
                       <Btn type="button" size="sm" variant="ghost" onClick={() => loadSource(row.name)}>
-                        Select
+                        {t('returns.select')}
                       </Btn>
                     </td>
                   </tr>
@@ -218,8 +221,8 @@ export default function ReturnsPage() {
         )}
         {source && (
           <p className="page-header__sub">
-            Loaded: <strong className="mono">{source.name}</strong> · {source.customer} · Warehouse{' '}
-            <strong>{source.set_warehouse}</strong> · Sold {formatErpMoney(source.grand_total, source.currency)}
+            {t('returns.loaded')}: <strong className="mono">{source.name}</strong> · {source.customer} · {t('returns.item')}{' '}
+            <strong>{source.set_warehouse}</strong> · {formatErpMoney(source.grand_total, source.currency)}
           </p>
         )}
       </LayoutSection>
@@ -227,16 +230,16 @@ export default function ReturnsPage() {
       {loadingSource && <PageLoading size={24} />}
 
       {source && !loadingSource && (
-        <LayoutSection title="Return lines" subtitle="Quantities cannot exceed remaining returnable qty">
+        <LayoutSection title={t('returns.returnLines')} subtitle={t('returns.returnLinesSubtitle')}>
           <TableRegion>
             <table className="data-table data-table--compact">
               <thead>
                 <tr>
-                  <th>Item</th>
-                  <th>Sold</th>
-                  <th>Already returned</th>
-                  <th>Returnable</th>
-                  <th>Return qty</th>
+                  <th>{t('returns.item')}</th>
+                  <th>{t('returns.soldQty')}</th>
+                  <th>{t('returns.alreadyReturned')}</th>
+                  <th>{t('returns.returnable')}</th>
+                  <th>{t('returns.returnQty')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -287,7 +290,7 @@ export default function ReturnsPage() {
 
           <form className="inv-form form-region form-region--spaced" onSubmit={onCreateDraft}>
             <label>
-              Return reason
+              {t('returns.reason')}
               <textarea
                 className="input"
                 rows={2}
@@ -298,7 +301,7 @@ export default function ReturnsPage() {
               />
             </label>
             <label>
-              Refund method
+              {t('returns.refundMethod')}
               <select
                 className="input"
                 value={refundMethod}
@@ -312,32 +315,32 @@ export default function ReturnsPage() {
               </select>
             </label>
             <p className="page-header__sub">
-              Refund amount is set from ERP after the return document is created — not calculated in the browser.
+              {t('returns.refundAmountNote')}
             </p>
             {canCreateReturns ? (
               <Btn type="submit" variant="primary" loading={saving} disabled={!formEnabled}>
-                Create return draft
+                {t('returns.createDraft')}
               </Btn>
             ) : (
-              <p className="page-header__sub">You cannot create returns with this account.</p>
+              <p className="page-header__sub">{t('returns.cannotCreate')}</p>
             )}
             {!canApproveReturns && (
-              <p className="page-header__sub">A store manager must approve and submit the draft in ERP.</p>
+              <p className="page-header__sub">{t('returns.managerApprovalNeeded')}</p>
             )}
           </form>
         </LayoutSection>
       )}
 
       {canApproveReturns && pending.length > 0 && (
-        <LayoutSection title="Pending approval" subtitle="Draft returns — submit to reverse stock">
+        <LayoutSection title={t('returns.pendingApproval')} subtitle={t('returns.pendingApprovalSubtitle')}>
           <TableRegion>
             <table className="data-table data-table--compact">
               <thead>
                 <tr>
-                  <th>Return</th>
-                  <th>Against</th>
-                  <th>Operator</th>
-                  <th>ERP total</th>
+                  <th>{t('returns.returnDoc')}</th>
+                  <th>{t('returns.against')}</th>
+                  <th>{t('returns.operator')}</th>
+                  <th>{t('returns.erpTotal')}</th>
                   <th />
                 </tr>
               </thead>
@@ -357,7 +360,7 @@ export default function ReturnsPage() {
                         disabled={Boolean(submittingId)}
                         onClick={() => onApprove(row.name)}
                       >
-                        Approve & submit
+                        {t('approvals.approveAndSubmit')}
                       </Btn>
                     </td>
                   </tr>
@@ -371,21 +374,21 @@ export default function ReturnsPage() {
   );
 }
 
-function LookupRow({ sourceName, setSourceName, loadingSource, onLoad, onLookup }) {
+function LookupRow({ sourceName, setSourceName, loadingSource, onLoad, onLookup, t }) {
   return (
     <div className="toolbar returns-lookup-row">
       <div className="toolbar__group returns-lookup-row__inputs">
         <input
           className="input toolbar__input-md"
-          placeholder="POS-INV-2026-00042"
+          placeholder={t('returns.invoicePlaceholder')}
           value={sourceName}
           onChange={(e) => setSourceName(e.target.value)}
         />
         <Btn type="button" variant="ghost" onClick={onLookup} disabled={loadingSource}>
-          Search
+          {t('returns.search')}
         </Btn>
         <Btn type="button" variant="primary" onClick={onLoad} loading={loadingSource}>
-          Load invoice
+          {t('returns.loadInvoice')}
         </Btn>
       </div>
     </div>

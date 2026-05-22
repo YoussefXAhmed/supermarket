@@ -48,7 +48,7 @@ export default function POSPaymentPanel({ paymentModes, total, value, onChange, 
           </label>
         </div>
         <p className={`pos-payment__hint ${Math.abs(diff) > 0.02 ? 'pos-payment__hint--warn' : ''}`}>
-          {Math.abs(diff) <= 0.02 ? 'Balanced' : `Remaining: EGP ${fmt(diff)}`}
+          {Math.abs(diff) <= 0.02 ? t('pos.splitBalanced') : t('pos.splitRemaining', { amount: fmt(diff) })}
         </p>
       </div>
     );
@@ -89,7 +89,7 @@ export default function POSPaymentPanel({ paymentModes, total, value, onChange, 
           {t('pos.split')}
         </button>
       </div>
-      <p className="pos-payment__hint">Pay full amount via {isCard ? cardName : cashName}</p>
+      <p className="pos-payment__hint">{t('pos.payFullAmount', { mode: isCard ? cardName : cashName })}</p>
     </div>
   );
 }

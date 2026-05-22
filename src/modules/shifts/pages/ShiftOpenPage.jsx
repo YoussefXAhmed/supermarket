@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ApiErrorCard, Btn, PageHeader, PageLoading } from '../../../components/ui';
 import { FormPageLayout, LayoutSection } from '../../../components/layout/page-layouts';
 import { useAuth } from '../../../hooks/useAuth';
@@ -8,6 +9,7 @@ import { getUserFriendlyMessage } from '../../../utils/errorHandling';
 import ShiftStatusBadge from '../components/ShiftStatusBadge';
 
 export default function ShiftOpenPage() {
+  const { t } = useTranslation();
   const { user, canOpenShift } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -49,7 +51,7 @@ export default function ShiftOpenPage() {
     setSaving(true);
     setError('');
     try {
-      const entry = await openShift({
+      await openShift({
         posProfile: profile.name,
         company: profile.company,
         openingAmount,
@@ -68,8 +70,8 @@ export default function ShiftOpenPage() {
   if (!canOpenShift) {
     return (
       <FormPageLayout>
-        <PageHeader title="Open shift" subtitle="Access denied" dense />
-        <ApiErrorCard message="You do not have permission to open shifts." />
+        <PageHeader title={t('shifts.openShift')} subtitle={t('shifts.accessDenied')} dense />
+        <ApiErrorCard message={t('shifts.openShiftPermission')} />
       </FormPageLayout>
     );
   }
@@ -77,12 +79,12 @@ export default function ShiftOpenPage() {
   return (
     <FormPageLayout>
       <PageHeader
-        title="Open shift"
-        subtitle={profile ? `${profile.name} · ${profile.warehouse}` : 'Loading register…'}
+        title={t('shifts.openShift')}
+        subtitle={profile ? `${profile.name} · ${profile.warehouse}` : t('shifts.loadingRegister')}
         dense
         actions={
           <Link to="/pos" className="btn btn--ghost btn--sm">
-            POS
+            {t('common.pos')}
           </Link>
         }
       />
@@ -92,25 +94,25 @@ export default function ShiftOpenPage() {
       ) : error ? (
         <ApiErrorCard message={error} onRetry={() => window.location.reload()} />
       ) : activeShift ? (
-        <LayoutSection variant="raised" title="Active shift">
+        <LayoutSection variant="raised" title={t('shifts.activeShift')}>
           <p className="page-header__sub">
-            <span className="mono">{activeShift.name}</span> is already open.
+            <span className="mono">{activeShift.name}</span> {t('shifts.alreadyOpen')}
           </p>
           <ShiftStatusBadge status={activeShift.status} docstatus={activeShift.docstatus} />
           <div className="toolbar">
             <Btn variant="primary" size="sm" onClick={() => navigate(`/shifts/close?opening=${encodeURIComponent(activeShift.name)}`)}>
-              Go to close shift
+              {t('shifts.goToClose')}
             </Btn>
             <Link to="/pos" className="btn btn--ghost btn--sm">
-              Continue selling
+              {t('shifts.continueSelling')}
             </Link>
           </div>
         </LayoutSection>
       ) : (
-        <LayoutSection variant="raised" title="Opening float">
+        <LayoutSection variant="raised" title={t('shifts.openingFloat')}>
           <form className="inv-form form-region" onSubmit={onSubmit}>
             <label>
-              Opening cash (EGP)
+              {t('shifts.openingCash')}
               <input
                 className="input"
                 type="number"
@@ -122,7 +124,7 @@ export default function ShiftOpenPage() {
               />
             </label>
             <label>
-              Mode of payment
+              {t('shifts.modeOfPayment')}
               <select
                 className="input"
                 value={modeOfPayment}
@@ -136,11 +138,11 @@ export default function ShiftOpenPage() {
               </select>
             </label>
             <p className="page-header__sub">
-              Creates a submitted POS Opening Entry in ERPNext for cashier{' '}
+              {t('shifts.opensEntry')}{' '}
               <strong>{user?.email || user?.name}</strong>.
             </p>
             <Btn type="submit" variant="primary" loading={saving}>
-              Open shift
+              {t('shifts.openShiftBtn')}
             </Btn>
           </form>
         </LayoutSection>

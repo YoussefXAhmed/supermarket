@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ApiErrorCard, Badge, PageHeader, PageLoading } from '../../components/ui';
 import { AdminPageLayout, LayoutSection } from '../../components/layout/page-layouts';
 import { ERP_BASE_URL } from '../../config/erp';
@@ -8,6 +9,7 @@ import { getERPDeskUrl } from '../../utils/erpLinks';
 import { getUserFriendlyMessage } from '../../utils/errorHandling';
 
 export default function SettingsPage() {
+  const { t } = useTranslation();
   const { user, roles } = useAuth();
   const [company, setCompany] = useState(null);
   const [companyLoading, setCompanyLoading] = useState(true);
@@ -27,29 +29,37 @@ export default function SettingsPage() {
       setCompany(detailRes?.data?.data || null);
     } catch (e) {
       setCompany(null);
-      setCompanyError(getUserFriendlyMessage(e, 'Failed to load company details'));
+      setCompanyError(getUserFriendlyMessage(e, t('settings.companyUnavailable')));
     } finally {
       setCompanyLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadCompany();
   }, [loadCompany]);
 
+  const quickLinks = [
+    [t('settings.erpQuickLinks.itemList'), '/app/item'],
+    [t('settings.erpQuickLinks.posProfile'), '/app/pos-profile'],
+    [t('settings.erpQuickLinks.priceList'), '/app/price-list'],
+    [t('settings.erpQuickLinks.warehouse'), '/app/warehouse'],
+    [t('settings.erpQuickLinks.userManagement'), '/app/user'],
+  ];
+
   return (
     <AdminPageLayout>
-      <PageHeader title="Settings" subtitle="System configuration" dense />
+      <PageHeader title={t('settings.title')} subtitle={t('settings.subtitle')} dense />
 
       <div className="settings-grid">
-        <LayoutSection variant="raised" title="My Profile">
+        <LayoutSection variant="raised" title={t('settings.myProfile')}>
           <div className="kv-stack">
-            <Row label="Full Name" value={user?.full_name} />
-            <Row label="Email" value={user?.email} />
-            <Row label="Username" value={user?.name} />
+            <Row label={t('settings.fullName')} value={user?.full_name} />
+            <Row label={t('settings.email')} value={user?.email} />
+            <Row label={t('settings.username')} value={user?.name} />
           </div>
           <div className="panel">
-            <p className="subtle-label">Roles</p>
+            <p className="subtle-label">{t('settings.roles')}</p>
             <div className="badge-wrap">
               {roles.map((r) => (
                 <Badge key={r} color="blue">
@@ -60,11 +70,11 @@ export default function SettingsPage() {
           </div>
         </LayoutSection>
 
-        <LayoutSection variant="raised" title="ERPNext Connection">
+        <LayoutSection variant="raised" title={t('settings.erpConnection')}>
           <div className="kv-stack">
-            <Row label="Base URL" value={ERP_BASE_URL} />
-            <Row label="Auth" value="Cookie-based (withCredentials)" />
-            <Row label="Protocol" value="Frappe REST API v2" />
+            <Row label={t('settings.baseUrl')} value={ERP_BASE_URL} />
+            <Row label={t('settings.auth')} value="Cookie-based (withCredentials)" />
+            <Row label={t('settings.protocol')} value="Frappe REST API v2" />
           </div>
           <div className="panel">
             <a
@@ -73,20 +83,14 @@ export default function SettingsPage() {
               rel="noreferrer"
               className="btn btn--ghost btn--sm"
             >
-              Open ERPNext ↗
+              {t('settings.openErpNext')}
             </a>
           </div>
         </LayoutSection>
 
-        <LayoutSection variant="raised" title="Quick Links">
+        <LayoutSection variant="raised" title={t('settings.quickLinks')}>
           <div className="quick-links">
-            {[
-              ['Item List', '/app/item'],
-              ['POS Profile', '/app/pos-profile'],
-              ['Price List', '/app/price-list'],
-              ['Warehouse', '/app/warehouse'],
-              ['User Management', '/app/user'],
-            ].map(([label, path]) => (
+            {quickLinks.map(([label, path]) => (
               <a
                 key={path}
                 href={getERPDeskUrl(path.replace(/^\/app/, ''))}
@@ -101,24 +105,24 @@ export default function SettingsPage() {
           </div>
         </LayoutSection>
 
-        <LayoutSection variant="raised" title="Company Details">
+        <LayoutSection variant="raised" title={t('settings.companyDetails')}>
           {companyLoading ? (
             <PageLoading size={20} />
           ) : companyError ? (
-            <ApiErrorCard title="Company details unavailable" message={companyError} onRetry={loadCompany} />
+            <ApiErrorCard title={t('settings.companyUnavailable')} message={companyError} onRetry={loadCompany} />
           ) : !company ? (
-            <p className="page-header__sub">No company found.</p>
+            <p className="page-header__sub">{t('settings.noCompany')}</p>
           ) : (
             <div className="kv-stack">
-              <Row label="Company" value={company.company_name || company.name} />
-              <Row label="Code" value={company.abbr} />
-              <Row label="Country" value={company.country} />
-              <Row label="Currency" value={company.default_currency} />
-              <Row label="Tax ID" value={company.tax_id} />
-              <Row label="Phone" value={company.phone_no} />
-              <Row label="Email" value={company.email} />
-              <Row label="Website" value={company.website} />
-              <Row label="Holiday List" value={company.default_holiday_list} />
+              <Row label={t('settings.company')} value={company.company_name || company.name} />
+              <Row label={t('settings.code')} value={company.abbr} />
+              <Row label={t('settings.country')} value={company.country} />
+              <Row label={t('settings.currency')} value={company.default_currency} />
+              <Row label={t('settings.taxId')} value={company.tax_id} />
+              <Row label={t('settings.phone')} value={company.phone_no} />
+              <Row label={t('settings.email')} value={company.email} />
+              <Row label={t('settings.website')} value={company.website} />
+              <Row label={t('settings.holidayList')} value={company.default_holiday_list} />
             </div>
           )}
         </LayoutSection>

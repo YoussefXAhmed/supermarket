@@ -1,20 +1,23 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ApiErrorCard, EmptyState, PageHeader, PageLoading, Table } from '../../components/ui';
 import ExportToolbar from '../../components/ui/ExportToolbar';
 import { TablePageLayout, LayoutSection, TableRegion } from '../../components/layout/page-layouts';
 import { getCustomers } from '../../services/api';
 import { getUserFriendlyMessage } from '../../utils/errorHandling';
 
-const EXPORT_COLUMNS = [
-  { key: 'customer_name', label: 'Name' },
-  { key: 'name', label: 'ID' },
-  { key: 'customer_type', label: 'Type' },
-  { key: 'customer_group', label: 'Group' },
-  { key: 'territory', label: 'Territory' },
-  { key: 'mobile_no', label: 'Mobile' },
-];
-
 export default function CustomersPage() {
+  const { t } = useTranslation();
+
+  const EXPORT_COLUMNS = [
+    { key: 'customer_name', label: t('admin.customers.name') },
+    { key: 'name', label: t('admin.customers.id') },
+    { key: 'customer_type', label: t('admin.customers.type') },
+    { key: 'customer_group', label: t('admin.customers.group') },
+    { key: 'territory', label: t('admin.customers.territory') },
+    { key: 'mobile_no', label: t('admin.customers.mobile') },
+  ];
+
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -29,7 +32,7 @@ export default function CustomersPage() {
       })
       .catch((e) => {
         setCustomers([]);
-        setError(getUserFriendlyMessage(e, 'Failed to load customers'));
+        setError(getUserFriendlyMessage(e, t('admin.customers.failedToLoad')));
       })
       .finally(() => setLoading(false));
   };
@@ -58,12 +61,12 @@ export default function CustomersPage() {
   }, [customers, query]);
 
   const columns = [
-    { key: 'customer_name', label: 'Name' },
-    { key: 'name', label: 'ID', render: (v) => <span className="mono mono-subtle">{v}</span> },
-    { key: 'customer_type', label: 'Type', render: (v) => v || '—' },
-    { key: 'customer_group', label: 'Group' },
-    { key: 'territory', label: 'Territory' },
-    { key: 'mobile_no', label: 'Mobile', render: (v) => v || '—' },
+    { key: 'customer_name', label: t('admin.customers.name') },
+    { key: 'name', label: t('admin.customers.id'), render: (v) => <span className="mono mono-subtle">{v}</span> },
+    { key: 'customer_type', label: t('admin.customers.type'), render: (v) => v || '—' },
+    { key: 'customer_group', label: t('admin.customers.group') },
+    { key: 'territory', label: t('admin.customers.territory') },
+    { key: 'mobile_no', label: t('admin.customers.mobile'), render: (v) => v || '—' },
   ];
 
   const sparse = filtered.length > 0 && filtered.length <= 5;
@@ -77,7 +80,7 @@ export default function CustomersPage() {
   return (
     <TablePageLayout tableConstrain={sparse} className={layoutClass}>
       <PageHeader
-        title="Customers"
+        title={t('admin.customers.title')}
         subtitle={
           query.trim()
             ? `${filtered.length} of ${customers.length} customers`
@@ -92,21 +95,21 @@ export default function CustomersPage() {
             <input
               className="input toolbar__input-md"
               type="search"
-              placeholder="Search customers…"
+              placeholder={t('admin.customers.searchPlaceholder')}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              aria-label="Search customers"
+              aria-label={t('admin.customers.searchLabel')}
             />
-            <select className="input toolbar__input-fixed" disabled aria-label="Customer type filter">
-              <option>All types</option>
+            <select className="input toolbar__input-fixed" disabled aria-label={t('admin.customers.typeFilter')}>
+              <option>{t('admin.customers.allTypes')}</option>
             </select>
-            <select className="input toolbar__input-fixed" disabled aria-label="Customer group filter">
-              <option>All groups</option>
+            <select className="input toolbar__input-fixed" disabled aria-label={t('admin.customers.groupFilter')}>
+              <option>{t('admin.customers.allGroups')}</option>
             </select>
           </div>
           <ExportToolbar
             filename="customers"
-            title="Customers"
+            title={t('admin.customers.title')}
             columns={EXPORT_COLUMNS}
             rows={filtered}
             disabled={!filtered.length}
@@ -121,8 +124,8 @@ export default function CustomersPage() {
       ) : filtered.length === 0 ? (
         <EmptyState
           icon="👥"
-          title={query.trim() ? 'No matching customers' : 'No customers yet'}
-          desc={query.trim() ? 'Try a different search term.' : undefined}
+          title={query.trim() ? t('admin.customers.noMatching') : t('admin.customers.noCustomers')}
+          desc={query.trim() ? t('admin.customers.tryDifferent') : undefined}
         />
       ) : (
         <LayoutSection variant="raised" flushHead fit={sparse}>

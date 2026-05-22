@@ -1,12 +1,16 @@
 /**
  * Operational user templates → ERPNext Role Profiles.
  * Single source of truth for frontend provisioning (no manual role assignment).
+ *
+ * Label keys map to templates.* i18n namespace.
+ * Validation errors must be translated at the call-site using t(key, { label }).
  */
 
 export const OPERATIONAL_USER_TEMPLATES = {
   cashier: {
     id: 'cashier',
     label: 'Cashier',
+    labelKey: 'templates.cashier',
     roleProfileName: 'Elmahdi Cashier',
     warehouseRule: 'exactly_one',
     requiresPriceList: true,
@@ -14,6 +18,7 @@ export const OPERATIONAL_USER_TEMPLATES = {
   inventory_clerk: {
     id: 'inventory_clerk',
     label: 'Inventory Clerk',
+    labelKey: 'templates.inventoryClerk',
     roleProfileName: 'Elmahdi Inventory Clerk',
     warehouseRule: 'one_or_more',
     requiresPriceList: false,
@@ -21,6 +26,7 @@ export const OPERATIONAL_USER_TEMPLATES = {
   purchasing_officer: {
     id: 'purchasing_officer',
     label: 'Purchasing Officer',
+    labelKey: 'templates.purchasingOfficer',
     roleProfileName: 'Elmahdi Purchasing Officer',
     warehouseRule: 'one_or_more',
     requiresPriceList: false,
@@ -28,6 +34,7 @@ export const OPERATIONAL_USER_TEMPLATES = {
   store_manager: {
     id: 'store_manager',
     label: 'Store Manager',
+    labelKey: 'templates.storeManager',
     roleProfileName: 'Elmahdi Store Manager',
     warehouseRule: 'one_or_more',
     requiresPriceList: false,
@@ -35,6 +42,7 @@ export const OPERATIONAL_USER_TEMPLATES = {
   accountant: {
     id: 'accountant',
     label: 'Accountant',
+    labelKey: 'templates.accountant',
     roleProfileName: 'Elmahdi Accountant',
     warehouseRule: 'none',
     requiresPriceList: false,
@@ -66,32 +74,57 @@ export function getTemplateByRoleProfile(roleProfileName) {
 /**
  * @param {string} templateId
  * @param {{ warehouses?: string[], priceList?: string, company?: string }} input
- * @returns {{ valid: boolean, error?: string }}
+ * @param {Function} [t] - i18next t function; falls back to English strings if omitted
+ * @returns {{ valid: boolean, error?: string, errorKey?: string, errorVars?: object }}
  */
-export function validateProvisioningInput(templateId, input = {}) {
+export function validateProvisioningInput(templateId, input = {}, t) {
   const template = getTemplateById(templateId);
   if (!template) {
-    return { valid: false, error: 'Select an operational role template.' };
+    return {
+      valid: false,
+      error: t ? t('templates.selectTemplate') : 'Select an operational role template.',
+      errorKey: 'templates.selectTemplate',
+    };
   }
 
   const warehouses = (input.warehouses || []).filter(Boolean);
   const priceList = (input.priceList || '').trim();
   const company = (input.company || '').trim();
+  const label = t ? t(template.labelKey) : template.label;
 
   if (template.warehouseRule === 'exactly_one') {
     if (warehouses.length !== 1) {
-      return { valid: false, error: `${template.label} requires exactly one warehouse.` };
+      return {
+        valid: false,
+        error: t ? t('templates.exactlyOneWarehouse', { label }) : `${label} requires exactly one warehouse.`,
+        errorKey: 'templates.exactlyOneWarehouse',
+        errorVars: { label },
+      };
     }
   } else if (template.warehouseRule !== 'none' && warehouses.length < 1) {
-    return { valid: false, error: `Select at least one warehouse for ${template.label}.` };
+    return {
+      valid: false,
+      error: t ? t('templates.atLeastOneWarehouse', { label }) : `Select at least one warehouse for ${label}.`,
+      errorKey: 'templates.atLeastOneWarehouse',
+      errorVars: { label },
+    };
   }
 
   if (template.requiresPriceList && !priceList) {
-    return { valid: false, error: `${template.label} requires a price list.` };
+    return {
+      valid: false,
+      error: t ? t('templates.requiresPriceList', { label }) : `${label} requires a price list.`,
+      errorKey: 'templates.requiresPriceList',
+      errorVars: { label },
+    };
   }
 
   if (!company) {
-    return { valid: false, error: 'Company is required.' };
+    return {
+      valid: false,
+      error: t ? t('templates.companyRequired') : 'Company is required.',
+      errorKey: 'templates.companyRequired',
+    };
   }
 
   return { valid: true };

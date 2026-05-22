@@ -1,8 +1,11 @@
-import { payStatusLabel, payStatusTone, normalizePayStatus } from '../../utils/apPaymentStatus';
+import { useTranslation } from 'react-i18next';
+import { erpStatusLabel } from '../../utils/erpLabelMapper';
+import { payStatusTone, normalizePayStatus } from '../../utils/apPaymentStatus';
 
 export default function ApPaymentStatusPill({ status, paidPct }) {
+  const { t } = useTranslation();
   const key = normalizePayStatus(status);
-  const text = payStatusLabel(key);
+  const text = erpStatusLabel(key, t);
   const tone = payStatusTone(key);
   const pct =
     paidPct != null && Number.isFinite(Number(paidPct)) ? `${Math.round(Number(paidPct))}%` : null;

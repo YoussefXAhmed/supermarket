@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ApiErrorCard, Btn, EmptyState, PageHeader, PageLoading, PartialDataBanner } from '../../components/ui';
 import { TablePageLayout, LayoutSection } from '../../components/layout/page-layouts';
 import ReceiptMatchingCard from '../../components/purchasing/ReceiptMatchingCard';
@@ -12,16 +13,18 @@ import { getUserFriendlyMessage } from '../../utils/errorHandling';
 import { useOperationalRefresh } from '../../services/operationalRefresh';
 import { normalizeBillingStatus, BILLING_STATUS } from '../../utils/billingStatus';
 
-const STATUS_FILTERS = [
-  { id: 'all', label: 'All' },
-  { id: BILLING_STATUS.UNBILLED, label: 'Unbilled' },
-  { id: BILLING_STATUS.PARTIALLY_BILLED, label: 'Partial' },
-  { id: BILLING_STATUS.FULLY_BILLED, label: 'Fully billed' },
-  { id: BILLING_STATUS.VARIANCE_DETECTED, label: 'Variance' },
-  { id: BILLING_STATUS.OVERBILLED, label: 'Overbilled' },
-];
-
 export default function InvoiceMatchingPage() {
+  const { t } = useTranslation();
+
+  const STATUS_FILTERS = [
+    { id: 'all', label: t('purchasing.invoiceMatching.statusAll') },
+    { id: BILLING_STATUS.UNBILLED, label: t('purchasing.invoiceMatching.statusUnbilled') },
+    { id: BILLING_STATUS.PARTIALLY_BILLED, label: t('purchasing.invoiceMatching.statusPartial') },
+    { id: BILLING_STATUS.FULLY_BILLED, label: t('purchasing.invoiceMatching.statusFullyBilled') },
+    { id: BILLING_STATUS.VARIANCE_DETECTED, label: t('purchasing.invoiceMatching.statusVariance') },
+    { id: BILLING_STATUS.OVERBILLED, label: t('purchasing.invoiceMatching.statusOverbilled') },
+  ];
+
   const [rows, setRows] = useState([]);
   const [warnings, setWarnings] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -117,25 +120,24 @@ export default function InvoiceMatchingPage() {
   return (
     <TablePageLayout className="page-layout--list-page invoice-matching-page">
       <PageHeader
-        title="Invoice matching"
-        subtitle="Approved receipts become submitted payables automatically — pay in Finance"
+        title={t('purchasing.invoiceMatching.title')}
+        subtitle={t('purchasing.invoiceMatching.subtitle')}
         dense
         actions={
           <Btn variant="ghost" size="sm" onClick={load}>
-            Refresh
+            {t('common.refresh')}
           </Btn>
         }
       />
       <PartialDataBanner warnings={warnings} />
 
       <div className="ap-workflow-banner" role="note">
-        <strong>Operational flow:</strong> (1) Receive stock → Purchase Receipt · (2) Store manager
-        approves → ERP creates and submits Purchase Invoice automatically · (3){' '}
-        <Link to="/admin/accounting/payments">Record payment</Link> in Finance. Use this page only
-        for variance, partial billing, or retry when auto-payable failed.
+        <strong>{t('purchasing.invoiceMatching.operationalFlow')}:</strong> (1) {t('purchasing.receiveStock')} → Purchase Receipt · (2) {' '}
+        {t('approvals.managersDesc')} · (3){' '}
+        <Link to="/admin/accounting/payments">{t('approvals.recordPayment')}</Link> {t('nav.finance')}.
       </div>
 
-      <div className="invoice-matching-filters" role="tablist" aria-label="Billing status filter">
+      <div className="invoice-matching-filters" role="tablist" aria-label={t('purchasing.invoiceMatching.billingFilter')}>
         {STATUS_FILTERS.map((f) => (
           <button
             key={f.id}
@@ -160,11 +162,11 @@ export default function InvoiceMatchingPage() {
       ) : filtered.length === 0 ? (
         <EmptyState
           icon="🧾"
-          title="No receipts in this view"
+          title={t('purchasing.invoiceMatching.noReceipts')}
           desc={
             statusFilter === 'all'
-              ? 'Submitted purchase receipts will appear here for invoice matching.'
-              : 'Try another filter or receive stock first.'
+              ? t('purchasing.invoiceMatching.noReceiptsAll')
+              : t('purchasing.invoiceMatching.tryFilter')
           }
         />
       ) : (

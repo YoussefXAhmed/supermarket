@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ApiErrorCard, Badge, EmptyState, PageHeader, PageLoading, SearchInput } from '../../components/ui';
 import { AdminPageLayout, LayoutSection } from '../../components/layout/page-layouts';
 import { getItems, searchItems } from '../../services/api';
@@ -6,6 +7,7 @@ import { getERPImageUrl } from '../../utils/erpLinks';
 import { getUserFriendlyMessage } from '../../utils/errorHandling';
 
 export default function ProductsPage() {
+  const { t } = useTranslation();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -37,7 +39,7 @@ export default function ProductsPage() {
   return (
     <AdminPageLayout className="page-layout--list-page">
       <PageHeader
-        title="Products"
+        title={t('admin.products.title')}
         subtitle={`${items.length} items loaded`}
         dense
       />
@@ -48,7 +50,7 @@ export default function ProductsPage() {
             <SearchInput
               value={query}
               onChange={handleSearch}
-              placeholder="Search by name or code…"
+              placeholder={t('admin.products.searchPlaceholder')}
             />
           </div>
         </div>
@@ -59,7 +61,7 @@ export default function ProductsPage() {
       ) : error ? (
         <ApiErrorCard message={error} onRetry={() => load(query)} />
       ) : items.length === 0 ? (
-        <EmptyState icon="📦" title="No products found" />
+        <EmptyState icon="📦" title={t('admin.products.noProducts')} />
       ) : (
         <LayoutSection variant="raised" flushHead>
           <div className="products-grid">
@@ -76,7 +78,7 @@ export default function ProductsPage() {
                   <p className="product-card__name">{item.item_name}</p>
                   <p className="product-card__code mono">{item.item_code}</p>
                   <div className="product-card__meta">
-                    <Badge color="default">{item.item_group || 'General'}</Badge>
+                    <Badge color="default">{item.item_group || t('admin.products.general')}</Badge>
                     <span className="product-card__price">
                       EGP {(item.standard_rate || 0).toFixed(2)}
                     </span>

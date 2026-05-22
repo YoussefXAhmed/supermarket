@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { PageHeader, PageLoading, ApiErrorCard, PaginatedTable, Btn, PartialDataBanner, ExportToolbar } from '../../components/ui';
 import { TablePageLayout, LayoutSection } from '../../components/layout/page-layouts';
 import { getPurchaseHistoryReport } from '../../services/purchasingService';
@@ -9,15 +10,17 @@ import StatusPill from '../../components/approvals/StatusPill';
 import { purchaseReceiptApprovalStatus, isPendingPurchaseStatus } from '../../utils/approvalStatuses';
 import { fmtCurrency, fmtCurrencyCompact } from '../../utils/format';
 
-const EXPORT_COLUMNS = [
-  { key: 'doc_type', label: 'Type' },
-  { key: 'name', label: 'Document' },
-  { key: 'supplier', label: 'Supplier' },
-  { key: 'posting_date', label: 'Date' },
-  { key: 'grand_total', label: 'Total', export: (r) => r.grand_total },
-];
-
 export default function PurchaseReportsPage() {
+  const { t } = useTranslation();
+
+  const EXPORT_COLUMNS = [
+    { key: 'doc_type', label: t('purchasing.reports.type') },
+    { key: 'name', label: t('purchasing.reports.document') },
+    { key: 'supplier', label: t('purchasing.reports.supplier') },
+    { key: 'posting_date', label: t('purchasing.reports.date') },
+    { key: 'grand_total', label: t('purchasing.reports.amount'), export: (r) => r.grand_total },
+  ];
+
   const [suppliers, setSuppliers] = useState([]);
   const [supplier, setSupplier] = useState('');
   const [fromDate, setFromDate] = useState('');
@@ -63,14 +66,14 @@ export default function PurchaseReportsPage() {
   useOperationalRefresh(load, [load]);
 
   const columns = [
-    { key: 'doc_type', label: 'Type' },
-    { key: 'name', label: 'Document', render: (v) => <span className="mono">{v}</span> },
-    { key: 'supplier', label: 'Supplier' },
-    { key: 'posting_date', label: 'Date' },
-    { key: 'grand_total', label: 'Amount', render: (v) => fmtCurrency(v) },
+    { key: 'doc_type', label: t('purchasing.reports.type') },
+    { key: 'name', label: t('purchasing.reports.document'), render: (v) => <span className="mono">{v}</span> },
+    { key: 'supplier', label: t('purchasing.reports.supplier') },
+    { key: 'posting_date', label: t('purchasing.reports.date') },
+    { key: 'grand_total', label: t('purchasing.reports.amount'), render: (v) => fmtCurrency(v) },
     {
       key: 'status',
-      label: 'Status',
+      label: t('purchasing.reports.status'),
       render: (v, row) =>
         row.doc_type === 'Purchase Receipt' && isPendingPurchaseStatus(purchaseReceiptApprovalStatus(row)) ? (
           <StatusPill status={purchaseReceiptApprovalStatus(row)} label={v} />
@@ -85,15 +88,15 @@ export default function PurchaseReportsPage() {
   return (
     <TablePageLayout tableConstrain={sparse}>
       <PageHeader
-        title="Purchase reports"
-        subtitle="History & cost trends"
+        title={t('purchasing.reports.title')}
+        subtitle={t('purchasing.reports.subtitle')}
         dense
         actions={
           <>
-            <Btn variant="ghost" size="sm" onClick={load}>Load</Btn>
+            <Btn variant="ghost" size="sm" onClick={load}>{t('common.load')}</Btn>
             <ExportToolbar
               filename="purchase-history"
-              title="Purchase History"
+              title={t('purchasing.reports.purchaseHistory')}
               columns={EXPORT_COLUMNS}
               rows={rows}
               elementId="purchase-report-print"
@@ -108,7 +111,7 @@ export default function PurchaseReportsPage() {
       <LayoutSection variant="flat" flushHead>
         <div className="toolbar__group">
           <select className="input toolbar__input-fixed" value={supplier} onChange={(e) => setSupplier(e.target.value)}>
-            <option value="">All suppliers</option>
+            <option value="">{t('purchasing.reports.allSuppliers')}</option>
             {suppliers.map((s) => <option key={s.name} value={s.name}>{s.supplier_name || s.name}</option>)}
           </select>
           <input className="input toolbar__input-fixed" type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
@@ -122,7 +125,7 @@ export default function PurchaseReportsPage() {
       ) : (
         <div id="purchase-report-print" className="analytics-layout__main">
           {costTrend.length > 0 && (
-            <LayoutSection title="Cost trend" subtitle="Purchase invoices by month" variant="raised">
+            <LayoutSection title={t('purchasing.reports.costTrend')} subtitle={t('purchasing.reports.invoicesByMonth')} variant="raised">
               <div className="value-trend">
                 {costTrend.map((point) => {
                   const maxVal = Math.max(...costTrend.map((p) => p.value), 1);
@@ -138,20 +141,20 @@ export default function PurchaseReportsPage() {
             </LayoutSection>
           )}
           <LayoutSection
-            title="Purchase history"
-            subtitle={rows.length ? `${rows.length} documents` : 'Run Load to fetch data'}
+            title={t('purchasing.reports.purchaseHistory')}
+            subtitle={rows.length ? `${rows.length} documents` : t('purchasing.reports.runLoadDesc')}
             variant="raised"
             fit={sparse}
           >
             {rows.length === 0 ? (
-              <p className="empty-inline">No data loaded. Choose filters and click Load.</p>
+              <p className="empty-inline">{t('purchasing.reports.noDataLoaded')}</p>
             ) : (
               <PaginatedTable
                 columns={columns}
                 data={rows}
                 pageSize={20}
                 compact
-                emptyMsg="No documents"
+                emptyMsg={t('purchasing.reports.noDocuments')}
                 rowKey={(r) => `${r.doc_type}-${r.name}`}
               />
             )}

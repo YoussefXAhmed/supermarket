@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import MovementTimeline from '../../../components/inventory/MovementTimeline';
 import { ApiErrorCard, Badge, Btn, EmptyState, PageHeader, PageLoading, Table } from '../../../components/ui';
 import { AdminPageLayout, LayoutSection, TableRegion } from '../../../components/layout/page-layouts';
@@ -9,6 +10,7 @@ import { useInventoryCapabilities } from '../../../hooks/useInventoryCapabilitie
 import api from '../../../services/api';
 
 export default function ItemDetailsPage() {
+  const { t } = useTranslation();
   const { canInventoryViewValuation } = useInventoryCapabilities();
   const [itemCode, setItemCode] = useState('');
   const [item, setItem] = useState(null);
@@ -47,41 +49,41 @@ export default function ItemDetailsPage() {
       setBins([]);
       setTimeline([]);
       setBatches([]);
-      setError(getUserFriendlyMessage(e, 'Failed to load item details'));
+      setError(getUserFriendlyMessage(e, t('inventory.itemDetails.failedToLoad')));
     } finally {
       setLoading(false);
     }
   };
 
   const binColumns = [
-    { key: 'warehouse', label: 'Warehouse' },
-    { key: 'actual_qty', label: 'Actual', render: (v) => <span className="mono">{Number(v || 0).toFixed(2)}</span> },
-    { key: 'reserved_qty', label: 'Reserved', render: (v) => <span className="mono">{Number(v || 0).toFixed(2)}</span> },
-    { key: 'valuation_rate', label: 'Valuation', render: (v) => `EGP ${Number(v || 0).toFixed(2)}` },
+    { key: 'warehouse', label: t('inventory.itemDetails.warehouseStock') },
+    { key: 'actual_qty', label: t('inventory.itemDetails.actual'), render: (v) => <span className="mono">{Number(v || 0).toFixed(2)}</span> },
+    { key: 'reserved_qty', label: t('inventory.itemDetails.reserved'), render: (v) => <span className="mono">{Number(v || 0).toFixed(2)}</span> },
+    { key: 'valuation_rate', label: t('inventory.itemDetails.valuation'), render: (v) => `EGP ${Number(v || 0).toFixed(2)}` },
   ];
 
   const batchColumns = [
-    { key: 'name', label: 'Batch', render: (v) => <span className="mono">{v}</span> },
-    { key: 'batch_qty', label: 'Qty', render: (v) => Number(v || 0).toFixed(2) },
-    { key: 'expiry_date', label: 'Expiry' },
+    { key: 'name', label: t('inventory.itemDetails.batch'), render: (v) => <span className="mono">{v}</span> },
+    { key: 'batch_qty', label: t('inventory.itemDetails.qty'), render: (v) => Number(v || 0).toFixed(2) },
+    { key: 'expiry_date', label: t('inventory.itemDetails.expiry') },
   ];
 
   return (
     <AdminPageLayout>
-      <PageHeader title="Item Details" subtitle="Stock, batches, and movement timeline" dense />
+      <PageHeader title={t('inventory.itemDetails.title')} subtitle={t('inventory.itemDetails.subtitle')} dense />
 
       <LayoutSection variant="flat" flushHead>
         <div className="toolbar">
           <div className="toolbar__group">
             <input
               className="input toolbar__input-sm"
-              placeholder="Item code"
+              placeholder={t('inventory.itemDetails.itemCodePlaceholder')}
               value={itemCode}
               onChange={(e) => setItemCode(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && load()}
             />
             <Btn variant="ghost" size="sm" onClick={load}>
-              Load item
+              {t('inventory.itemDetails.loadItem')}
             </Btn>
           </div>
         </div>
@@ -92,36 +94,36 @@ export default function ItemDetailsPage() {
       ) : error ? (
         <ApiErrorCard message={error} onRetry={load} />
       ) : !item ? (
-        <EmptyState icon="🧾" title="No item loaded" desc="Enter item code and click Load item." />
+        <EmptyState icon="🧾" title={t('inventory.itemDetails.noItemLoaded')} desc={t('inventory.itemDetails.noItemLoadedDesc')} />
       ) : (
         <>
           <LayoutSection
             variant="raised"
             title={item.item_name || item.item_code}
-            subtitle="Item master"
+            subtitle={t('inventory.itemDetails.itemMaster')}
           >
             <div className="meta-grid">
               <p>
-                <strong>Code:</strong> <span className="mono">{item.item_code}</span>
+                <strong>{t('inventory.itemDetails.code')}:</strong> <span className="mono">{item.item_code}</span>
               </p>
               <p>
-                <strong>Group:</strong> {item.item_group || '—'}
+                <strong>{t('inventory.itemDetails.group')}:</strong> {item.item_group || '—'}
               </p>
               <p>
-                <strong>UOM:</strong> {item.stock_uom || '—'}
+                <strong>{t('inventory.itemDetails.uom')}:</strong> {item.stock_uom || '—'}
               </p>
               {canInventoryViewValuation ? (
                 <p>
-                  <strong>Rate:</strong> EGP {Number(item.standard_rate || 0).toFixed(2)}
+                  <strong>{t('inventory.itemDetails.rate')}:</strong> EGP {Number(item.standard_rate || 0).toFixed(2)}
                 </p>
               ) : null}
-              {item.has_batch_no ? <p><Badge color="blue">Batch tracked</Badge></p> : null}
+              {item.has_batch_no ? <p><Badge color="blue">{t('inventory.itemDetails.batchTracked')}</Badge></p> : null}
             </div>
           </LayoutSection>
 
-          <LayoutSection variant="raised" title="Warehouse stock">
+          <LayoutSection variant="raised" title={t('inventory.itemDetails.warehouseStock')}>
             {bins.length === 0 ? (
-              <EmptyState title="No bin records" />
+              <EmptyState title={t('inventory.itemDetails.noBinRecords')} />
             ) : (
               <TableRegion>
                 <Table columns={binColumns} data={bins} compact />
@@ -130,14 +132,14 @@ export default function ItemDetailsPage() {
           </LayoutSection>
 
           {batches.length > 0 && (
-            <LayoutSection variant="raised" title="Batches">
+            <LayoutSection variant="raised" title={t('inventory.itemDetails.batches')}>
               <TableRegion>
                 <Table columns={batchColumns} data={batches} compact />
               </TableRegion>
             </LayoutSection>
           )}
 
-          <LayoutSection variant="raised" title="Movement timeline">
+          <LayoutSection variant="raised" title={t('inventory.itemDetails.movementTimeline')}>
             <MovementTimeline rows={timeline} />
           </LayoutSection>
         </>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ApiErrorCard, Btn, PageHeader, PageLoading, StatCard } from '../../components/ui';
 import { FormPageLayout, LayoutSection } from '../../components/layout/page-layouts';
 import { getSupplier } from '../../services/purchasingApi';
@@ -14,6 +15,7 @@ const fmt = (n) =>
   }).format(n || 0);
 
 export default function SupplierDetailPage() {
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const isNew = id === 'new';
@@ -77,7 +79,7 @@ export default function SupplierDetailPage() {
     try {
       const { saveSupplier } = await import('../../services/purchasingApi');
       const saved = await saveSupplier({ name: isNew ? null : id, ...form });
-      setMsg(isNew ? `Created: ${saved?.name}` : 'Supplier updated');
+      setMsg(isNew ? t('purchasing.supplier.created', { name: saved?.name }) : t('purchasing.supplier.updated'));
       if (isNew && saved?.name) {
         navigate(`/admin/purchasing/suppliers/${encodeURIComponent(saved.name)}`, { replace: true });
       }
@@ -99,29 +101,29 @@ export default function SupplierDetailPage() {
   return (
     <FormPageLayout>
       <PageHeader
-        title={isNew ? 'New supplier' : form.supplier_name || id}
-        subtitle={isNew ? 'Create supplier' : `Supplier ${id}`}
+        title={isNew ? t('purchasing.supplier.newTitle') : form.supplier_name || id}
+        subtitle={isNew ? t('purchasing.supplier.createSubtitle') : t('purchasing.supplier.supplierSubtitle', { id })}
         dense
         actions={
           <Link to="/admin/purchasing/suppliers" className="btn btn--ghost btn--sm">
-            ← Back
+            {t('purchasing.supplier.back')}
           </Link>
         }
       />
 
       {!isNew && balance && (
         <div className="stats-grid">
-          <StatCard label="Total purchased" value={fmt(balance.totalPurchased)} icon="💰" color="accent" />
-          <StatCard label="Outstanding" value={fmt(balance.outstanding)} icon="📋" color="red" />
-          <StatCard label="Open invoices" value={balance.openInvoices} icon="🧾" color="blue" />
-          <StatCard label="Receipts" value={balance.receiptCount} icon="📦" color="green" />
+          <StatCard label={t('purchasing.supplier.totalPurchased')} value={fmt(balance.totalPurchased)} icon="💰" color="accent" />
+          <StatCard label={t('purchasing.supplier.outstanding')} value={fmt(balance.outstanding)} icon="📋" color="red" />
+          <StatCard label={t('purchasing.supplier.openInvoices')} value={balance.openInvoices} icon="🧾" color="blue" />
+          <StatCard label={t('purchasing.supplier.receipts')} value={balance.receiptCount} icon="📦" color="green" />
         </div>
       )}
 
-      <LayoutSection variant="raised" title={isNew ? 'Supplier details' : 'Edit supplier'}>
+      <LayoutSection variant="raised" title={isNew ? t('purchasing.supplier.details') : t('purchasing.supplier.edit')}>
         <form className="inv-form form-region" onSubmit={handleSave}>
           <label>
-            Name
+            {t('purchasing.supplier.name')}
             <input
               className="input"
               value={form.supplier_name}
@@ -130,7 +132,7 @@ export default function SupplierDetailPage() {
             />
           </label>
           <label>
-            Group
+            {t('purchasing.supplier.group')}
             <input
               className="input"
               value={form.supplier_group}
@@ -139,18 +141,18 @@ export default function SupplierDetailPage() {
             />
           </label>
           <label>
-            Type
+            {t('purchasing.supplier.type')}
             <select
               className="input"
               value={form.supplier_type}
               onChange={(e) => setForm((f) => ({ ...f, supplier_type: e.target.value }))}
             >
-              <option>Company</option>
-              <option>Individual</option>
+              <option value="Company">{t('purchasing.supplier.company')}</option>
+              <option value="Individual">{t('purchasing.supplier.individual')}</option>
             </select>
           </label>
           <label>
-            Mobile
+            {t('purchasing.supplier.mobile')}
             <input
               className="input"
               value={form.mobile_no}
@@ -158,7 +160,7 @@ export default function SupplierDetailPage() {
             />
           </label>
           <label>
-            Email
+            {t('purchasing.supplier.email')}
             <input
               className="input"
               type="email"
@@ -167,7 +169,7 @@ export default function SupplierDetailPage() {
             />
           </label>
           <label>
-            Website
+            {t('purchasing.supplier.website')}
             <input
               className="input"
               value={form.website}
@@ -175,7 +177,7 @@ export default function SupplierDetailPage() {
             />
           </label>
           <label>
-            Tax ID
+            {t('purchasing.supplier.taxId')}
             <input
               className="input"
               value={form.tax_id}
@@ -183,7 +185,7 @@ export default function SupplierDetailPage() {
             />
           </label>
           <label>
-            Country
+            {t('purchasing.supplier.country')}
             <input
               className="input"
               value={form.country}
@@ -191,7 +193,7 @@ export default function SupplierDetailPage() {
             />
           </label>
           <label>
-            Payment terms
+            {t('purchasing.supplier.paymentTerms')}
             <input
               className="input"
               value={form.payment_terms}
@@ -199,7 +201,7 @@ export default function SupplierDetailPage() {
             />
           </label>
           <label>
-            Notes
+            {t('purchasing.supplier.notes')}
             <textarea
               className="input"
               rows={3}
@@ -208,7 +210,7 @@ export default function SupplierDetailPage() {
             />
           </label>
           <Btn type="submit" variant="primary" size="md" loading={saving}>
-            {isNew ? 'Create supplier' : 'Save changes'}
+            {isNew ? t('purchasing.supplier.create') : t('purchasing.supplier.saveChanges')}
           </Btn>
         </form>
         {msg && <p className="inv-success">{msg}</p>}
@@ -216,25 +218,25 @@ export default function SupplierDetailPage() {
       </LayoutSection>
 
       {!isNew && balance && (
-        <LayoutSection variant="raised" title="Recent documents">
+        <LayoutSection variant="raised" title={t('purchasing.supplier.recentDocs')}>
           <p className="page-header__sub">
-            Invoices: {balance.recentInvoices.map((i) => i.name).join(', ') || '—'}
+            {t('purchasing.supplier.invoices')}: {balance.recentInvoices.map((i) => i.name).join(', ') || '—'}
           </p>
           <p className="page-header__sub">
-            Receipts: {balance.recentReceipts.map((r) => r.name).join(', ') || '—'}
+            {t('purchasing.supplier.receipts')}: {balance.recentReceipts.map((r) => r.name).join(', ') || '—'}
           </p>
           <div className="toolbar">
             <Link
               to={`/admin/purchasing/receive?supplier=${encodeURIComponent(id)}`}
               className="btn btn--primary btn--sm"
             >
-              Receive stock
+              {t('purchasing.supplier.receiveStock')}
             </Link>
             <Link
               to={`/admin/purchasing/invoices?supplier=${encodeURIComponent(id)}`}
               className="btn btn--ghost btn--sm"
             >
-              Purchase invoice
+              {t('purchasing.supplier.purchaseInvoice')}
             </Link>
           </div>
         </LayoutSection>

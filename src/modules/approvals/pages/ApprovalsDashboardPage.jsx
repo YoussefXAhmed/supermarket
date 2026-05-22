@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   ApiErrorCard,
   Btn,
@@ -26,6 +27,7 @@ import ShiftApprovalConfirmModal from '../../shifts/components/ShiftApprovalConf
 import { getUserFriendlyMessage } from '../../../utils/errorHandling';
 
 export default function ApprovalsDashboardPage() {
+  const { t } = useTranslation();
   const { user, capabilities, canApproveShift } = useAuth();
   const { loading, error, reload, purchases, pendingShifts, rejectedShifts, highVarianceShifts, historyShifts, counts } =
     useApprovalQueues();
@@ -50,7 +52,7 @@ export default function ApprovalsDashboardPage() {
   };
 
   const onPurchaseReject = async (name) => {
-    if (!window.confirm(`Reject purchase receipt ${name}?`)) return;
+    if (!window.confirm(t('approvals.rejectConfirm', { name }))) return;
     setPurchaseBusy(name);
     try {
       await rejectPurchaseReceipt(name, { notes });
@@ -105,37 +107,37 @@ export default function ApprovalsDashboardPage() {
   return (
     <DashboardLayout>
       <PageHeader
-        title="Approvals"
-        subtitle="Pending purchases, shift closings, variance alerts, and recent history."
+        title={t('approvals.dashboard.title')}
+        subtitle={t('approvals.dashboard.subtitle')}
         dense
-        actions={<Btn variant="ghost" size="sm" onClick={reload}>Refresh</Btn>}
+        actions={<Btn variant="ghost" size="sm" onClick={reload}>{t('common.refresh')}</Btn>}
       />
 
-      <section className="layout-grid layout-grid--kpi" aria-label="Approval counts">
-        <StatCard label="Purchase pending" value={counts.purchases} icon="🛍️" color="amber" compact />
-        <StatCard label="Shift pending" value={counts.shifts} icon="◷" color="blue" compact />
-        <StatCard label="High variance" value={counts.highVariance} icon="⚠" color="red" compact />
-        <StatCard label="Rejected shifts" value={counts.rejected} icon="✕" color="default" compact />
+      <section className="layout-grid layout-grid--kpi" aria-label={t('approvals.dashboard.title')}>
+        <StatCard label={t('approvals.purchasePending')} value={counts.purchases} icon="🛍️" color="amber" compact />
+        <StatCard label={t('approvals.shiftPending')} value={counts.shifts} icon="◷" color="blue" compact />
+        <StatCard label={t('approvals.highVarianceStat')} value={counts.highVariance} icon="⚠" color="red" compact />
+        <StatCard label={t('approvals.rejectedShifts')} value={counts.rejected} icon="✕" color="default" compact />
       </section>
 
       <LayoutSection variant="flat">
         <label className="approval-notes-field">
-          Approval notes (optional)
-          <input className="input" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Reason or reference" />
+          {t('approvals.notes')}
+          <input className="input" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t('approvals.notesPlaceholder')} />
         </label>
       </LayoutSection>
 
       {loading && <PageLoading />}
-      {!loading && error && <ApiErrorCard title="Could not load approvals" message={error} onRetry={reload} />}
+      {!loading && error && <ApiErrorCard title={t('approvals.couldNotLoad')} message={error} onRetry={reload} />}
       {!loading && purchaseErr && (
-        <ApiErrorCard title="Could not complete approval" message={purchaseErr} />
+        <ApiErrorCard title={t('approvals.couldNotComplete')} message={purchaseErr} />
       )}
 
       {!loading && !error && (
         <>
-          <LayoutSection title="Pending purchase approvals" variant="raised">
+          <LayoutSection title={t('approvals.pendingPurchases')} variant="raised">
             {purchases.length === 0 ? (
-              <EmptyState icon="✓" title="No pending purchases" desc="Buying rates within auto-approve limits or none submitted." />
+              <EmptyState icon="✓" title={t('approvals.noPendingPurchases')} desc={t('approvals.noPendingPurchasesDesc')} />
             ) : (
               <div className="approval-list">
                 {purchases.map((doc) => (
@@ -153,13 +155,13 @@ export default function ApprovalsDashboardPage() {
               </div>
             )}
             <p className="approval-section-link">
-              <Link to="/admin/purchasing/approvals">Open purchase approvals</Link>
+              <Link to="/admin/purchasing/approvals">{t('approvals.openPurchaseApprovals')}</Link>
             </p>
           </LayoutSection>
 
-          <LayoutSection title="Pending shift closings" variant="raised">
+          <LayoutSection title={t('approvals.pendingShiftClosings')} variant="raised">
             {pendingShifts.length === 0 ? (
-              <EmptyState icon="✓" title="No pending shifts" desc="All shift closings are submitted or none awaiting review." />
+              <EmptyState icon="✓" title={t('approvals.noPendingShifts')} desc={t('approvals.noPendingShiftsDesc')} />
             ) : (
               <div className="approval-list">
                 {pendingShifts.map((session) => (
@@ -176,12 +178,12 @@ export default function ApprovalsDashboardPage() {
               </div>
             )}
             <p className="approval-section-link">
-              <Link to="/admin/shifts/history">Open shift history</Link>
+              <Link to="/admin/shifts/history">{t('approvals.openShiftHistory')}</Link>
             </p>
           </LayoutSection>
 
           {highVarianceShifts.length > 0 && (
-            <LayoutSection title="High variance alerts" variant="raised">
+            <LayoutSection title={t('approvals.highVarianceAlerts')} variant="raised">
               <div className="approval-list">
                 {highVarianceShifts.map((session) => (
                   <ShiftApprovalCard
@@ -199,7 +201,7 @@ export default function ApprovalsDashboardPage() {
           )}
 
           {rejectedShifts.length > 0 && (
-            <LayoutSection title="Rejected operations" variant="raised">
+            <LayoutSection title={t('approvals.rejectedOperations')} variant="raised">
               <div className="approval-list">
                 {rejectedShifts.map((session) => (
                   <ShiftApprovalCard key={`rej-${session.id}`} session={session} user={user} canApprove={false} compact />
@@ -208,15 +210,15 @@ export default function ApprovalsDashboardPage() {
             </LayoutSection>
           )}
 
-          <LayoutSection title="Recent approval history" variant="flat">
+          <LayoutSection title={t('approvals.recentHistory')} variant="flat">
             {historyShifts.length === 0 ? (
-              <p className="page-header__sub">No recent submitted shifts in this view.</p>
+              <p className="page-header__sub">{t('approvals.noRecentHistory')}</p>
             ) : (
               <ul className="approval-history-list">
                 {historyShifts.map((s) => (
                   <li key={s.id}>
-                    <strong>{s.cashier}</strong> — submitted
-                    {s.audit?.approved_by && <span> · approved by {s.audit.approved_by}</span>}
+                    <strong>{s.cashier}</strong> — {t('approvals.submitted')}
+                    {s.audit?.approved_by && <span> · {t('approvals.approvedBy')} {s.audit.approved_by}</span>}
                   </li>
                 ))}
               </ul>

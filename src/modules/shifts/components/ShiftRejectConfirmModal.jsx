@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Btn } from '../../../components/ui';
 import { fmtCurrency } from '../../../utils/format';
 
@@ -8,6 +9,7 @@ export default function ShiftRejectConfirmModal({
   onConfirm,
   onCancel,
 }) {
+  const { t } = useTranslation();
   const [reason, setReason] = useState('');
 
   if (!session) return null;
@@ -21,7 +23,7 @@ export default function ShiftRejectConfirmModal({
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id="shift-reject-title" className="shift-modal__title">
-          Reject shift closing?
+          {t('shifts.rejectModal.title')}
         </h2>
         <p className="shift-modal__lead">
           This marks <strong className="mono">{session.closingName}</strong> as rejected in ERP remarks.
@@ -30,35 +32,35 @@ export default function ShiftRejectConfirmModal({
 
         <ul className="shift-modal__facts">
           <li>
-            <span>Cashier</span>
+            <span>{t('shifts.rejectModal.cashier')}</span>
             <strong>{session.cashier}</strong>
           </li>
           <li>
-            <span>Variance</span>
+            <span>{t('shifts.rejectModal.variance')}</span>
             <strong className="mono">{fmtCurrency(session.variance)}</strong>
           </li>
         </ul>
 
         <label className="shift-modal__reason">
-          <span>Reason (optional)</span>
+          <span>{t('shifts.rejectModal.reason')}</span>
           <textarea
             rows={3}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="Explain why this closing is rejected…"
+            placeholder={t('shifts.rejectModal.placeholder')}
           />
         </label>
 
         <div className="shift-modal__actions">
           <Btn variant="ghost" onClick={onCancel} disabled={loading}>
-            Cancel
+            {t('common.cancel')}
           </Btn>
           <Btn
             variant="danger"
             loading={loading}
             onClick={() => onConfirm(reason.trim())}
           >
-            Reject closing
+            {t('shifts.rejectModal.rejectClosing')}
           </Btn>
         </div>
       </div>

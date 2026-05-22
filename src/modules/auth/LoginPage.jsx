@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { login, logout as apiLogout } from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
@@ -8,6 +9,7 @@ import '../../styles/login.css';
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default function LoginPage() {
+  const { t } = useTranslation();
   const [usr, setUsr]   = useState('');
   const [pwd, setPwd]   = useState('');
   const [err, setErr]   = useState('');
@@ -44,18 +46,15 @@ export default function LoginPage() {
       if (authState.user && authState.homePath && authState.homePath !== '/login') {
         navigate(authState.homePath, { replace: true });
       } else if (authState.reason === 'roles-unreadable') {
-        setErr(
-          authState.authError ||
-            'Your role permissions could not be verified. Contact an administrator.'
-        );
+        setErr(authState.authError || t('login.rolesError'));
         if (import.meta.env.DEV && authState.authError?.includes('elmahdi')) {
           console.warn('[login] Install erp-custom/elmahdi on ERPNext — see erp-custom/README.md');
         }
       } else {
-        setErr('Login failed: no workspace access is assigned to this account.');
+        setErr(t('login.noWorkspace'));
       }
     } catch (e) {
-      setErr(e.message || 'Invalid credentials');
+      setErr(e.message || t('login.loginBtn'));
     } finally {
       setLoading(false);
     }
@@ -72,25 +71,25 @@ export default function LoginPage() {
         <div className="login-card__header">
           <img className="login-card__logo" src="/logo.png" alt="Elmahdi logo" />
           <h1 className="login-card__title">Elmahdi ERP</h1>
-          <p className="login-card__sub">Sign in to your workspace</p>
+          <p className="login-card__sub">{t('login.title')}</p>
         </div>
 
         <form className="login-form" onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label">Email / Username</label>
+            <label className="form-label">{t('login.usernameLabel')}</label>
             <input
               className="form-input"
               type="text"
               value={usr}
               onChange={e => setUsr(e.target.value)}
-              placeholder="admin@example.com"
+              placeholder={t('login.usernamePlaceholder')}
               autoFocus
               required
             />
           </div>
 
           <div className="form-group">
-            <label className="form-label">Password</label>
+            <label className="form-label">{t('login.passwordLabel')}</label>
             <input
               className="form-input"
               type="password"
@@ -104,7 +103,7 @@ export default function LoginPage() {
           {err && <p className="login-error">{err}</p>}
 
           <Btn type="submit" variant="primary" size="lg" loading={loading} style={{ width: '100%' }}>
-            Sign In
+            {t('login.loginBtn')}
           </Btn>
         </form>
 
