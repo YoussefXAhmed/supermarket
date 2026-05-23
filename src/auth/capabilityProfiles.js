@@ -123,9 +123,11 @@ const STORE_MANAGER = inv({
   operationalPersona: 'store_manager',
 });
 
-/** HR — operational user provisioning only (no finance/inventory/security). */
+/** HR — workforce records + operational user provisioning (no finance/inventory/security). */
 const HR_OFFICER = {
   canAccessHRWorkspace: true,
+  canManageEmployees: true,
+  canViewEmployees: true,
   canManageOperationalUsers: true,
   canManageUsers: true,
   canAccessAdminWorkspace: false,

@@ -15,20 +15,18 @@ Implementation: `erp-custom/elmahdi/elmahdi/api/shift_authorization.py` + `pos_c
 - **Close request**: create **POS Closing Entry** draft (`prepare_closing_entry` / REST create). **No submit** on POS Closing Entry.
 - **Never**: approve, reject, or submit a POS Closing Entry (enforced in `before_submit_pos_closing` and DocPerm: submit = 0 for POS User / Sales User on POS Closing).
 
-### Store manager (operational)
+### Store manager (monitor only)
 
-- **Role profile** (recommended): `Elmahdi Store Manager` → ERP roles include at least **Sales Manager**, **Stock Manager**, **Purchase Manager**, and **POS Manager** (see `provision_operational_users.py`).
-- **May**: approve / reject / finalize shift closing via **`elmahdi.api.pos_closing_approval.approve_pos_closing_entry`** / **`reject_pos_closing_entry`** (SPA must not use raw `PUT { docstatus: 1 }` for closings).
-- **ERP DocPerm**: **Read, Write, Submit** (and Cancel where applicable) on **POS Closing Entry** for those manager roles (`operational_permissions.py`).
+- **Role profile**: `Elmahdi Store Manager`.
+- **May**: view shift reports / POS monitor (`can_view_shift_reports`, `can_view_pos_monitor`).
+- **Must not**: approve, reject, or call `pos_closing_approval.*` (enforced in `shift_authorization.py` + SPA `canApproveShift: false`).
+- **ERP DocPerm**: read/monitor on closings; **no** submit on POS Closing Entry for manager ERP roles.
 
-### POS Manager (ERP role)
-
-- Same **POS Closing Entry** approval capability as other approver ERP roles; listed explicitly for sites that assign **POS Manager** only.
-
-### Accountant (optional)
+### Accountant (sole operational approver)
 
 - **Role profile**: `Elmahdi Accountant` → **Accounts User** / **Accounts Manager**.
-- **May**: approve / reject / submit POS Closing Entry (same whitelisted methods).
+- **May**: approve / reject / finalize via **`approve_pos_closing_entry`** / **`reject_pos_closing_entry`**.
+- **ERP DocPerm**: write+submit on **POS Closing Entry**; write+submit on **POS Opening Entry** (ERPNext `update_after_submit` when closing is finalized). **Cannot open new shifts** — `before_submit` on POS Opening Entry requires `can_open_shift` (cashier only).
 
 ### Administrator / System Manager (break-glass)
 
@@ -42,9 +40,8 @@ Implementation: `erp-custom/elmahdi/elmahdi/api/shift_authorization.py` + `pos_c
 
 ## SPA alignment
 
-- **Capability** `canApproveShift` must stay aligned with this policy:
-  - From **ERP roles**: any of `SHIFT_APPROVE_ROLES` in `src/auth/capabilities.js`.
-  - From **role profile**: `Elmahdi Store Manager`, `Elmahdi Accountant`, `Elmahdi Administrator` keep `canApproveShift: true` in `capabilityProfiles.js` (mirrors `SHIFT_CLOSING_APPROVER_ROLE_PROFILES` on the server).
+- **Capability** `canApproveShift`: **true** only for `Elmahdi Accountant` and break-glass (`capabilityProfiles.js` + `spa_authorization.py`). Store manager is **false**.
+- Backend approver profiles: `SHIFT_CLOSING_APPROVER_ROLE_PROFILES` = `Elmahdi Accountant`, `Elmahdi Administrator` only (no ERP role bypass).
 
 ## Operational commands
 

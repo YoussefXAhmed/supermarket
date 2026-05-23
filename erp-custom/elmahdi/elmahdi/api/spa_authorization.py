@@ -54,7 +54,8 @@ _CAPS_STORE_MANAGER = {
 	"can_view_purchase_approvals": True,
 	"can_view_approvals_dashboard": True,
 	"can_approve_purchasing": True,
-	"can_approve_shift": True,
+	"can_approve_shift": False,
+	"can_view_shift_reports": True,
 	"can_view_pos_monitor": True,
 }
 
@@ -69,7 +70,8 @@ _CAPS_ACCOUNTANT = {
 	"can_access_invoice_matching": True,
 	"can_view_purchase_approvals": True,
 	"can_view_approvals_dashboard": True,
-	"can_approve_purchasing_accountant": True,
+	"can_approve_purchasing": False,
+	"can_approve_purchasing_accountant": False,
 	"can_approve_shift": True,
 }
 
@@ -244,17 +246,20 @@ def assert_may_view_purchase_approvals() -> None:
 
 
 def assert_may_approve_purchasing_manager() -> None:
-	if is_break_glass_user():
-		return
-	if has_cap("can_approve_purchasing") or has_cap("can_approve_purchasing_accountant"):
-		return
-	frappe.throw(_("Manager approval is not permitted for your role."), frappe.PermissionError)
+	"""Purchase Receipt workflow — store manager only."""
+	from elmahdi.api.purchase_authorization import assert_may_act_as_purchase_approver
+
+	assert_may_act_as_purchase_approver()
 
 
 def assert_may_approve_purchasing_accountant() -> None:
+	"""Accountants must not approve purchase receipts (AP/PI/payment is separate)."""
 	if is_break_glass_user():
 		return
-	_assert_cap("can_approve_purchasing_accountant", "Accountant approval is not permitted for your role.")
+	frappe.throw(
+		_("Accountants cannot approve purchase receipts. Store manager must approve; finance handles AP and payments."),
+		frappe.PermissionError,
+	)
 
 
 def assert_may_access_finance() -> None:
@@ -345,11 +350,19 @@ def assert_may_read_buying_rates() -> None:
 
 
 def assert_may_repair_shifts() -> None:
+	"""Repair draft openings — accountant / break-glass only (not store manager)."""
 	if is_break_glass_user():
 		return
 	if has_cap("can_approve_shift"):
 		return
 	frappe.throw(_("Not permitted to repair opening entries."), frappe.PermissionError)
+
+
+def assert_may_approve_shift_closing() -> None:
+	"""POS Closing Entry approve/reject/finalize — delegates to shift_authorization."""
+	from elmahdi.api.shift_authorization import assert_may_act_as_pos_closing_approver
+
+	assert_may_act_as_pos_closing_approver()
 
 
 def assert_may_access_hr_workspace() -> None:

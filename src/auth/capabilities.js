@@ -93,6 +93,8 @@ const CAPABILITY_DEFAULTS = {
   canManageUsers: false,
   canManageOperationalUsers: false,
   canAccessHRWorkspace: false,
+  canManageEmployees: false,
+  canViewEmployees: false,
   canManageSettings: false,
   canManageSystem: false,
   operationalPersona: '',
@@ -169,6 +171,12 @@ function finalizeCapabilities(caps) {
   c.canAccessInvoiceMatching = Boolean(
     c.canAccessInvoiceMatching ||
       c.canAccessAccountantWorkspace ||
+      c.canManageSystem,
+  );
+
+  c.canViewEmployees = Boolean(
+    c.canViewEmployees || c.canManageEmployees ||
+      (c.canAccessHRWorkspace && c.operationalPersona === 'hr') ||
       c.canManageSystem,
   );
 

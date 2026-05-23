@@ -7,8 +7,15 @@ export const FALLBACK_ERROR_MESSAGE = 'Something went wrong. Please try again.';
 export const NETWORK_ERROR_MESSAGE =
   'Unable to reach ERPNext. Check your connection and that the server is running.';
 
-export const AUTH_ERROR_MESSAGE =
+/** Shown when an existing authenticated session is no longer valid. */
+export const SESSION_EXPIRED_MESSAGE =
   'Your session may have expired. Please sign in again.';
+
+/** @deprecated Use SESSION_EXPIRED_MESSAGE */
+export const AUTH_ERROR_MESSAGE = SESSION_EXPIRED_MESSAGE;
+
+/** Generic login failure — does not reveal whether the email exists. */
+export const INVALID_CREDENTIALS_MESSAGE = 'Incorrect email or password';
 
 export const PERMISSION_ERROR_MESSAGE =
   'You do not have permission for this action in ERPNext. Contact your store manager or administrator.';
@@ -72,6 +79,106 @@ export function parseFrappeServerMessages(data) {
   } catch {
     return null;
   }
+}
+
+const INVALID_LOGIN_RE =
+  /incorrect password|invalid login|invalid credentials|authenticationerror|authentication error|login credentials|not permitted to login|disabled user|user disabled/i;
+
+/**
+ * Login POST or explicit loginAttempt flag.
+ * @param {unknown} error
+ */
+export function isLoginRequest(error) {
+  const cfg = error?.config || error?.response?.config || error?.cause?.config;
+  if (cfg?.loginAttempt) return true;
+  const url = String(cfg?.url || '');
+  return /\/api\/method\/login\b/i.test(url);
+}
+
+function isNetworkFailure(error, status) {
+  const response = error?.response;
+  if (response) return false;
+  const code = error?.code;
+  const msg = String(error?.message || '');
+  return (
+    code === 'ECONNABORTED' ||
+    code === 'ERR_NETWORK' ||
+    /network error/i.test(msg) ||
+    (!response && status == null && /fetch|network/i.test(msg))
+  );
+}
+
+/**
+ * Wrong password / invalid login on the login form — never session expiry.
+ * @param {unknown} error
+ * @param {{ status?: number|null, code?: string|null, message?: string, raw?: object|null }} [info]
+ */
+export function isInvalidCredentialsError(error, info = null) {
+  if (!isLoginRequest(error)) return false;
+  const extracted = info || extractERPError(error);
+  if (isNetworkFailure(error, extracted.status)) return false;
+  if (extracted.isInvalidCredentials) return true;
+  const status = extracted.status;
+  const code = String(extracted.code || extracted.raw?.exc_type || '');
+  const msg = String(extracted.message || '').toLowerCase();
+  if (status === 401 || status === 403) return true;
+  if (/AuthenticationError/i.test(code)) return true;
+  if (INVALID_LOGIN_RE.test(msg)) return true;
+  if (status != null && status >= 400) return true;
+  return true;
+}
+
+/**
+ * Existing session became invalid on an authenticated API call.
+ * @param {unknown} error
+ * @param {{ status?: number|null, message?: string, isSessionExpired?: boolean, isAuthError?: boolean }} [info]
+ */
+export function isSessionExpiredError(error, info = null) {
+  if (isLoginRequest(error)) return false;
+  const extracted = info || extractERPError(error);
+  if (extracted.isSessionExpired) return true;
+  if (extracted.status === 401) return true;
+  const msg = String(extracted.message || '').toLowerCase();
+  return /session.*expired|not logged in|login required|session expired/i.test(msg);
+}
+
+/**
+ * User-facing auth message for login form (localized when `t` is provided).
+ * @param {unknown} error
+ * @param {(key: string) => string} [t]
+ */
+export function getLoginErrorMessage(error, t) {
+  const tr = (key, fallback) => (typeof t === 'function' ? t(key) : fallback);
+  const info = extractERPError(error);
+
+  if (isNetworkFailure(error, info.status) || info.isNetworkError) {
+    return tr('auth.networkError', NETWORK_ERROR_MESSAGE);
+  }
+  if (String(info.message || '').toLowerCase().includes('timeout')) {
+    return tr('auth.networkError', NETWORK_ERROR_MESSAGE);
+  }
+  return tr('auth.invalidCredentials', INVALID_CREDENTIALS_MESSAGE);
+}
+
+/**
+ * User-facing auth message for authenticated flows (localized when `t` is provided).
+ * @param {unknown} error
+ * @param {(key: string) => string} [t]
+ */
+export function getAuthErrorMessage(error, t) {
+  const tr = (key, fallback) => (typeof t === 'function' ? t(key) : fallback);
+  const info = extractERPError(error);
+
+  if (isInvalidCredentialsError(error, info)) {
+    return tr('auth.invalidCredentials', INVALID_CREDENTIALS_MESSAGE);
+  }
+  if (isNetworkFailure(error, info.status) || info.isNetworkError) {
+    return tr('auth.networkError', NETWORK_ERROR_MESSAGE);
+  }
+  if (isSessionExpiredError(error, info)) {
+    return tr('auth.sessionExpired', SESSION_EXPIRED_MESSAGE);
+  }
+  return null;
 }
 
 const STOCK_ERROR_RE =
@@ -188,6 +295,9 @@ export function extractERPError(error) {
       raw: error.raw ?? null,
       isPermissionError: Boolean(error.isPermissionError),
       isAuthError: Boolean(error.isAuthError),
+      isInvalidCredentials: Boolean(error.isInvalidCredentials),
+      isSessionExpired: Boolean(error.isSessionExpired),
+      isNetworkError: Boolean(error.isNetworkError),
     };
   }
 
@@ -202,16 +312,35 @@ export function extractERPError(error) {
     (typeof error.message === 'string' ? error.message : null) ||
     FALLBACK_ERROR_MESSAGE;
 
-  if (status === 401) {
-    message = AUTH_ERROR_MESSAGE;
+  const loginReq = isLoginRequest(error);
+  let isInvalidCredentials = false;
+  let isSessionExpired = false;
+  let isNetworkError = false;
+
+  if (loginReq) {
+    if (isNetworkFailure(error, status)) {
+      message = NETWORK_ERROR_MESSAGE;
+      isNetworkError = true;
+    } else if (!response && String(error.message || '').toLowerCase().includes('timeout')) {
+      message = NETWORK_ERROR_MESSAGE;
+      isNetworkError = true;
+    } else {
+      message = INVALID_CREDENTIALS_MESSAGE;
+      isInvalidCredentials = true;
+    }
+  } else if (status === 401) {
+    message = SESSION_EXPIRED_MESSAGE;
+    isSessionExpired = true;
   } else if (isPermissionDenied({ status, code: data.exc_type, message, raw: data })) {
     if (message === FALLBACK_ERROR_MESSAGE || /session|login|expired/i.test(message)) {
       message = PERMISSION_ERROR_MESSAGE;
     }
-  } else if (!response && (error.code === 'ECONNABORTED' || error.message?.includes('Network'))) {
+  } else if (isNetworkFailure(error, status)) {
     message = NETWORK_ERROR_MESSAGE;
+    isNetworkError = true;
   } else if (!response && error.message?.includes('timeout')) {
-    message = 'The request timed out. Please try again.';
+    message = NETWORK_ERROR_MESSAGE;
+    isNetworkError = true;
   }
 
   if (typeof message !== 'string') message = String(message);
@@ -219,6 +348,20 @@ export function extractERPError(error) {
     .replace(/^frappe\.exceptions\.\w+:\s*/i, '')
     .replace(/^Exception:\s*/i, '')
     .trim();
+
+  if (loginReq && !isNetworkError) {
+    message = INVALID_CREDENTIALS_MESSAGE;
+    isInvalidCredentials = true;
+  } else if (!loginReq && status === 401) {
+    message = SESSION_EXPIRED_MESSAGE;
+    isSessionExpired = true;
+  } else if (
+    !loginReq &&
+    /session.*expired|not logged in|login required/i.test(message.toLowerCase())
+  ) {
+    message = SESSION_EXPIRED_MESSAGE;
+    isSessionExpired = true;
+  }
 
   const base = {
     message,
@@ -231,7 +374,10 @@ export function extractERPError(error) {
       message,
       raw: data,
     }),
-    isAuthError: status === 401,
+    isAuthError: isSessionExpired || status === 401,
+    isInvalidCredentials,
+    isSessionExpired,
+    isNetworkError,
   };
   base.isStockError = isStockValidationError(base);
   base.isInvalidShiftSession = isInvalidShiftSessionError(base);
@@ -254,6 +400,9 @@ export function normalizeERPError(error) {
     isAuthError,
     isStockError,
     isInvalidShiftSession,
+    isInvalidCredentials,
+    isSessionExpired,
+    isNetworkError,
   } = extracted;
   const err = new Error(
     isInvalidShiftSession ? INVALID_SHIFT_SESSION_MESSAGE : message,
@@ -266,9 +415,13 @@ export function normalizeERPError(error) {
   err.isAuthError = isAuthError;
   err.isStockError = isStockError;
   err.isInvalidShiftSession = isInvalidShiftSession;
+  err.isInvalidCredentials = isInvalidCredentials;
+  err.isSessionExpired = isSessionExpired;
+  err.isNetworkError = isNetworkError;
   if (isInvalidShiftSession) err.isSilent = true;
   if (error && typeof error === 'object') {
     err.cause = error;
+    if (error.config) err.config = error.config;
     if (error.invoiceName) err.invoiceName = error.invoiceName;
     if (error.recoverable != null) err.recoverable = error.recoverable;
   }
@@ -285,6 +438,15 @@ export function getUserFriendlyMessage(error, fallback = FALLBACK_ERROR_MESSAGE)
   const info = extractERPError(error);
   if (info.isInvalidShiftSession || error?.isInvalidShiftSession) {
     return INVALID_SHIFT_SESSION_MESSAGE;
+  }
+  if (info.isInvalidCredentials) {
+    return INVALID_CREDENTIALS_MESSAGE;
+  }
+  if (info.isSessionExpired || (info.status === 401 && !isLoginRequest(error))) {
+    return SESSION_EXPIRED_MESSAGE;
+  }
+  if (info.isNetworkError) {
+    return NETWORK_ERROR_MESSAGE;
   }
   // Stock errors should only be formatted as POS stock banners when the caller explicitly
   // flags the error as POS stock context (posWarehouse/stockHint).

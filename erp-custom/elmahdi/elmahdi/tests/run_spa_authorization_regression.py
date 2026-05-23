@@ -12,6 +12,8 @@ import json
 import frappe
 from frappe import _
 
+from elmahdi.api.purchase_authorization import may_act_as_purchase_approver
+from elmahdi.api.shift_authorization import may_act_as_pos_closing_approver
 from elmahdi.api.spa_authorization import (
 	assert_may_access_finance,
 	assert_may_access_hr_workspace,
@@ -221,29 +223,72 @@ def execute():
 				message="Inventory blocked from purchasing workspace",
 			)
 
+		if _user_exists(ACCOUNTANT_USER):
+			_step(
+				steps,
+				step="22_accountant_purchase_approve_denied",
+				ok=not may_act_as_purchase_approver(ACCOUNTANT_USER),
+				message="Accountant must not approve purchase receipts",
+			)
+			_step(
+				steps,
+				step="23_accountant_no_purchase_approve_cap",
+				ok=not has_cap("can_approve_purchasing", ACCOUNTANT_USER)
+				and not has_cap("can_approve_purchasing_accountant", ACCOUNTANT_USER),
+				message="",
+			)
+
+		if _user_exists(MANAGER_USER):
+			_step(
+				steps,
+				step="24_manager_purchase_approve_allowed",
+				ok=may_act_as_purchase_approver(MANAGER_USER),
+				message="Store manager may approve purchase receipts",
+			)
+			_step(
+				steps,
+				step="25_manager_shift_approve_denied",
+				ok=not may_act_as_pos_closing_approver(MANAGER_USER),
+				message="Store manager must not approve shift closings",
+			)
+			_step(
+				steps,
+				step="26_manager_shift_cap_denied",
+				ok=not has_cap("can_approve_shift", MANAGER_USER),
+				message="can_approve_shift false for store manager profile",
+			)
+
+		if _user_exists(ACCOUNTANT_USER):
+			_step(
+				steps,
+				step="27_accountant_shift_approve_allowed",
+				ok=may_act_as_pos_closing_approver(ACCOUNTANT_USER),
+				message="Accountant may approve shift closings",
+			)
+
 		if _user_exists(HR_USER):
 			frappe.set_user(HR_USER)
 			_step(
 				steps,
-				step="22_hr_workspace_allowed",
+				step="28_hr_workspace_allowed",
 				ok=not _expect_permission_error(assert_may_access_hr_workspace),
 				message="HR passes HR workspace gate",
 			)
 			_step(
 				steps,
-				step="23_hr_manage_operational_users_allowed",
+				step="29_hr_manage_operational_users_allowed",
 				ok=not _expect_permission_error(assert_may_manage_operational_users),
 				message="HR passes operational user management gate",
 			)
 			_step(
 				steps,
-				step="24_hr_finance_blocked",
+				step="30_hr_finance_blocked",
 				ok=_expect_permission_error(assert_may_access_finance),
 				message="HR blocked from finance",
 			)
 			_step(
 				steps,
-				step="25_hr_no_admin_cap",
+				step="31_hr_no_admin_cap",
 				ok=not has_cap("can_access_admin_workspace", HR_USER)
 				and not has_cap("can_manage_system", HR_USER),
 				message="HR profile lacks admin escalation caps",

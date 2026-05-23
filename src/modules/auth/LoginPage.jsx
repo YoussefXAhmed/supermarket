@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { login, logout as apiLogout } from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
+import { getLoginErrorMessage } from '../../utils/errorHandling';
 import { Btn } from '../../components/ui';
 import '../../styles/login.css';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default function LoginPage() {
+  const { t } = useTranslation();
   const [usr, setUsr]   = useState('');
   const [pwd, setPwd]   = useState('');
   const [err, setErr]   = useState('');
@@ -55,7 +58,7 @@ export default function LoginPage() {
         setErr('Login failed: no workspace access is assigned to this account.');
       }
     } catch (e) {
-      setErr(e.message || 'Invalid credentials');
+      setErr(getLoginErrorMessage(e, t));
     } finally {
       setLoading(false);
     }

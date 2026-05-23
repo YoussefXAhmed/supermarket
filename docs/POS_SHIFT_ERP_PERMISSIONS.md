@@ -10,8 +10,10 @@
 
 | Symptom | Typical cause |
 |---------|----------------|
+| 403 on **`approve_pos_closing_entry`** for **accountant** (auth gate passes) | ERPNext `on_submit` updates linked **POS Opening Entry** (`update_after_submit`). Accounts roles had **read-only** on opening → `PermissionError` surfaced as 403. **Fix:** grant Accounts User/Manager **write+submit** on POS Opening Entry + `before_submit` hook blocks new shift opens; use `doc.flags.ignore_permissions` during approved closing submit. |
 | 403 on **create** POS Closing Entry | Role lacks **Create** and/or **Write** on `POS Closing Entry` |
-| 403 on **submit** (`PUT docstatus: 1`) | Role lacks **Submit** — **expected for cashier**; SPA must not call submit |
+| 403 on **submit** (`PUT docstatus: 1`) | Role lacks **Submit** — **expected for cashier**; SPA must use `approve_pos_closing_entry` |
+| 403 on **`approve_pos_closing_entry`** for **store manager** | **Expected** — `shift_authorization` / `can_approve_shift: false` |
 | UI shows “session expired” on 403 | Was mapping all 403 → auth message — **fixed** in `errorHandling.js` |
 | `prepare_closing_entry` worked in dev only | Previously used `ignore_permissions=True` — **removed**; uses normal `insert()` |
 

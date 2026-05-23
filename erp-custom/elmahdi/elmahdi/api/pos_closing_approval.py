@@ -1,5 +1,5 @@
 """
-POS Closing Entry — cashier draft only; manager/accountant finalize via whitelisted methods.
+POS Closing Entry — cashier draft only; accountant finalizes via whitelisted methods.
 """
 
 from __future__ import annotations
@@ -68,7 +68,7 @@ def before_submit_pos_closing(doc, method=None):
 	roles = user_erp_roles()
 	if roles & CASHIER_ERP_ROLES:
 		frappe.throw(
-			_("Cashiers cannot submit POS Closing Entry. A store manager must approve the closing."),
+			_("Cashiers cannot submit POS Closing Entry. An accountant must approve the closing."),
 			frappe.PermissionError,
 		)
 
@@ -79,7 +79,7 @@ def before_submit_pos_closing(doc, method=None):
 
 
 def on_update_pos_closing(doc, method=None):
-	"""Mark draft closings pending manager/accountant review."""
+	"""Mark draft closings pending accountant review."""
 	if doc.docstatus != 0 or getattr(frappe.flags, "elmahdi_pos_closing_skip_pending", False):
 		return
 	pct = _cash_variance_pct(doc)
@@ -115,12 +115,12 @@ def approve_pos_closing_entry(name, notes=""):
 		frappe.flags.elmahdi_pos_closing_skip_pending = False
 
 	frappe.flags.elmahdi_pos_closing_approval_submit = True
-	prev_ignore = bool(getattr(frappe.flags, "ignore_permissions", False))
-	frappe.flags.ignore_permissions = True
+	prev_doc_ignore = bool(doc.flags.ignore_permissions)
+	doc.flags.ignore_permissions = True
 	try:
 		doc.submit()
 	finally:
-		frappe.flags.ignore_permissions = prev_ignore
+		doc.flags.ignore_permissions = prev_doc_ignore
 		frappe.flags.elmahdi_pos_closing_approval_submit = False
 
 	return {"name": doc.name, "docstatus": doc.docstatus, "status": "submitted"}

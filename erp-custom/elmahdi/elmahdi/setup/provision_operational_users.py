@@ -45,6 +45,18 @@ ROLE_PROFILES = {
 	"Elmahdi HR Officer": [ELMAHDI_HR_USER_ROLE],
 }
 
+# Dev/demo passwords (operational logins). Re-run reset_operational_passwords after provision.
+OPERATIONAL_PASSWORDS: dict[str, str] = {
+	"Administrator": "admin12",
+	"cashier@elmahdi.com": "pos12",
+	"inventory@elmahdi.com": "inventory12",
+	"purchasing@elmahdi.com": "purchase12",
+	"manager@elmahdi.com": "manager12",
+	"accountant@elmahdi.com": "accountant12",
+	"hr@elmahdi.com": "hr12",
+	"youssefayyman@gmail.com": "admin12",
+}
+
 USERS = [
 	{
 		"email": "cashier@elmahdi.com",
@@ -98,7 +110,6 @@ USERS = [
 		"last_name": "Admin",
 		"role_profile": "Elmahdi Administrator",
 		"warehouses": [MAIN_WH, OUTER_WH],
-		"reset_password": False,
 	},
 ]
 
@@ -106,6 +117,22 @@ USERS = [
 def _random_password(length: int = 14) -> str:
 	alphabet = string.ascii_letters + string.digits + "!@#$%"
 	return "".join(secrets.choice(alphabet) for _ in range(length))
+
+
+def _password_for_user(email: str) -> str | None:
+	return OPERATIONAL_PASSWORDS.get(email)
+
+
+def reset_operational_passwords() -> list[dict]:
+	"""Set known dev passwords for operational users (idempotent)."""
+	updated: list[dict] = []
+	for email, password in OPERATIONAL_PASSWORDS.items():
+		if not frappe.db.exists("User", email):
+			continue
+		update_password(email, password)
+		updated.append({"email": email, "password_set": True})
+	frappe.db.commit()
+	return updated
 
 
 def _ensure_erp_role(role_name: str) -> None:
@@ -237,7 +264,11 @@ def provision_all() -> list[dict]:
 
 	results = []
 	for spec in USERS:
-		pwd = None if spec.get("reset_password") is False else _random_password()
+		email = spec["email"]
+		if spec.get("reset_password") is False:
+			pwd = None
+		else:
+			pwd = _password_for_user(email) or _random_password()
 		results.append(_provision_user(spec, pwd))
 
 	from elmahdi.setup.operational_permissions import apply_permission_matrix
@@ -253,3 +284,7 @@ def provision_all() -> list[dict]:
 
 def execute():
 	return provision_all()
+
+
+def execute_reset_passwords():
+	return reset_operational_passwords()

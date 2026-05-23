@@ -9,10 +9,8 @@ from frappe import _
 from frappe.utils import flt, today
 
 from elmahdi.api.erp_submit import native_submit
-from elmahdi.api.shift_authorization import (
-	assert_may_access_pos_opening_session,
-	is_break_glass_user,
-)
+from elmahdi.api.shift_authorization import assert_may_access_pos_opening_session
+from elmahdi.api.spa_authorization import assert_may_repair_shifts
 
 
 def _opening_doc(name, *, require_submitted=True):
@@ -112,8 +110,7 @@ def repair_draft_opening_entries(dry_run=1):
     Find draft POS Opening Entries (docstatus=0) and submit when valid.
     Restricted to managers / administrators.
     """
-    if not (frappe.has_permission("POS Opening Entry", "submit") or is_break_glass_user()):
-        frappe.throw(_("Not permitted to repair opening entries"), frappe.PermissionError)
+    assert_may_repair_shifts()
 
     if isinstance(dry_run, str):
         dry_run = dry_run.lower() in ("1", "true", "yes")

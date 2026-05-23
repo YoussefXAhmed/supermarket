@@ -9,6 +9,14 @@ import frappe
 from frappe import _
 from frappe.utils import cint, flt, now_datetime
 
+from elmahdi.api.purchase_authorization import (
+	assert_may_act_as_purchase_approver,
+	assert_may_view_purchase_approvals,
+	is_break_glass_user,
+	may_act_as_purchase_approver,
+	may_view_purchase_approvals,
+)
+
 AUDIT_PREFIX = "Elmahdi-Purchase-Audit"
 MANAGER_VARIANCE_PCT = 10.0
 ACCOUNTANT_VARIANCE_PCT = 20.0
@@ -91,22 +99,7 @@ def _user_roles():
 
 
 def _is_admin_user():
-    roles = _user_roles()
-    return bool(roles & {"Administrator", "System Manager"})
-
-
-def _can_approve_manager():
-    if _is_admin_user():
-        return True
-    roles = _user_roles()
-    return bool(roles & {"Purchase Manager", "Stock Manager", "Sales Manager", "Warehouse Manager"})
-
-
-def _can_approve_accountant():
-    if _is_admin_user():
-        return True
-    roles = _user_roles()
-    return bool(roles & {"Accounts Manager", "Accounts User"})
+	return is_break_glass_user()
 
 
 def _is_purchasing_only_user():
@@ -116,9 +109,9 @@ def _is_purchasing_only_user():
         "Purchase Manager",
         "Stock Manager",
         "Sales Manager",
-        "Accounts Manager",
-        "Accounts User",
     }
+    if may_act_as_purchase_approver():
+        approvers.add("Store Manager")
     return "Purchase User" in roles and not approvers and not _is_admin_user()
 
 
@@ -133,40 +126,30 @@ def _assert_not_self_approval(doc):
 
 
 def _required_approval_role(level):
-    level = _normalize_level(level)
-    if level == "accountant":
-        return "accountant"
-    if level == "manager":
-        return "manager"
-    return None
+	"""Audit label for who must act — always store manager (variance tier may be 'accountant')."""
+	level = _normalize_level(level)
+	if level in ("accountant", "manager", "none"):
+		return "manager"
+	return None
 
 
 def _assert_can_approve(level):
-    level = _normalize_level(level)
-    if _is_admin_user():
-        return
-    if level == "accountant":
-        if not _can_approve_accountant():
-            frappe.throw(_("Accountant approval required for this receipt."), frappe.PermissionError)
-        return
-    if level == "manager":
-        if not (_can_approve_manager() or _can_approve_accountant()):
-            frappe.throw(_("Manager approval required for this receipt."), frappe.PermissionError)
-        return
-    if level == "none":
-        if not (_can_approve_manager() or _can_approve_accountant()):
-            frappe.throw(_("Manager or accountant must submit this purchase receipt."), frappe.PermissionError)
-        return
-    frappe.throw(_("You cannot approve this purchase receipt."), frappe.PermissionError)
+	"""Variance tier does not delegate approval to accountant users."""
+	if _is_admin_user():
+		return
+	if not may_act_as_purchase_approver():
+		if _normalize_level(level) == "accountant":
+			frappe.throw(
+				_("High-variance purchase receipts require store manager approval."),
+				frappe.PermissionError,
+			)
+		frappe.throw(_("Store manager approval is required for this receipt."), frappe.PermissionError)
 
 
 def _can_approve_row(level):
-    level = _normalize_level(level)
-    if _is_admin_user():
-        return True
-    if level == "accountant":
-        return _can_approve_accountant()
-    return _can_approve_manager() or _can_approve_accountant()
+	if _is_admin_user():
+		return True
+	return may_act_as_purchase_approver()
 
 
 def _approval_action_state(doc, level):
@@ -179,7 +162,7 @@ def _approval_action_state(doc, level):
         return False, str(e)
     except frappe.ValidationError as e:
         return False, str(e)
-    if _is_admin_user() or _can_approve_manager() or _can_approve_accountant():
+    if _is_admin_user() or may_act_as_purchase_approver():
         return True, ""
     if not doc.has_permission("submit"):
         return False, _(
@@ -196,7 +179,7 @@ def assert_may_submit_purchase_receipt_direct():
         return
     frappe.throw(
         _(
-            "Purchase Receipt must be submitted through manager or accountant approval. "
+            "Purchase Receipt must be submitted through store manager approval. "
             "Use the purchase approval workflow."
         ),
         frappe.PermissionError,
@@ -475,8 +458,7 @@ def create_purchase_receipt_workflow(
 
 @frappe.whitelist()
 def list_pending_purchase_approvals(limit=50):
-    if not (_can_approve_manager() or _can_approve_accountant()):
-        frappe.throw(_("Not permitted to view purchase approvals."), frappe.PermissionError)
+    assert_may_view_purchase_approvals()
 
     filters = {"docstatus": 0}
     if _has_custom_field("approval_status"):
@@ -561,6 +543,8 @@ def approve_purchase_receipt(name, action="approve", notes=""):
     if action not in ("approve", "reject"):
         frappe.throw(_("Invalid action."), frappe.ValidationError)
 
+    assert_may_act_as_purchase_approver()
+
     ctx, audit_preview, level = _approval_context_from_db(name)
     if cint(ctx.docstatus) != 0:
         frappe.throw(_("Only draft purchase receipts can be approved or rejected."), frappe.ValidationError)
@@ -591,7 +575,9 @@ def approve_purchase_receipt(name, action="approve", notes=""):
 
     validate_purchase_receipt(doc)
 
-    approval_role = "accountant" if level == "accountant" else "manager"
+    approval_role = "manager"
+    if level == "accountant":
+        audit["variance_tier"] = "high"
     for line in doc.items:
         prev = flt(line.rate)
         audit.setdefault("events", []).append(

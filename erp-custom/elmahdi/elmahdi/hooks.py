@@ -19,4 +19,7 @@ doc_events = {
         "before_submit": "elmahdi.api.pos_closing_approval.before_submit_pos_closing",
         "on_update": "elmahdi.api.pos_closing_approval.on_update_pos_closing",
     },
+    "POS Opening Entry": {
+        "before_submit": "elmahdi.api.pos_opening_policy.before_submit_pos_opening",
+    },
 }

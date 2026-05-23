@@ -34,7 +34,7 @@ function authProbeConfig() {
    AUTH
 ══════════════════════════════════════ */
 export const login = (usr, pwd) =>
-  api.post('/api/method/login', { usr, pwd });
+  api.post('/api/method/login', { usr, pwd }, { loginAttempt: true });
 
 export const logout = () =>
   api.get('/api/method/logout');

@@ -12,7 +12,7 @@ import frappe
 from frappe.permissions import has_permission
 
 from elmahdi.api import spa_authorization
-from elmahdi.api.purchasing import _can_approve_accountant, _can_approve_manager
+from elmahdi.api.purchase_authorization import may_act_as_purchase_approver
 from elmahdi.api.shift_authorization import (
 	may_act_as_pos_closing_approver,
 	user_erp_roles,
@@ -194,8 +194,7 @@ def _policy_flags(email: str) -> dict[str, bool]:
 	frappe.set_user(email)
 	return {
 		"may_act_as_pos_closing_approver": may_act_as_pos_closing_approver(email),
-		"can_approve_purchase_manager": _can_approve_manager(),
-		"can_approve_purchase_accountant": _can_approve_accountant(),
+		"can_approve_purchase_receipt": may_act_as_purchase_approver(email),
 	}
 
 
