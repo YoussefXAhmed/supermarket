@@ -25,6 +25,11 @@
     "manager": "Manager",
     "deskUser": "Desk User"
   },
+  "auth": {
+    "invalidCredentials": "Incorrect email or password",
+    "sessionExpired": "Your session may have expired. Please sign in again.",
+    "networkError": "Unable to reach ERPNext. Check your connection and that the server is running."
+  },
   "ui": {
     "loading": "Loading...",
     "partialData": "Some data could not be loaded. Showing partial results.",
@@ -112,11 +117,15 @@
     "suppliers": "Suppliers",
     "transfer": "Transfer",
     "users": "Users",
+    "systemUsers": "System users",
+    "employees": "Employees",
+    "departments": "Departments",
+    "positions": "Positions",
     "warehouses": "Warehouses",
     "hr": "HR",
     "hrOverview": "HR workspace",
-    "hrSubtitle": "Operational users · role assignment · access control",
-    "hrHint": "Create and manage supermarket operational accounts. Finance, inventory execution, and system settings are not available here.",
+    "hrSubtitle": "Workforce records · employee lifecycle · system access",
+    "hrHint": "Manage employee records separately from login accounts. Finance, inventory execution, and system settings are not available here.",
     "myShifts": "My shifts",
     "manager": "Manager"
   },
@@ -492,6 +501,76 @@
       "group": "Group",
       "mobile": "Mobile",
       "email": "Email"
+    }
+  },
+  "hr": {
+    "dashboard": {
+      "kpiLabel": "Workforce metrics",
+      "totalEmployees": "Total employees",
+      "activeEmployees": "Active employees",
+      "withAccess": "With system access",
+      "withoutAccess": "Without system access",
+      "newHires": "New hires this month",
+      "byDepartment": "Employees by department",
+      "byRole": "Employees by operational role",
+      "quickLinks": "Quick links",
+      "employeesDesc": "Workforce records — with or without login",
+      "usersDesc": "Provision operational ERP accounts",
+      "loadError": "Could not load workforce data"
+    },
+    "employees": {
+      "title": "Employees",
+      "subtitle": "Workforce records stored in ERPNext Employee",
+      "add": "Add employee",
+      "addTitle": "New employee",
+      "editTitle": "Edit employee",
+      "search": "Search by name, ID, department…",
+      "empty": "No employees yet",
+      "emptyDesc": "Create workforce records here. System login is optional.",
+      "loadError": "Failed to load employees",
+      "nameRequired": "Full name is required",
+      "emailRequiredForAccess": "Work email is required to create system access",
+      "confirmStatus": "Change status for {{name}}?",
+      "colId": "Employee ID",
+      "colName": "Full name",
+      "colDepartment": "Department",
+      "colPosition": "Position",
+      "colStatus": "Status",
+      "colAccess": "System access",
+      "phone": "Phone",
+      "nationalId": "National ID",
+      "address": "Address",
+      "hireDate": "Hire date",
+      "workEmail": "Work email",
+      "hasAccess": "Has login",
+      "noAccess": "No login",
+      "systemAccessToggle": "Requires system access (create login later)",
+      "grantAccess": "Grant access",
+      "suspend": "Suspend",
+      "deactivate": "Mark resigned",
+      "provisionTitle": "Create system account",
+      "provisionDesc": "Provision an operational login for {{name}}",
+      "roleProfile": "Role profile",
+      "priceList": "Price list",
+      "warehouses": "Warehouses",
+      "sendWelcomeEmail": "Send welcome email (password reset)",
+      "createAccount": "Create account",
+      "resetPassword": "Send welcome email",
+      "welcomeEmailSent": "Welcome email triggered in ERPNext"
+    },
+    "departments": {
+      "subtitle": "Department master — coming soon"
+    },
+    "positions": {
+      "subtitle": "Position master — coming soon"
+    },
+    "placeholder": {
+      "comingSoon": "This section will be available in a future release."
+    },
+    "status": {
+      "active": "Active",
+      "suspended": "Suspended",
+      "resigned": "Resigned"
     }
   },
   "finance": {

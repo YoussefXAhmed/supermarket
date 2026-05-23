@@ -103,7 +103,10 @@ export function getFinanceNavItems(capabilities) {
 /** @type {NavItem[]} */
 export const HR_NAV = [
   { to: '/hr', labelKey: 'nav.hrOverview', icon: '◈', exact: true, cap: 'canAccessHRWorkspace' },
-  { to: '/hr/users', labelKey: 'nav.users', icon: '🧑‍💼', cap: 'canManageOperationalUsers' },
+  { to: '/hr/employees', labelKey: 'nav.employees', icon: '👥', cap: 'canViewEmployees' },
+  { to: '/hr/users', labelKey: 'nav.systemUsers', icon: '🧑‍💼', cap: 'canManageOperationalUsers' },
+  { to: '/hr/departments', labelKey: 'nav.departments', icon: '🏢', cap: 'canAccessHRWorkspace' },
+  { to: '/hr/positions', labelKey: 'nav.positions', icon: '💼', cap: 'canAccessHRWorkspace' },
 ];
 
 /** @param {import('./capabilities').Capabilities} capabilities */

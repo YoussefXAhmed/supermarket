@@ -56,6 +56,8 @@ const ShiftOpenPage = lazy(() => import('./modules/shifts/pages/ShiftOpenPage'))
 const ShiftClosePage = lazy(() => import('./modules/shifts/pages/ShiftClosePage'));
 const ShiftHistoryPage = lazy(() => import('./modules/shifts/pages/ShiftHistoryPage'));
 const HRDashboardPage = lazy(() => import('./modules/hr/HRDashboardPage'));
+const HREmployeesPage = lazy(() => import('./modules/hr/EmployeesPage'));
+const HRPlaceholderPage = lazy(() => import('./modules/hr/HRPlaceholderPage'));
 
 function LazyPage({ children }) {
   return <Suspense fallback={<PageLoading size={28} />}>{children}</Suspense>;
@@ -139,10 +141,34 @@ export default function App() {
           >
             <Route index element={<LazyPage><HRDashboardPage /></LazyPage>} />
             <Route
+              path="employees"
+              element={(
+                <CapabilityRoute cap="canViewEmployees">
+                  <LazyPage><HREmployeesPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
               path="users"
               element={(
                 <CapabilityRoute cap="canManageOperationalUsers">
                   <LazyPage><UsersPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="departments"
+              element={(
+                <CapabilityRoute cap="canAccessHRWorkspace">
+                  <LazyPage><HRPlaceholderPage titleKey="nav.departments" descKey="hr.departments.subtitle" /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="positions"
+              element={(
+                <CapabilityRoute cap="canAccessHRWorkspace">
+                  <LazyPage><HRPlaceholderPage titleKey="nav.positions" descKey="hr.positions.subtitle" /></LazyPage>
                 </CapabilityRoute>
               )}
             />

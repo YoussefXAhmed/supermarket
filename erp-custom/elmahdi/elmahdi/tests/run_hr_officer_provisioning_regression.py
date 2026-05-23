@@ -127,6 +127,37 @@ def execute():
 					message=f"expected={expected} actual={actual}",
 				)
 
+			from elmahdi.api.hr_workforce import EMPLOYEE_LIST_FIELDS, list_employees
+
+			try:
+				rows = list_employees(limit=5)
+				_step(
+					steps,
+					step="api_list_employees",
+					ok=True,
+					message=f"count={len(rows)} fields={len(EMPLOYEE_LIST_FIELDS)}",
+				)
+			except Exception as exc:
+				_step(
+					steps,
+					step="api_list_employees",
+					ok=False,
+					message=f"{type(exc).__name__}: {exc}",
+				)
+
+			_step(
+				steps,
+				step="spa_view_employees_cap",
+				ok=has_cap("can_view_employees", HR_USER),
+				message="",
+			)
+			_step(
+				steps,
+				step="spa_manage_employees_cap",
+				ok=has_cap("can_manage_employees", HR_USER),
+				message="",
+			)
+
 			caps = get_capabilities(HR_USER)
 			_step(
 				steps,

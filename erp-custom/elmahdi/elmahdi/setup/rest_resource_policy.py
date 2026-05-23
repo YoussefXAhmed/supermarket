@@ -41,6 +41,8 @@ SPA_REST_DOCTYPES: tuple[str, ...] = (
 	"User Permission",
 	"Warehouse",
 	"Employee",
+	"Department",
+	"Designation",
 )
 
 PERM_FIELDS: tuple[str, ...] = ("read", "write", "create", "submit", "cancel", "delete")
@@ -211,7 +213,9 @@ _HR = {
 	"User": WRITE_DRAFT,
 	"User Permission": WRITE_DRAFT,
 	"Role Profile": READ,
-	"Employee": WRITE_DRAFT,
+	"Employee": {**WRITE_DRAFT, "submit": 1},
+	"Department": READ,
+	"Designation": READ,
 	"Has Role": READ,
 	"POS Opening Entry": READ,
 	"POS Closing Entry": READ,
@@ -318,8 +322,17 @@ REST_USER_EXPECTATIONS: dict[str, list[tuple[str, str, bool]]] = {
 	],
 	"hr@elmahdi.com": [
 		("User", "create", True),
+		("User", "read", True),
 		("User", "write", True),
+		("Employee", "read", True),
 		("Employee", "create", True),
+		("Employee", "write", True),
+		("Employee", "delete", False),
+		("Employee", "cancel", False),
+		("Department", "read", True),
+		("Department", "write", False),
+		("Designation", "read", True),
+		("Designation", "write", False),
 		("User Permission", "create", True),
 		("Payment Entry", "create", False),
 		("Stock Entry", "create", False),

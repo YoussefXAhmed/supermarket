@@ -25,6 +25,11 @@
     "manager": "مدير",
     "deskUser": "مستخدم مكتب"
   },
+  "auth": {
+    "invalidCredentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة",
+    "sessionExpired": "انتهت صلاحية جلستك. يرجى تسجيل الدخول مرة أخرى.",
+    "networkError": "تعذر الاتصال بـ ERPNext. تحقق من الاتصال وتأكد أن الخادم يعمل."
+  },
   "ui": {
     "loading": "جاري التحميل...",
     "partialData": "تعذر تحميل بعض البيانات. يتم عرض نتائج جزئية.",
@@ -112,11 +117,15 @@
     "suppliers": "الموردون",
     "transfer": "تحويل",
     "users": "المستخدمون",
+    "systemUsers": "حسابات النظام",
+    "employees": "الموظفون",
+    "departments": "الأقسام",
+    "positions": "المناصب",
     "warehouses": "المخازن",
     "hr": "الموارد البشرية",
     "hrOverview": "مساحة الموارد البشرية",
-    "hrSubtitle": "المستخدمون التشغيليون · تعيين الأدوار · التحكم بالوصول",
-    "hrHint": "إنشاء وإدارة حسابات التشغيل. المالية وتنفيذ المخزون وإعدادات النظام غير متاحة هنا.",
+    "hrSubtitle": "سجلات الموظفين · دورة التوظيف · صلاحيات النظام",
+    "hrHint": "إدارة سجلات الموظفين بشكل منفصل عن حسابات الدخول. المالية وتنفيذ المخزون وإعدادات النظام غير متاحة هنا.",
     "myShifts": "شيفتاتي",
     "manager": "المدير"
   },
@@ -492,6 +501,76 @@
       "group": "المجموعة",
       "mobile": "الهاتف",
       "email": "البريد الإلكتروني"
+    }
+  },
+  "hr": {
+    "dashboard": {
+      "kpiLabel": "مؤشرات القوى العاملة",
+      "totalEmployees": "إجمالي الموظفين",
+      "activeEmployees": "الموظفون النشطون",
+      "withAccess": "لديهم دخول للنظام",
+      "withoutAccess": "بدون دخول للنظام",
+      "newHires": "تعيينات هذا الشهر",
+      "byDepartment": "الموظفون حسب القسم",
+      "byRole": "الموظفون حسب الدور التشغيلي",
+      "quickLinks": "روابط سريعة",
+      "employeesDesc": "سجلات الموظفين — مع أو بدون حساب دخول",
+      "usersDesc": "إنشاء حسابات ERP تشغيلية",
+      "loadError": "تعذر تحميل بيانات القوى العاملة"
+    },
+    "employees": {
+      "title": "الموظفون",
+      "subtitle": "سجلات القوى العاملة في ERPNext Employee",
+      "add": "إضافة موظف",
+      "addTitle": "موظف جديد",
+      "editTitle": "تعديل موظف",
+      "search": "بحث بالاسم أو الرقم أو القسم…",
+      "empty": "لا يوجد موظفون بعد",
+      "emptyDesc": "أنشئ سجلات الموظفين هنا. حساب الدخول اختياري.",
+      "loadError": "فشل تحميل الموظفين",
+      "nameRequired": "الاسم الكامل مطلوب",
+      "emailRequiredForAccess": "البريد مطلوب لإنشاء حساب النظام",
+      "confirmStatus": "تغيير حالة {{name}}؟",
+      "colId": "رقم الموظف",
+      "colName": "الاسم الكامل",
+      "colDepartment": "القسم",
+      "colPosition": "المنصب",
+      "colStatus": "الحالة",
+      "colAccess": "دخول النظام",
+      "phone": "الهاتف",
+      "nationalId": "الرقم الوطني",
+      "address": "العنوان",
+      "hireDate": "تاريخ التعيين",
+      "workEmail": "البريد الوظيفي",
+      "hasAccess": "لديه حساب",
+      "noAccess": "بدون حساب",
+      "systemAccessToggle": "يحتاج دخول للنظام (إنشاء الحساب لاحقاً)",
+      "grantAccess": "منح دخول",
+      "suspend": "إيقاف",
+      "deactivate": "تسجيل استقالة",
+      "provisionTitle": "إنشاء حساب نظام",
+      "provisionDesc": "إنشاء حساب تشغيلي لـ {{name}}",
+      "roleProfile": "ملف الدور",
+      "priceList": "قائمة الأسعار",
+      "warehouses": "المستودعات",
+      "sendWelcomeEmail": "إرسال بريد ترحيب (إعادة تعيين كلمة المرور)",
+      "createAccount": "إنشاء الحساب",
+      "resetPassword": "إرسال بريد ترحيب",
+      "welcomeEmailSent": "تم طلب بريد الترحيب في ERPNext"
+    },
+    "departments": {
+      "subtitle": "سجل الأقسام — قريباً"
+    },
+    "positions": {
+      "subtitle": "سجل المناصب — قريباً"
+    },
+    "placeholder": {
+      "comingSoon": "هذا القسم سيتوفر في إصدار لاحق."
+    },
+    "status": {
+      "active": "نشط",
+      "suspended": "موقوف",
+      "resigned": "مستقيل"
     }
   },
   "finance": {

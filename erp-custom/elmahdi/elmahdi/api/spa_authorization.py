@@ -79,6 +79,8 @@ _CAPS_HR = {
 	"can_access_hr_workspace": True,
 	"can_manage_operational_users": True,
 	"can_manage_users": True,
+	"can_view_employees": True,
+	"can_manage_employees": True,
 }
 
 _CAPS_ADMIN = {key: True for key in (
