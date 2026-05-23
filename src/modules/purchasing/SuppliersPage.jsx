@@ -5,6 +5,7 @@ import { PageHeader, PageLoading, ApiErrorCard, EmptyState, Table, Btn, Badge } 
 import { TablePageLayout, LayoutSection, TableRegion } from '../../components/layout/page-layouts';
 import { listSuppliers } from '../../services/purchasingApi';
 import { getUserFriendlyMessage } from '../../utils/errorHandling';
+import { purchasingPath } from '../../utils/workspacePaths';
 
 export default function SuppliersPage() {
   const { t } = useTranslation();
@@ -44,7 +45,7 @@ export default function SuppliersPage() {
       key: 'supplier_name',
       label: t('purchasing.table.supplier'),
       render: (v, row) => (
-        <Link to={`/admin/purchasing/suppliers/${encodeURIComponent(row.name)}`}>{v || row.name}</Link>
+        <Link to={purchasingPath(`suppliers/${encodeURIComponent(row.name)}`)}>{v || row.name}</Link>
       ),
     },
     { key: 'name', label: t('inventory.table.id'), render: (v) => <span className="mono" style={{ fontSize: '0.78rem', color: 'var(--text-2)' }}>{v}</span> },
@@ -55,7 +56,7 @@ export default function SuppliersPage() {
       key: 'actions',
       label: '',
       render: (_, row) => (
-        <Btn variant="ghost" size="sm" onClick={() => navigate(`/admin/purchasing/suppliers/${encodeURIComponent(row.name)}`)}>
+        <Btn variant="ghost" size="sm" onClick={() => navigate(purchasingPath(`suppliers/${encodeURIComponent(row.name)}`))}>
           {t('common.view')}
         </Btn>
       ),
@@ -71,7 +72,7 @@ export default function SuppliersPage() {
         subtitle={`${filtered.length} active suppliers`}
         dense
         actions={
-          <Btn variant="primary" size="sm" onClick={() => navigate('/admin/purchasing/suppliers/new')}>
+          <Btn variant="primary" size="sm" onClick={() => navigate(purchasingPath('suppliers/new'))}>
             + {t('purchasing.newSupplier')}
           </Btn>
         }

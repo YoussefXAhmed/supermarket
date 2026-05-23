@@ -70,6 +70,9 @@ def get_selling_item_prices(item_codes, price_list=None):
 @frappe.whitelist()
 def get_buying_item_prices(item_codes):
 	"""Return { item_code: price_list_rate } for buying prices."""
+	from elmahdi.api.spa_authorization import assert_may_read_buying_rates
+
+	assert_may_read_buying_rates()
 	_assert_item_price_read()
 	codes = _parse_item_codes(item_codes)
 	if not codes:

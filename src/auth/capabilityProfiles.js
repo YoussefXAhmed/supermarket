@@ -29,6 +29,7 @@ const CASHIER = inv({
   canCloseShift: true,
   canApproveShift: false,
   canViewShiftReports: false,
+  canViewOwnShiftHistory: true,
   canViewInvoices: true,
   canViewReturns: true,
   canCreateReturns: true,
@@ -41,6 +42,7 @@ const INVENTORY_CLERK = inv({
   canAccessInventory: true,
   canInventoryOperate: true,
   canInventoryReceipt: true,
+  canInventoryTransfer: true,
   roleLabel: 'Inventory Clerk',
   operationalPersona: 'inventory',
 });
@@ -58,7 +60,8 @@ const PURCHASING_OFFICER = {
 
 /** Future-safe: accountant reviews shift closings without full store manager inventory powers */
 const ACCOUNTANT = {
-  canAccessAdminWorkspace: true,
+  canAccessAccountantWorkspace: true,
+  canViewStockLedgerReadOnly: true,
   canViewReports: true,
   canViewShiftReports: true,
   canApproveShift: true,
@@ -66,7 +69,6 @@ const ACCOUNTANT = {
   canApprovePurchasingAccountant: true,
   canViewPurchaseApprovals: true,
   canViewApprovalsDashboard: true,
-  canAccessAccountantWorkspace: true,
   canViewSupplierPayments: true,
   canManageSupplierPayments: true,
   canAccessInvoiceMatching: true,
@@ -77,6 +79,7 @@ const ACCOUNTANT = {
   canOpenShift: false,
   canCloseShift: false,
   canAccessInventory: false,
+  canAccessAdminWorkspace: false,
   canInventoryTransfer: false,
   canInventoryReconcile: false,
   canInventoryOperate: false,
@@ -84,27 +87,28 @@ const ACCOUNTANT = {
   operationalPersona: 'accountant',
 };
 
-/** Monitor / approve only — no inventory, purchasing, or accounting execution (segregation of duties). */
+/** Monitor / approve only — no POS, returns, invoices, or execution modules. */
 const STORE_MANAGER = inv({
-  canAccessAdminWorkspace: true,
+  canAccessManagerWorkspace: true,
   canViewReports: true,
   canViewAnalytics: true,
   canMonitorCashiers: true,
-  canViewReturns: true,
   canApproveReturns: true,
   canApproveReconciliation: true,
   canApprovePurchasing: true,
   canViewPurchaseApprovals: true,
   canViewApprovalsDashboard: true,
-  canViewPOS: true,
+  canViewPOS: false,
   canOperatePOS: false,
   canOpenShift: false,
   canCloseShift: false,
   canApproveShift: true,
   canViewShiftReports: true,
-  canViewInvoices: true,
+  canViewInvoices: false,
+  canViewReturns: false,
   canCreateReturns: false,
   canAccessPurchasing: false,
+  canAccessAdminWorkspace: false,
   canViewSuppliers: false,
   canAccessInvoiceMatching: false,
   canAccessInventory: false,
@@ -119,6 +123,18 @@ const STORE_MANAGER = inv({
   operationalPersona: 'store_manager',
 });
 
+/** HR — operational user provisioning only (no finance/inventory/security). */
+const HR_OFFICER = {
+  canAccessHRWorkspace: true,
+  canManageOperationalUsers: true,
+  canManageUsers: true,
+  canAccessAdminWorkspace: false,
+  canManageSystem: false,
+  canManageSettings: false,
+  roleLabel: 'HR Officer',
+  operationalPersona: 'hr',
+};
+
 /** @type {Record<string, Partial<Capabilities>>} */
 export const CAPS_BY_ROLE_PROFILE = {
   [OPERATIONAL_USER_TEMPLATES.cashier.roleProfileName]: CASHIER,
@@ -126,6 +142,7 @@ export const CAPS_BY_ROLE_PROFILE = {
   [OPERATIONAL_USER_TEMPLATES.purchasing_officer.roleProfileName]: PURCHASING_OFFICER,
   [OPERATIONAL_USER_TEMPLATES.store_manager.roleProfileName]: STORE_MANAGER,
   [OPERATIONAL_USER_TEMPLATES.accountant.roleProfileName]: ACCOUNTANT,
+  [OPERATIONAL_USER_TEMPLATES.hr_officer.roleProfileName]: HR_OFFICER,
   'Elmahdi Accountant': ACCOUNTANT,
   Accountant: ACCOUNTANT,
   'Accounts Manager': ACCOUNTANT,

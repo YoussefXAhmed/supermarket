@@ -8,8 +8,9 @@ import PaginatedTable from '../../components/ui/PaginatedTable';
 import { DashboardLayout, LayoutSection } from '../../components/layout/page-layouts';
 import { getUserFriendlyMessage } from '../../utils/errorHandling';
 import { fmtCurrency, fmtCurrencyCompact, fmtPercent } from '../../utils/format';
+import { purchasingPath } from '../../utils/workspacePaths';
 
-export default function DashboardPage() {
+export default function DashboardPage({ monitorOnly = false }) {
   const { t, i18n } = useTranslation();
   const [stats, setStats] = useState(null);
   const [warnings, setWarnings] = useState([]);
@@ -149,9 +150,11 @@ export default function DashboardPage() {
         subtitle={t('dashboardPage.thisMonth')}
         variant="raised"
         actions={
-          <Link to="/admin/invoices" className="btn btn--ghost btn--sm">
-            {t('dashboardPage.viewAll')}
-          </Link>
+          !monitorOnly ? (
+            <Link to="/admin/invoices" className="btn btn--ghost btn--sm">
+              {t('dashboardPage.viewAll')}
+            </Link>
+          ) : null
         }
       >
         <PaginatedTable
@@ -164,16 +167,18 @@ export default function DashboardPage() {
         />
       </LayoutSection>
 
-      <LayoutSection title={t('dashboardPage.quickActions')} subtitle={t('dashboardPage.quickActionsSubtitle')} variant="flat">
-        <div className="workflow-bar">
-          <div className="workflow-bar__actions" style={{ marginLeft: 0 }}>
-            <Link to="/pos" className="btn btn--primary btn--sm">{t('common.pos')}</Link>
-            <Link to="/inventory" className="btn btn--ghost btn--sm">{t('nav.inventory')}</Link>
-            <Link to="/admin/purchasing" className="btn btn--ghost btn--sm">{t('nav.purchasing')}</Link>
-            <Link to="/admin/activity" className="btn btn--ghost btn--sm">{t('nav.activity')}</Link>
+      {!monitorOnly && (
+        <LayoutSection title={t('dashboardPage.quickActions')} subtitle={t('dashboardPage.quickActionsSubtitle')} variant="flat">
+          <div className="workflow-bar">
+            <div className="workflow-bar__actions" style={{ marginLeft: 0 }}>
+              <Link to="/pos" className="btn btn--primary btn--sm">{t('common.pos')}</Link>
+              <Link to="/inventory" className="btn btn--ghost btn--sm">{t('nav.inventory')}</Link>
+              <Link to={purchasingPath()} className="btn btn--ghost btn--sm">{t('nav.purchasing')}</Link>
+              <Link to="/admin/activity" className="btn btn--ghost btn--sm">{t('nav.activity')}</Link>
+            </div>
           </div>
-        </div>
-      </LayoutSection>
+        </LayoutSection>
+      )}
     </DashboardLayout>
   );
 }

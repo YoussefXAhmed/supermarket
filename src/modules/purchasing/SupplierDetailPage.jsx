@@ -5,6 +5,9 @@ import { FormPageLayout, LayoutSection } from '../../components/layout/page-layo
 import { getSupplier } from '../../services/purchasingApi';
 import { getSupplierBalanceOverview } from '../../services/purchasingService';
 import { getUserFriendlyMessage } from '../../utils/errorHandling';
+import { canExecutePurchasingFinance } from '../../auth/navigationConfig';
+import { useAuth } from '../../hooks/useAuth';
+import { purchasingPath } from '../../utils/workspacePaths';
 
 const fmt = (n) =>
   new Intl.NumberFormat('en-EG', {
@@ -16,6 +19,8 @@ const fmt = (n) =>
 export default function SupplierDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { capabilities } = useAuth();
+  const showFinanceActions = canExecutePurchasingFinance(capabilities);
   const isNew = id === 'new';
   const [supplier, setSupplier] = useState(null);
   const [balance, setBalance] = useState(null);
@@ -79,7 +84,7 @@ export default function SupplierDetailPage() {
       const saved = await saveSupplier({ name: isNew ? null : id, ...form });
       setMsg(isNew ? `Created: ${saved?.name}` : 'Supplier updated');
       if (isNew && saved?.name) {
-        navigate(`/admin/purchasing/suppliers/${encodeURIComponent(saved.name)}`, { replace: true });
+        navigate(purchasingPath(`suppliers/${encodeURIComponent(saved.name)}`), { replace: true });
       }
     } catch (e2) {
       setError(getUserFriendlyMessage(e2));
@@ -103,7 +108,7 @@ export default function SupplierDetailPage() {
         subtitle={isNew ? 'Create supplier' : `Supplier ${id}`}
         dense
         actions={
-          <Link to="/admin/purchasing/suppliers" className="btn btn--ghost btn--sm">
+          <Link to={purchasingPath('suppliers')} className="btn btn--ghost btn--sm">
             ← Back
           </Link>
         }
@@ -112,8 +117,12 @@ export default function SupplierDetailPage() {
       {!isNew && balance && (
         <div className="stats-grid">
           <StatCard label="Total purchased" value={fmt(balance.totalPurchased)} icon="💰" color="accent" />
-          <StatCard label="Outstanding" value={fmt(balance.outstanding)} icon="📋" color="red" />
-          <StatCard label="Open invoices" value={balance.openInvoices} icon="🧾" color="blue" />
+          {showFinanceActions && (
+            <>
+              <StatCard label="Outstanding" value={fmt(balance.outstanding)} icon="📋" color="red" />
+              <StatCard label="Open invoices" value={balance.openInvoices} icon="🧾" color="blue" />
+            </>
+          )}
           <StatCard label="Receipts" value={balance.receiptCount} icon="📦" color="green" />
         </div>
       )}
@@ -225,17 +234,19 @@ export default function SupplierDetailPage() {
           </p>
           <div className="toolbar">
             <Link
-              to={`/admin/purchasing/receive?supplier=${encodeURIComponent(id)}`}
+              to={`${purchasingPath('receive')}?supplier=${encodeURIComponent(id)}`}
               className="btn btn--primary btn--sm"
             >
               Receive stock
             </Link>
-            <Link
-              to={`/admin/purchasing/invoices?supplier=${encodeURIComponent(id)}`}
-              className="btn btn--ghost btn--sm"
-            >
-              Purchase invoice
-            </Link>
+            {showFinanceActions && (
+              <Link
+                to={`${purchasingPath('invoices')}?supplier=${encodeURIComponent(id)}`}
+                className="btn btn--ghost btn--sm"
+              >
+                Purchase invoice
+              </Link>
+            )}
           </div>
         </LayoutSection>
       )}

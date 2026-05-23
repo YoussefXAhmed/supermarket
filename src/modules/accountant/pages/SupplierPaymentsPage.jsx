@@ -19,6 +19,7 @@ import {
 } from '../../../services/accountsPayableService';
 import { listSuppliers } from '../../../services/purchasingApi';
 import { fmtCurrency } from '../../../utils/format';
+import { financePath } from '../../../utils/workspacePaths';
 import { getUserFriendlyMessage } from '../../../utils/errorHandling';
 import { PAY_STATUS } from '../../../utils/apPaymentStatus';
 
@@ -110,7 +111,7 @@ export default function SupplierPaymentsPage() {
 
       <div className="ap-workflow-banner" role="note">
         <strong>AP lifecycle:</strong> Purchase Receipt (goods) →{' '}
-        <Link to="/admin/purchasing/matching">Invoice matching</Link> → Purchase Invoice →{' '}
+        <Link to={financePath('matching')}>Invoice matching</Link> → Purchase Invoice →{' '}
         <strong>Supplier payment</strong> (this page). ERPNext posts GL and updates outstanding.
       </div>
 

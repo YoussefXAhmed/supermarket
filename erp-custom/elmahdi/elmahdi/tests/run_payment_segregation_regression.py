@@ -12,10 +12,10 @@ import json
 import frappe
 from frappe import _
 
-from elmahdi.api.payment_authorization import (
-	assert_may_manage_supplier_payable_via_api,
+from elmahdi.api.spa_authorization import (
+	assert_may_manage_supplier_payable,
 	assert_may_record_supplier_payment,
-	may_manage_supplier_payable_via_api,
+	may_manage_supplier_payable,
 	may_record_supplier_payment,
 )
 from elmahdi.tests.pos_stock_flow_audit import audit_record, print_report, summarize_report
@@ -56,14 +56,14 @@ def execute():
 		_step(
 			steps,
 			step="03_purchasing_cannot_retry_payable_api",
-			ok=not may_manage_supplier_payable_via_api(PURCHASING_USER),
+			ok=not may_manage_supplier_payable(PURCHASING_USER),
 			message="Purchase User excluded from payable retry API",
 		)
 		_step(
 			steps,
-			step="04_manager_may_retry_payable_api",
-			ok=may_manage_supplier_payable_via_api(MANAGER_USER),
-			message="Store manager may retry payable via API",
+			step="04_manager_cannot_retry_payable_api",
+			ok=not may_manage_supplier_payable(MANAGER_USER),
+			message="Store manager excluded from payable retry API (SPA aligned)",
 		)
 
 		# --- API throws for purchasing user ----------------------------------
@@ -83,7 +83,7 @@ def execute():
 
 			retry_blocked = False
 			try:
-				assert_may_manage_supplier_payable_via_api()
+				assert_may_manage_supplier_payable()
 			except frappe.PermissionError:
 				retry_blocked = True
 			_step(

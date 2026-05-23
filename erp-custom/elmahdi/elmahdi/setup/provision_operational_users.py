@@ -13,6 +13,23 @@ MAIN_WH = "WH - Main - ES"
 OUTER_WH = "Outer WH - ES"
 SELLING_PL = "Standard Selling"
 
+ELMAHDI_HR_USER_ROLE = "Elmahdi HR User"
+
+FORBIDDEN_ROLES_ON_OPERATIONAL_PROFILES = frozenset(
+	{
+		"System Manager",
+		"Administrator",
+		"Accounts User",
+		"Accounts Manager",
+		"Stock User",
+		"Stock Manager",
+		"Purchase User",
+		"Purchase Manager",
+		"Sales Manager",
+		"POS Manager",
+	}
+)
+
 ROLE_PROFILES = {
 	"Elmahdi Administrator": ["System Manager"],
 	"Elmahdi Cashier": ["POS User", "Sales User"],
@@ -25,6 +42,7 @@ ROLE_PROFILES = {
 		"POS Manager",
 	],
 	"Elmahdi Accountant": ["Accounts User", "Accounts Manager"],
+	"Elmahdi HR Officer": [ELMAHDI_HR_USER_ROLE],
 }
 
 USERS = [
@@ -67,6 +85,14 @@ USERS = [
 		"create": True,
 	},
 	{
+		"email": "hr@elmahdi.com",
+		"first_name": "HR",
+		"last_name": "Officer",
+		"role_profile": "Elmahdi HR Officer",
+		"warehouses": [],
+		"create": True,
+	},
+	{
 		"email": "youssefayyman@gmail.com",
 		"first_name": "Youssef",
 		"last_name": "Admin",
@@ -82,7 +108,31 @@ def _random_password(length: int = 14) -> str:
 	return "".join(secrets.choice(alphabet) for _ in range(length))
 
 
+def _ensure_erp_role(role_name: str) -> None:
+	if frappe.db.exists("Role", role_name):
+		return
+	doc = frappe.new_doc("Role")
+	doc.role_name = role_name
+	doc.desk_access = 1
+	doc.insert(ignore_permissions=True)
+
+
+def _validate_role_profile_roles(profile: str, roles: list[str]) -> None:
+	forbidden = FORBIDDEN_ROLES_ON_OPERATIONAL_PROFILES & set(roles)
+	if profile == "Elmahdi HR Officer" and forbidden:
+		frappe.throw(
+			f"HR Officer profile must not include privileged roles: {sorted(forbidden)}",
+			frappe.ValidationError,
+		)
+	if profile != "Elmahdi Administrator" and "System Manager" in roles:
+		frappe.throw(
+			f"Operational profile {profile} must not include System Manager",
+			frappe.ValidationError,
+		)
+
+
 def _ensure_role_profile(name: str, roles: list[str]) -> None:
+	_validate_role_profile_roles(name, roles)
 	if not frappe.db.exists("Role Profile", name):
 		doc = frappe.new_doc("Role Profile")
 		doc.role_profile = name
@@ -181,6 +231,7 @@ def _provision_user(spec: dict, password: str | None) -> dict:
 
 
 def provision_all() -> list[dict]:
+	_ensure_erp_role(ELMAHDI_HR_USER_ROLE)
 	for profile, roles in ROLE_PROFILES.items():
 		_ensure_role_profile(profile, roles)
 

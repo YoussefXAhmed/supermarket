@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { fmtCurrency } from '../../utils/format';
+import { financePath, invoiceMatchingPath } from '../../utils/workspacePaths';
 import {
   ApiErrorCard,
   Btn,
@@ -112,7 +113,7 @@ export default function PurchaseApprovalsPage() {
             {capabilities.canManageSupplierPayments && (
               <>
                 {' '}
-                <Link to="/admin/accounting/payments">{t('approvals.recordPayment')}</Link>
+                <Link to={financePath('payments')}>{t('approvals.recordPayment')}</Link>
               </>
             )}
           </div>
@@ -120,7 +121,7 @@ export default function PurchaseApprovalsPage() {
         {approveSuccess && !approveSuccess.purchase_invoice && approveSuccess.purchase_invoice_message && (
           <p className="inv-error" role="alert">
             {t('approvals.receiptApprovedNoPayable', { message: approveSuccess.purchase_invoice_message })}{' '}
-            <Link to="/admin/purchasing/matching">{t('nav.invoiceMatching')}</Link>
+            <Link to={invoiceMatchingPath(capabilities)}>{t('nav.invoiceMatching')}</Link>
           </p>
         )}
         {loading && <PageLoading />}

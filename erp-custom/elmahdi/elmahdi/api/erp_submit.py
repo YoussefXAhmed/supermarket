@@ -227,11 +227,13 @@ def document_response(doc) -> dict:
 	return out
 
 
-def _submit_named(name: str, doctype: str, **kwargs):
+def _submit_named(name: str, doctype: str, *, policy_check=None, **kwargs):
 	if not name:
 		frappe.throw(_("Document name is required"), frappe.ValidationError)
 	if not doctype:
 		frappe.throw(_("DocType is required"), frappe.ValidationError)
+	if policy_check:
+		policy_check()
 	doc = frappe.get_doc(doctype, name)
 	doc = native_submit(doc, **kwargs)
 	return document_response(doc)
@@ -239,38 +241,59 @@ def _submit_named(name: str, doctype: str, **kwargs):
 
 @frappe.whitelist()
 def submit_document(name, doctype):
-	"""Generic native submit with side-effect verification."""
-	return _submit_named(name, doctype)
+	"""Allowlisted native submit only — arbitrary doctype submit is blocked."""
+	from elmahdi.api.spa_authorization import assert_may_submit_doctype
+
+	dt = (doctype or "").strip()
+	assert_may_submit_doctype(dt)
+	return _submit_named(name, dt)
 
 
 @frappe.whitelist()
 def submit_stock_entry(name):
-	return _submit_named(name, "Stock Entry")
+	from elmahdi.api.spa_authorization import assert_may_operate_inventory
+
+	return _submit_named(name, "Stock Entry", policy_check=assert_may_operate_inventory)
 
 
 @frappe.whitelist()
 def submit_stock_reconciliation(name):
-	return _submit_named(name, "Stock Reconciliation")
+	from elmahdi.api.spa_authorization import assert_may_inventory_reconcile
+
+	return _submit_named(name, "Stock Reconciliation", policy_check=assert_may_inventory_reconcile)
 
 
 @frappe.whitelist()
 def submit_purchase_receipt(name):
-	return _submit_named(name, "Purchase Receipt")
+	from elmahdi.api.purchasing import assert_may_submit_purchase_receipt_direct
+
+	return _submit_named(
+		name,
+		"Purchase Receipt",
+		policy_check=assert_may_submit_purchase_receipt_direct,
+	)
 
 
 @frappe.whitelist()
 def submit_purchase_invoice(name):
-	return _submit_named(name, "Purchase Invoice")
+	from elmahdi.api.spa_authorization import assert_may_manage_supplier_payable
+
+	return _submit_named(name, "Purchase Invoice", policy_check=assert_may_manage_supplier_payable)
 
 
 @frappe.whitelist()
 def submit_sales_invoice(name):
-	return _submit_named(name, "Sales Invoice")
+	from elmahdi.api.spa_authorization import assert_may_access_finance
+
+	return _submit_named(name, "Sales Invoice", policy_check=assert_may_access_finance)
 
 
 @frappe.whitelist()
 def submit_pos_invoice(name):
 	"""Draft POS sale invoice — forces update_stock before submit."""
+	from elmahdi.api.spa_authorization import assert_may_operate_pos
+
+	assert_may_operate_pos()
 	doc = frappe.get_doc("POS Invoice", name)
 	if cint(getattr(doc, "is_return", 0)):
 		frappe.throw(_("Use submit_pos_invoice_return for return documents"), frappe.ValidationError)
@@ -283,6 +306,9 @@ def submit_pos_invoice(name):
 @frappe.whitelist()
 def submit_pos_invoice_return(name):
 	"""Draft POS return — stock reversal via native submit."""
+	from elmahdi.api.spa_authorization import assert_may_operate_pos
+
+	assert_may_operate_pos()
 	doc = frappe.get_doc("POS Invoice", name)
 	if not cint(getattr(doc, "is_return", 0)):
 		frappe.throw(_("Document is not a POS return"), frappe.ValidationError)
@@ -294,22 +320,27 @@ def submit_pos_invoice_return(name):
 
 @frappe.whitelist()
 def submit_delivery_note(name):
-	return _submit_named(name, "Delivery Note")
+	from elmahdi.api.spa_authorization import assert_may_operate_inventory
+
+	return _submit_named(name, "Delivery Note", policy_check=assert_may_operate_inventory)
 
 
 @frappe.whitelist()
 def submit_purchase_return(name):
-	return _submit_named(name, "Purchase Return")
+	from elmahdi.api.spa_authorization import assert_may_access_purchasing
+
+	return _submit_named(name, "Purchase Return", policy_check=assert_may_access_purchasing)
 
 
 @frappe.whitelist()
 def submit_payment_entry(name):
-	from elmahdi.api.payment_authorization import assert_may_record_supplier_payment
+	from elmahdi.api.spa_authorization import assert_may_record_supplier_payment
 
-	assert_may_record_supplier_payment()
-	return _submit_named(name, "Payment Entry")
+	return _submit_named(name, "Payment Entry", policy_check=assert_may_record_supplier_payment)
 
 
 @frappe.whitelist()
 def submit_pos_opening_entry(name):
-	return _submit_named(name, "POS Opening Entry")
+	from elmahdi.api.spa_authorization import assert_may_open_shift
+
+	return _submit_named(name, "POS Opening Entry", policy_check=assert_may_open_shift)

@@ -56,6 +56,7 @@ const TEMPLATE_ERP_ROLE_SIGNATURES = {
     'accounts user',
     'accounts manager',
   ],
+  [OPERATIONAL_USER_TEMPLATES.hr_officer.roleProfileName]: ['elmahdi hr user'],
 };
 
 /**

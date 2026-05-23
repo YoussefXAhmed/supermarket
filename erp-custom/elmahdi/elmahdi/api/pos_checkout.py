@@ -197,6 +197,9 @@ def create_and_submit_pos_invoice(payload):
 	If consolidation fails (e.g. insufficient stock / oversell), the whole
 	request rolls back — leaving no submitted POS Invoice behind.
 	"""
+	from elmahdi.api.spa_authorization import assert_may_operate_pos
+
+	assert_may_operate_pos()
 	data = _parse_payload(payload)
 	frappe.has_permission("POS Invoice", "create", throw=True)
 
@@ -243,9 +246,12 @@ def create_and_submit_pos_invoice(payload):
 @frappe.whitelist()
 def submit_pos_invoice(name):
 	"""Submit an existing draft POS sale invoice (retry / recovery)."""
+	from elmahdi.api.spa_authorization import assert_may_operate_pos
+
 	if not name:
 		frappe.throw(_("Invoice name is required"), frappe.ValidationError)
 
+	assert_may_operate_pos()
 	doc = frappe.get_doc("POS Invoice", name)
 	if cint(getattr(doc, "is_return", 0)):
 		frappe.throw(_("Use submit_pos_invoice_return for return documents"), frappe.ValidationError)

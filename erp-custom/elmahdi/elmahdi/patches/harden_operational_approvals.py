@@ -6,7 +6,13 @@ import frappe
 
 from elmahdi.setup.approval_custom_fields import execute as install_approval_fields
 from elmahdi.setup.operational_permissions import apply_permission_matrix
-from elmahdi.setup.provision_operational_users import ROLE_PROFILES, _ensure_role_profile, _provision_user
+from elmahdi.setup.provision_operational_users import (
+	FORBIDDEN_ROLES_ON_OPERATIONAL_PROFILES,
+	ROLE_PROFILES,
+	_ensure_erp_role,
+	_ensure_role_profile,
+	ELMAHDI_HR_USER_ROLE,
+)
 from elmahdi.setup.user_module_profiles import sync_operational_user_modules
 
 
@@ -20,6 +26,7 @@ EXPECTED_ROLE_PROFILES = {
 		"Sales Manager",
 	],
 	"Elmahdi Accountant": ["Accounts User", "Accounts Manager"],
+	"Elmahdi HR Officer": [ELMAHDI_HR_USER_ROLE],
 }
 
 
@@ -34,14 +41,17 @@ def _validate_role_profiles() -> list[str]:
 		exp = sorted(expected)
 		if actual != exp:
 			issues.append(f"profile {profile}: expected {exp}, got {actual}")
-		forbidden = {"System Manager", "POS User"} & set(actual)
-		if profile == "Elmahdi Accountant" and forbidden:
-			issues.append(f"accountant has forbidden roles: {forbidden}")
+		forbidden = FORBIDDEN_ROLES_ON_OPERATIONAL_PROFILES & set(actual)
+		if profile in ("Elmahdi Accountant", "Elmahdi HR Officer") and forbidden:
+			issues.append(f"{profile} has forbidden roles: {sorted(forbidden)}")
+		if profile == "Elmahdi Accountant" and "POS User" in actual:
+			issues.append(f"accountant has forbidden roles: POS User")
 	return issues
 
 
 def _normalize_users() -> None:
 	"""Re-apply role profiles + modules without rotating passwords."""
+	_ensure_erp_role(ELMAHDI_HR_USER_ROLE)
 	for profile in EXPECTED_ROLE_PROFILES:
 		_ensure_role_profile(profile, ROLE_PROFILES[profile])
 

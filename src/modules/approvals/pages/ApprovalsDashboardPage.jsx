@@ -25,6 +25,7 @@ import {
 import ShiftRejectConfirmModal from '../../shifts/components/ShiftRejectConfirmModal';
 import ShiftApprovalConfirmModal from '../../shifts/components/ShiftApprovalConfirmModal';
 import { getUserFriendlyMessage } from '../../../utils/errorHandling';
+import { purchaseApprovalsPath, shiftHistoryPath } from '../../../utils/workspacePaths';
 
 export default function ApprovalsDashboardPage() {
   const { t } = useTranslation();
@@ -155,7 +156,7 @@ export default function ApprovalsDashboardPage() {
               </div>
             )}
             <p className="approval-section-link">
-              <Link to="/admin/purchasing/approvals">{t('approvals.openPurchaseApprovals')}</Link>
+              <Link to={purchaseApprovalsPath(capabilities)}>{t('approvals.openPurchaseApprovals')}</Link>
             </p>
           </LayoutSection>
 
@@ -178,7 +179,7 @@ export default function ApprovalsDashboardPage() {
               </div>
             )}
             <p className="approval-section-link">
-              <Link to="/admin/shifts/history">{t('approvals.openShiftHistory')}</Link>
+              <Link to={shiftHistoryPath(capabilities)}>{t('approvals.openShiftHistory')}</Link>
             </p>
           </LayoutSection>
 

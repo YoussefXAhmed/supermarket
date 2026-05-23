@@ -111,12 +111,11 @@ def get_manager_kpis(company=None, from_date=None, to_date=None):
 	"""
 	Returns MTD + today sales KPIs for the manager SPA dashboard.
 
-	- revenue: sum of submitted POS Invoice grand_total (net of returns in grand_total)
-	- sales_count: number of POS invoices
-	- sales_today: revenue for posting_date = today
-	- cogs: stock ledger outgoing + estimated unconsolidated POS cost
-	- net_profit: revenue − cogs
+	Financial fields (cogs, net_profit) are omitted unless the caller may view financial KPIs.
 	"""
+	from elmahdi.api.spa_authorization import assert_may_view_operational_kpis, may_view_financial_kpis
+
+	assert_may_view_operational_kpis()
 	frappe.has_permission("POS Invoice", "read", throw=True)
 
 	company = _default_company(company)
@@ -150,20 +149,28 @@ def get_manager_kpis(company=None, from_date=None, to_date=None):
 
 	gross_margin_pct = round((net_profit / revenue * 100) if revenue > 0 else 0, 1)
 
-	return {
+	result = {
 		"company": company,
 		"period": {"from_date": str(from_date), "to_date": str(to_date)},
 		"revenue": revenue,
 		"sales_count": sales_count,
 		"sales_today": sales_today,
 		"sales_today_count": sales_today_count,
-		"cogs": cogs,
-		"cogs_from_sle": cogs_sle,
-		"cogs_estimated": cogs_est,
-		"net_profit": net_profit,
-		"gross_margin_pct": gross_margin_pct,
 		"revenue_trend": revenue_trend,
 		"last_month_revenue": round(last_revenue, 2),
 		"avg_ticket": round(revenue / sales_count, 2) if sales_count else 0,
 		"sales_trend": _daily_sales_trend(company, from_date, to_date),
 	}
+
+	if may_view_financial_kpis():
+		result.update(
+			{
+				"cogs": cogs,
+				"cogs_from_sle": cogs_sle,
+				"cogs_estimated": cogs_est,
+				"net_profit": net_profit,
+				"gross_margin_pct": gross_margin_pct,
+			}
+		)
+
+	return result

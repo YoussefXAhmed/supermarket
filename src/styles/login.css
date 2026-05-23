@@ -69,3 +69,45 @@
   font-size: 0.75rem; color: var(--text-3);
 }
 .login-hint span { color: var(--accent); font-weight: 600; }
+
+/* ── Unauthorized (no layout shell) ── */
+.unauthorized-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--bg-1);
+}
+
+.unauthorized-page__card {
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 32px 28px;
+  box-shadow: var(--shadow-md, 0 8px 24px rgba(0, 0, 0, 0.08));
+}
+
+.unauthorized-page__title {
+  margin: 16px 0 8px;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.unauthorized-page__message {
+  margin: 0 0 24px;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+
+.unauthorized-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}

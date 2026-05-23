@@ -58,7 +58,8 @@ function roleProfileLabel(roleProfileName) {
 }
 
 export default function UsersPage() {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, canManageSystem, canManageOperationalUsers } = useAuth();
+  const hrScope = canManageOperationalUsers && !canManageSystem;
   const submittingRef = useRef(false);
 
   const [users, setUsers] = useState([]);
@@ -324,14 +325,16 @@ export default function UsersPage() {
       <PageHeader
         title="Users"
         subtitle={
-          query.trim()
-            ? `${filtered.length} of ${totals.total} · ${totals.enabled} enabled · ${totals.disabled} disabled`
-            : `${totals.total} total · ${totals.enabled} enabled · ${totals.disabled} disabled`
+          hrScope
+            ? 'Operational user provisioning — cashiers, inventory, purchasing, and store roles'
+            : query.trim()
+              ? `${filtered.length} of ${totals.total} · ${totals.enabled} enabled · ${totals.disabled} disabled`
+              : `${totals.total} total · ${totals.enabled} enabled · ${totals.disabled} disabled`
         }
         dense
       />
 
-      <LayoutSection variant="raised" title="Add operational user">
+      <LayoutSection variant="raised" title={hrScope ? 'Add operational user' : 'Add operational user'}>
         <p className="user-form__hint">
           Assign an ERP Role Profile and warehouse scope via template — roles are not set manually.
         </p>
@@ -345,7 +348,7 @@ export default function UsersPage() {
                 onChange={(e) => setTemplateId(e.target.value)}
                 required
               >
-                {TEMPLATE_IDS.map((id) => (
+                {TEMPLATE_IDS.filter((id) => !hrScope || id !== 'hr_officer').map((id) => (
                   <option key={id} value={id}>
                     {OPERATIONAL_USER_TEMPLATES[id].label} → {OPERATIONAL_USER_TEMPLATES[id].roleProfileName}
                   </option>

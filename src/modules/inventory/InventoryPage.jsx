@@ -7,12 +7,16 @@ import { getUserFriendlyMessage } from '../../utils/errorHandling';
 import InventoryOverviewCards from '../../components/inventory/InventoryOverviewCards';
 import InventoryProductsTable from '../../components/inventory/InventoryProductsTable';
 import { getInventorySnapshot, getWarehousesList } from '../../services/inventoryService';
+import { canManageItemMaster } from '../../auth/navigationConfig';
+import { useAuth } from '../../hooks/useAuth';
 import { useInventoryCapabilities } from '../../hooks/useInventoryCapabilities';
 import { useOperationalRefresh } from '../../services/operationalRefresh';
 
 export default function InventoryPage() {
   const { t } = useTranslation();
+  const { capabilities } = useAuth();
   const { canInventoryViewValuation } = useInventoryCapabilities();
+  const showItemMasterActions = canManageItemMaster(capabilities);
   const [rows, setRows] = useState([]);
   const [metrics, setMetrics] = useState({
     totalProducts: 0,
@@ -97,9 +101,11 @@ export default function InventoryPage() {
               ))}
             </select>
           </div>
-          <a className="btn btn--ghost btn--sm" href={getERPDeskUrl('item')} target="_blank" rel="noreferrer">
-            + {t('inventory.newItem')}
-          </a>
+          {showItemMasterActions && (
+            <a className="btn btn--ghost btn--sm" href={getERPDeskUrl('item')} target="_blank" rel="noreferrer">
+              + {t('inventory.newItem')}
+            </a>
+          )}
         </div>
       </LayoutSection>
 
@@ -116,7 +122,11 @@ export default function InventoryPage() {
           variant="raised"
           flushHead
         >
-          <InventoryProductsTable rows={filtered} showValuation={canInventoryViewValuation} />
+          <InventoryProductsTable
+            rows={filtered}
+            showValuation={canInventoryViewValuation}
+            canManageItemMaster={showItemMasterActions}
+          />
         </LayoutSection>
       )}
     </DashboardLayout>

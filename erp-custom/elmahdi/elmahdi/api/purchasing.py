@@ -179,11 +179,59 @@ def _approval_action_state(doc, level):
         return False, str(e)
     except frappe.ValidationError as e:
         return False, str(e)
+    if _is_admin_user() or _can_approve_manager() or _can_approve_accountant():
+        return True, ""
     if not doc.has_permission("submit"):
         return False, _(
             "Your role cannot submit Purchase Receipt in ERPNext. Ask an administrator to grant submit permission."
         )
     return True, ""
+
+
+def assert_may_submit_purchase_receipt_direct():
+    """Fail-closed: block REST/Desk/generic submit except approval workflow flag."""
+    if getattr(frappe.flags, "elmahdi_purchase_approval_submit", False):
+        return
+    if _is_admin_user():
+        return
+    frappe.throw(
+        _(
+            "Purchase Receipt must be submitted through manager or accountant approval. "
+            "Use the purchase approval workflow."
+        ),
+        frappe.PermissionError,
+    )
+
+
+def _assert_not_self_approval_by_owner(owner, audit=None):
+    if _is_admin_user():
+        return
+    user = frappe.session.user
+    requester = (audit or {}).get("requested_by") or owner
+    if requester == user:
+        frappe.throw(_("You cannot approve your own purchase receipt."), frappe.PermissionError)
+
+
+def _approval_context_from_db(name):
+    if not name:
+        frappe.throw(_("Purchase Receipt name is required."), frappe.ValidationError)
+    if not frappe.db.exists("Purchase Receipt", name):
+        frappe.throw(_("Purchase Receipt {0} not found.").format(name), frappe.DoesNotExistError)
+
+    fields = ["docstatus", "owner"]
+    if _has_custom_field("purchase_approval_level"):
+        fields.append("purchase_approval_level")
+    if _has_custom_field("purchase_rate_audit"):
+        fields.append("purchase_rate_audit")
+    row = frappe.db.get_value("Purchase Receipt", name, fields, as_dict=True) or {}
+    audit = {}
+    if row.get("purchase_rate_audit"):
+        try:
+            audit = json.loads(row.purchase_rate_audit)
+        except Exception:
+            audit = {}
+    level = _normalize_level(row.get("purchase_approval_level") or audit.get("approval_level") or "manager")
+    return row, audit, level
 
 
 def line_variance_pct(expected, entered):
@@ -294,38 +342,8 @@ def validate_purchase_receipt(doc, method=None):
 
 
 def before_submit_purchase_receipt(doc, method=None):
-    """Block submit when buying-rate variance needs approval (unless approved path)."""
-    if getattr(frappe.flags, "elmahdi_purchase_approval_submit", False):
-        return
-
-    line_payload = [
-        {
-            "item_code": row.item_code,
-            "qty": row.qty,
-            "rate": row.rate,
-            "expected_rate": get_expected_buying_rate(row.item_code),
-        }
-        for row in doc.get("items") or []
-    ]
-    _, level, _ = _build_line_audit(line_payload)
-    if level == "none":
-        return
-
-    audit = _parse_audit(doc)
-    if audit.get("approval_status") == "approved":
-        return
-
-    pending = cint(doc.get("pending_purchase_approval")) if _has_custom_field("pending_purchase_approval") else 0
-    if pending or audit.get("approval_status") == "pending":
-        frappe.throw(
-            _("This purchase receipt requires manager or accountant approval before submit."),
-            frappe.ValidationError,
-        )
-
-    frappe.throw(
-        _("Buying rate variance exceeds allowed limits. Use the purchase approval workflow."),
-        frappe.ValidationError,
-    )
+    """Block direct submit; only elmahdi approval workflow or break-glass admin may submit."""
+    assert_may_submit_purchase_receipt_direct()
 
 
 @frappe.whitelist()
@@ -543,16 +561,18 @@ def approve_purchase_receipt(name, action="approve", notes=""):
     if action not in ("approve", "reject"):
         frappe.throw(_("Invalid action."), frappe.ValidationError)
 
-    doc = frappe.get_doc("Purchase Receipt", name)
-    if doc.docstatus != 0:
+    ctx, audit_preview, level = _approval_context_from_db(name)
+    if cint(ctx.docstatus) != 0:
         frappe.throw(_("Only draft purchase receipts can be approved or rejected."), frappe.ValidationError)
 
-    audit = _parse_audit(doc)
-    level = _normalize_level(doc.get("purchase_approval_level") or audit.get("approval_level") or "manager")
+    _assert_not_self_approval_by_owner(ctx.owner, audit_preview)
+    _assert_can_approve(level)
+
+    doc = frappe.get_doc("Purchase Receipt", name)
+    audit = _parse_audit(doc) or audit_preview
+    level = _normalize_level(doc.get("purchase_approval_level") or audit.get("approval_level") or level)
 
     if action == "reject":
-        _assert_not_self_approval(doc)
-        _assert_can_approve(level)
         audit["approval_status"] = STATUS_REJECTED
         audit["rejected_by"] = frappe.session.user
         audit["rejected_at"] = now_datetime().isoformat()
@@ -569,8 +589,6 @@ def approve_purchase_receipt(name, action="approve", notes=""):
         doc.save(ignore_permissions=True)
         return {"name": doc.name, "status": STATUS_REJECTED, "approval_status": STATUS_REJECTED}
 
-    _assert_not_self_approval(doc)
-    _assert_can_approve(level)
     validate_purchase_receipt(doc)
 
     approval_role = "accountant" if level == "accountant" else "manager"

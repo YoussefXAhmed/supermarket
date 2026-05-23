@@ -3,56 +3,12 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../hooks/useAuth';
 import { hasCapability } from '../../auth/capabilities';
+import { getAdminNavItems } from '../../auth/navigationConfig';
 import UserSessionActions from './UserSessionActions';
 import ErrorBoundary from '../common/ErrorBoundary';
 import { RoleBadge, UserAvatar } from '../ui';
 
-const NAV_FULL = [
-  { to: '/admin', labelKey: 'nav.dashboard', icon: '◈', exact: true, cap: 'canAccessAdminWorkspace' },
-  { to: '/admin/accounting', labelKey: 'nav.finance', icon: '💼', cap: 'canAccessAccountantWorkspace' },
-  { to: '/admin/approvals', labelKey: 'nav.approvals', icon: '✓', cap: 'canViewApprovalsDashboard' },
-  { to: '/admin/products', labelKey: 'nav.products', icon: '🛒', cap: 'canManageSystem' },
-  { to: '/admin/inventory', labelKey: 'nav.inventory', icon: '📦', cap: 'canAccessInventory' },
-  { to: '/admin/purchasing', labelKey: 'nav.purchasing', icon: '🛍️', cap: 'canAccessPurchasing' },
-  { to: '/admin/invoices', labelKey: 'common.invoices', icon: '🧾', cap: 'canViewInvoices' },
-  { to: '/admin/returns', labelKey: 'nav.returns', icon: '↩', cap: 'canViewReturns' },
-  { to: '/admin/shifts/history', labelKey: 'nav.shifts', icon: '◷', cap: 'canViewShiftReports' },
-  { to: '/admin/customers', labelKey: 'nav.customers', icon: '👥', cap: 'canViewReports' },
-  { to: '/admin/activity', labelKey: 'nav.activity', icon: '📋', cap: 'canViewReports' },
-  { to: '/admin/users', labelKey: 'nav.users', icon: '🧑‍💼', cap: 'canManageUsers' },
-  { to: '/admin/warehouses', labelKey: 'nav.warehouses', icon: '🏬', cap: 'canManageSystem' },
-  { to: '/admin/reports', labelKey: 'nav.reports', icon: '📊', cap: 'canViewReports' },
-  { to: '/pos', labelKey: 'common.pos', icon: '💳', cap: 'canOperatePOS' },
-  { to: '/admin/settings', labelKey: 'nav.settings', icon: '⚙️', cap: 'canManageSettings' },
-];
-
-const NAV_STORE_MANAGER = [
-  { to: '/admin', labelKey: 'nav.dashboard', icon: '◈', exact: true, cap: 'canAccessAdminWorkspace' },
-  { to: '/admin/approvals', labelKey: 'nav.approvals', icon: '✓', cap: 'canViewApprovalsDashboard' },
-  { to: '/admin/shifts/history', labelKey: 'nav.shifts', icon: '◷', cap: 'canViewShiftReports' },
-  { to: '/admin/purchasing/approvals', labelKey: 'nav.purchaseRates', icon: '🛍️', cap: 'canViewPurchaseApprovals' },
-  { to: '/admin/invoices', labelKey: 'common.invoices', icon: '🧾', cap: 'canViewInvoices' },
-  { to: '/admin/reports', labelKey: 'nav.reports', icon: '📊', cap: 'canViewReports' },
-  { to: '/admin/returns', labelKey: 'nav.returns', icon: '↩', cap: 'canViewReturns' },
-  { to: '/pos', labelKey: 'common.pos', icon: '💳', cap: 'canViewPOS' },
-];
-
-const NAV_ACCOUNTANT = [
-  { to: '/admin/accounting', labelKey: 'nav.finance', icon: '💼', exact: true, cap: 'canAccessAccountantWorkspace' },
-  { to: '/admin/accounting/matching', labelKey: 'nav.invoiceMatching', icon: '🧾', cap: 'canAccessInvoiceMatching' },
-  { to: '/admin/accounting/payments', labelKey: 'nav.supplierPayments', icon: '💳', cap: 'canViewSupplierPayments' },
-  { to: '/admin/approvals', labelKey: 'nav.approvals', icon: '✓', cap: 'canViewApprovalsDashboard' },
-  { to: '/admin/invoices', labelKey: 'common.invoices', icon: '🧾', cap: 'canViewInvoices' },
-  { to: '/admin/reports', labelKey: 'nav.reports', icon: '📊', cap: 'canViewReports' },
-  { to: '/admin/shifts/history', labelKey: 'nav.shifts', icon: '◷', cap: 'canViewShiftReports' },
-  { to: '/admin/purchasing/approvals', labelKey: 'nav.purchaseRates', icon: '🛍️', cap: 'canViewPurchaseApprovals' },
-];
-
-const NAV_PURCHASING_WORKSPACE = [
-  { to: '/admin/purchasing', labelKey: 'nav.purchasing', icon: '🛍️', cap: 'canAccessPurchasing' },
-];
-
-export default function AdminLayout({ purchasingWorkspace = false }) {
+export default function AdminLayout() {
   const { t } = useTranslation();
   const { user, logout, capabilities } = useAuth();
   const navigate = useNavigate();
@@ -64,23 +20,10 @@ export default function AdminLayout({ purchasingWorkspace = false }) {
     navigate('/login');
   };
 
-  const navItems = useMemo(() => {
-    let pool = NAV_FULL;
-    if (purchasingWorkspace && !hasCapability(capabilities, 'canManageSystem')) {
-      pool = NAV_PURCHASING_WORKSPACE;
-    } else if (
-      capabilities.operationalPersona === 'store_manager' &&
-      !hasCapability(capabilities, 'canManageSystem')
-    ) {
-      pool = NAV_STORE_MANAGER;
-    } else if (
-      capabilities.operationalPersona === 'accountant' &&
-      !hasCapability(capabilities, 'canManageSystem')
-    ) {
-      pool = NAV_ACCOUNTANT;
-    }
-    return pool.filter((item) => hasCapability(capabilities, item.cap));
-  }, [purchasingWorkspace, capabilities]);
+  const navItems = useMemo(
+    () => getAdminNavItems(capabilities),
+    [capabilities],
+  );
 
   const profileLink = hasCapability(capabilities, 'canManageSettings')
     ? [{ label: t('nav.settings'), onClick: () => navigate('/admin/settings') }]

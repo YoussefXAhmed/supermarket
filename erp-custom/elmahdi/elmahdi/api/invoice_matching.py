@@ -26,6 +26,19 @@ FULLY_BILLED_PCT = 99.99
 OVERBILLED_PCT = 100.01
 
 
+def _require_matching_read() -> None:
+	from elmahdi.api.spa_authorization import assert_may_access_invoice_matching
+
+	assert_may_access_invoice_matching()
+	frappe.has_permission("Purchase Receipt", "read", throw=True)
+
+
+def _require_matching_write() -> None:
+	from elmahdi.api.spa_authorization import assert_may_manage_supplier_payable
+
+	assert_may_manage_supplier_payable()
+
+
 def _has_pr_field(fieldname: str) -> bool:
 	return frappe.db.has_column("Purchase Receipt", fieldname)
 
@@ -442,7 +455,7 @@ def _build_receipt_workspace_row(pr_doc, limit_suggestions: int = 5) -> dict:
 @frappe.whitelist()
 def get_invoice_matching_workspace(limit=150):
 	"""Line-level matching workspace for submitted purchase receipts."""
-	frappe.has_permission("Purchase Receipt", "read", throw=True)
+	_require_matching_read()
 	limit = int(limit or 150)
 	receipts = frappe.get_all(
 		"Purchase Receipt",
@@ -490,6 +503,7 @@ def get_invoice_matching_rows(limit=150):
 @frappe.whitelist()
 def list_matchable_draft_invoices(receipt_name, search=None, limit=25):
 	"""Draft purchase invoices: same supplier + company as receipt."""
+	_require_matching_read()
 	pr = _validate_receipt_for_matching(receipt_name)
 	limit = min(int(limit or 25), 50)
 	search = (search or "").strip()
@@ -565,6 +579,7 @@ def _suggest_matches_for_receipt(pr, limit=5):
 @frappe.whitelist()
 def suggest_invoice_matches(receipt_name, limit=5):
 	"""Rank draft invoices by supplier, amount, and date proximity."""
+	_require_matching_read()
 	pr = _validate_receipt_for_matching(receipt_name)
 	return _suggest_matches_for_receipt(pr, limit=limit)
 
@@ -575,6 +590,7 @@ def link_receipt_to_invoice(receipt_name, invoice_name, lines=None):
 	Link PR lines to a draft PI (line-level).
 	lines: optional JSON list of {pr_detail, qty} for partial billing.
 	"""
+	_require_matching_write()
 	pr = _validate_receipt_for_matching(receipt_name)
 	pi = _validate_invoice_for_matching(invoice_name, pr)
 
@@ -710,6 +726,7 @@ def link_receipt_to_invoice(receipt_name, invoice_name, lines=None):
 @frappe.whitelist()
 def get_receipt_matching_detail(receipt_name):
 	"""Single receipt workspace row (after link or for expand)."""
+	_require_matching_read()
 	pr = _validate_receipt_for_matching(receipt_name)
 	return _build_receipt_workspace_row(pr)
 
@@ -907,7 +924,7 @@ def _make_pi_from_receipt(receipt_name: str):
 @frappe.whitelist()
 def get_receipts_ready_for_billing(company=None, supplier=None, limit=50):
 	"""Submitted purchase receipts with billing eligibility for the From receipt tab."""
-	frappe.has_permission("Purchase Receipt", "read", throw=True)
+	_require_matching_read()
 	limit = int(limit or 50)
 	company = company or frappe.defaults.get_user_default("Company")
 	filters = {"docstatus": 1}
@@ -939,18 +956,18 @@ def list_receipts_pending_invoice(company=None, supplier=None, limit=50):
 @frappe.whitelist()
 def retry_auto_payable_for_receipt(receipt_name):
 	"""Retry payable creation when auto-invoice failed after approval."""
-	from elmahdi.api.payment_authorization import assert_may_manage_supplier_payable_via_api
+	from elmahdi.api.spa_authorization import assert_may_manage_supplier_payable
 
-	assert_may_manage_supplier_payable_via_api()
+	assert_may_manage_supplier_payable()
 	return auto_create_and_submit_purchase_invoice_for_receipt(receipt_name)
 
 
 @frappe.whitelist()
 def create_purchase_invoice_from_receipt(receipt_name, submit=0):
 	"""Manual billing for exceptional cases; normal receipts use auto_create on approval."""
-	from elmahdi.api.payment_authorization import assert_may_manage_supplier_payable_via_api
+	from elmahdi.api.spa_authorization import assert_may_manage_supplier_payable
 
-	assert_may_manage_supplier_payable_via_api()
+	assert_may_manage_supplier_payable()
 	pr = _validate_receipt_for_matching(receipt_name)
 	frappe.has_permission("Purchase Invoice", "create", throw=True)
 	ws_before = _build_receipt_workspace_row(pr)

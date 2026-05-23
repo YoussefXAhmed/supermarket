@@ -11,6 +11,7 @@ import {
 import { getUserFriendlyMessage } from '../../utils/errorHandling';
 import { useOperationalRefresh } from '../../services/operationalRefresh';
 import { normalizeBillingStatus, BILLING_STATUS } from '../../utils/billingStatus';
+import { financePath } from '../../utils/workspacePaths';
 
 const STATUS_FILTERS = [
   { id: 'all', label: 'All' },
@@ -131,7 +132,7 @@ export default function InvoiceMatchingPage() {
       <div className="ap-workflow-banner" role="note">
         <strong>Operational flow:</strong> (1) Receive stock → Purchase Receipt · (2) Store manager
         approves → ERP creates and submits Purchase Invoice automatically · (3){' '}
-        <Link to="/admin/accounting/payments">Record payment</Link> in Finance. Use this page only
+        <Link to={financePath('payments')}>Record payment</Link> in Finance. Use this page only
         for variance, partial billing, or retry when auto-payable failed.
       </div>
 

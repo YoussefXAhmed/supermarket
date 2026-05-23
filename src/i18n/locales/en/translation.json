@@ -71,6 +71,15 @@
     "english": "English",
     "arabic": "العربية"
   },
+  "auth": {
+    "unauthorized": {
+      "title": "Access not allowed",
+      "routeMessage": "This page is not available for your role. Use the button below to return to your workspace.",
+      "workspaceMessage": "This workspace is not available for your role. Use the button below to return to your assigned area.",
+      "goHome": "Go to my workspace",
+      "goBack": "Go back"
+    }
+  },
   "nav": {
     "activity": "Activity",
     "alerts": "Alerts",
@@ -103,7 +112,13 @@
     "suppliers": "Suppliers",
     "transfer": "Transfer",
     "users": "Users",
-    "warehouses": "Warehouses"
+    "warehouses": "Warehouses",
+    "hr": "HR",
+    "hrOverview": "HR workspace",
+    "hrSubtitle": "Operational users · role assignment · access control",
+    "hrHint": "Create and manage supermarket operational accounts. Finance, inventory execution, and system settings are not available here.",
+    "myShifts": "My shifts",
+    "manager": "Manager"
   },
   "dashboardPage": {
     "title": "Dashboard",

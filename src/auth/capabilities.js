@@ -75,7 +75,10 @@ const CAPABILITY_DEFAULTS = {
   canCloseShift: false,
   canApproveShift: false,
   canViewShiftReports: false,
+  canViewOwnShiftHistory: false,
   canViewInvoices: false,
+  canAccessManagerWorkspace: false,
+  canViewStockLedgerReadOnly: false,
   canAccessPurchasing: false,
   canApprovePurchasing: false,
   canApprovePurchasingAccountant: false,
@@ -94,6 +97,8 @@ const CAPABILITY_DEFAULTS = {
   canViewReturns: false,
   canCreateReturns: false,
   canManageUsers: false,
+  canManageOperationalUsers: false,
+  canAccessHRWorkspace: false,
   canManageSettings: false,
   canManageSystem: false,
   operationalPersona: '',
@@ -134,7 +139,7 @@ function finalizeCapabilities(caps) {
   c.isManager = Boolean(c.isStoreManager);
   c.isStoreManager = Boolean(
     c.operationalPersona === 'store_manager' ||
-      (c.canAccessAdminWorkspace && !c.canManageSystem && c.canMonitorCashiers),
+      (c.canAccessManagerWorkspace && !c.canManageSystem),
   );
 
   if (!c.canAccessPurchasing && (c.canManageSystem || c.isPurchasing)) {

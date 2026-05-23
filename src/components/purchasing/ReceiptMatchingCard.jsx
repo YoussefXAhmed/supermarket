@@ -12,6 +12,7 @@ import {
   retryAutoPayableForReceipt,
 } from '../../services/invoiceMatchingService';
 import { getUserFriendlyMessage } from '../../utils/errorHandling';
+import { financePath } from '../../utils/workspacePaths';
 import { openERPDesk } from '../../utils/erpLinks';
 
 export default function ReceiptMatchingCard({
@@ -87,7 +88,7 @@ export default function ReceiptMatchingCard({
           {(row.ap_stage === 'payment_pending' || row.ap_stage === 'partially_paid') && (
             <>
               {' '}
-              <Link to="/admin/accounting/payments">Record payment →</Link>
+              <Link to={financePath('payments')}>Record payment →</Link>
             </>
           )}
         </p>

@@ -1,8 +1,13 @@
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Badge, Table } from '../ui';
 import { getERPDeskUrl } from '../../utils/erpLinks';
 
-export default function InventoryProductsTable({ rows, showValuation = true }) {
+export default function InventoryProductsTable({
+  rows,
+  showValuation = true,
+  canManageItemMaster = false,
+}) {
   const { t } = useTranslation();
   const columns = [
     {
@@ -55,22 +60,22 @@ export default function InventoryProductsTable({ rows, showValuation = true }) {
       label: t('ui.table.actions'),
       render: (_, row) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <a
+          {canManageItemMaster && (
+            <a
+              className="btn btn--ghost btn--sm"
+              href={getERPDeskUrl(`item/${encodeURIComponent(row.item_code)}`)}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {t('common.edit')}
+            </a>
+          )}
+          <Link
             className="btn btn--ghost btn--sm"
-            href={getERPDeskUrl(`item/${encodeURIComponent(row.item_code)}`)}
-            target="_blank"
-            rel="noreferrer"
-          >
-            {t('common.edit')}
-          </a>
-          <a
-            className="btn btn--ghost btn--sm"
-            href={getERPDeskUrl('stock-entry')}
-            target="_blank"
-            rel="noreferrer"
+            to={`/inventory/stock-entry?item=${encodeURIComponent(row.item_code)}`}
           >
             {t('nav.stockEntry')}
-          </a>
+          </Link>
         </div>
       ),
     },

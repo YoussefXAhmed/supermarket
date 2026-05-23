@@ -22,6 +22,7 @@ import {
   filterShiftSessions,
   isAwaitingSubmission,
 } from '../../../utils/shiftSessions';
+import { canAccessShiftHistory, isOwnShiftHistoryOnly } from '../../../auth/navigationConfig';
 import ShiftHistoryFilters from '../components/ShiftHistoryFilters';
 import ShiftSessionCard from '../components/ShiftSessionCard';
 import ShiftSessionDetailDrawer from '../components/ShiftSessionDetailDrawer';
@@ -31,7 +32,9 @@ import ShiftRejectConfirmModal from '../components/ShiftRejectConfirmModal';
 const DEFAULT_FILTERS = { cashier: '', register: '', status: 'all', date: '' };
 
 export default function ShiftHistoryPage() {
-  const { user, canViewShiftReports, canApproveShift } = useAuth();
+  const { user, capabilities, canViewShiftReports, canApproveShift } = useAuth();
+  const ownOnly = isOwnShiftHistoryOnly(capabilities);
+  const canView = canAccessShiftHistory(capabilities);
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -46,7 +49,7 @@ export default function ShiftHistoryPage() {
     setError('');
     try {
       const rows = await listShiftSessions({
-        user: canViewShiftReports ? undefined : user?.name,
+        user: ownOnly || !canViewShiftReports ? user?.name : undefined,
         limit: 100,
       });
       setSessions(rows);
@@ -56,11 +59,11 @@ export default function ShiftHistoryPage() {
     } finally {
       setLoading(false);
     }
-  }, [canViewShiftReports, user?.name]);
+  }, [ownOnly, canViewShiftReports, user?.name]);
 
   useEffect(() => {
-    if (canViewShiftReports) load();
-  }, [canViewShiftReports, load]);
+    if (canView) load();
+  }, [canView, load]);
 
   const filterOptions = useMemo(() => collectFilterOptions(sessions), [sessions]);
   const filtered = useMemo(
@@ -129,11 +132,11 @@ export default function ShiftHistoryPage() {
     }
   };
 
-  if (!canViewShiftReports) {
+  if (!canView) {
     return (
       <TablePageLayout>
         <PageHeader title="Shift history" subtitle="Access denied" dense />
-        <ApiErrorCard message="You do not have permission to view shift reports." />
+        <ApiErrorCard message="You do not have permission to view shift history." />
       </TablePageLayout>
     );
   }
@@ -141,8 +144,12 @@ export default function ShiftHistoryPage() {
   return (
     <TablePageLayout className="page-layout--list-page shift-history-page">
       <PageHeader
-        title="Shift history"
-        subtitle="Shift sessions · POS Opening & Closing entries from ERPNext"
+        title={ownOnly ? 'My shifts' : 'Shift history'}
+        subtitle={
+          ownOnly
+            ? 'Your shift sessions from POS Opening & Closing entries'
+            : 'Shift sessions · POS Opening & Closing entries from ERPNext'
+        }
         dense
         actions={
           <Btn variant="ghost" size="sm" onClick={load} disabled={loading}>
@@ -151,37 +158,41 @@ export default function ShiftHistoryPage() {
         }
       />
 
-      <div className="kpi-grid shift-history-kpis">
-        <StatCard label="Open shifts" value={kpis.openShifts} icon="◷" color="blue" compact />
-        <StatCard
-          label="Pending approvals"
-          value={kpis.pendingApprovals}
-          icon="⏳"
-          color="amber"
-          compact
-        />
-        <StatCard
-          label="Sales today"
-          value={fmtCurrency(kpis.totalSalesToday)}
-          icon="💰"
-          color="accent"
-          compact
-        />
-        <StatCard
-          label="Variance today"
-          value={fmtCurrency(kpis.totalVariance)}
-          icon="⚖"
-          color="red"
-          compact
-        />
-      </div>
+      {!ownOnly && (
+        <div className="kpi-grid shift-history-kpis">
+          <StatCard label="Open shifts" value={kpis.openShifts} icon="◷" color="blue" compact />
+          <StatCard
+            label="Pending approvals"
+            value={kpis.pendingApprovals}
+            icon="⏳"
+            color="amber"
+            compact
+          />
+          <StatCard
+            label="Sales today"
+            value={fmtCurrency(kpis.totalSalesToday)}
+            icon="💰"
+            color="accent"
+            compact
+          />
+          <StatCard
+            label="Variance today"
+            value={fmtCurrency(kpis.totalVariance)}
+            icon="⚖"
+            color="red"
+            compact
+          />
+        </div>
+      )}
 
-      <ShiftHistoryFilters
-        filters={filters}
-        onChange={setFilters}
-        cashiers={filterOptions.cashiers}
-        registers={filterOptions.registers}
-      />
+      {!ownOnly && (
+        <ShiftHistoryFilters
+          filters={filters}
+          onChange={setFilters}
+          cashiers={filterOptions.cashiers}
+          registers={filterOptions.registers}
+        />
+      )}
 
       {error && !loading && <ApiErrorCard message={error} onRetry={load} />}
 
@@ -189,7 +200,7 @@ export default function ShiftHistoryPage() {
         <PageLoading size={26} />
       ) : (
         <>
-          {canApproveShift && pendingSessions.length > 0 && (
+          {canApproveShift && !ownOnly && pendingSessions.length > 0 && (
             <LayoutSection
               variant="raised"
               title="Pending approval"
@@ -205,18 +216,20 @@ export default function ShiftHistoryPage() {
 
           <LayoutSection
             variant="raised"
-            title="All shift sessions"
+            title={ownOnly ? 'My shift sessions' : 'All shift sessions'}
             subtitle={`${historySessions.length} session${historySessions.length === 1 ? '' : 's'}`}
             flushHead
           >
             {historySessions.length === 0 ? (
               <EmptyState
                 icon="◷"
-                title="No shift sessions"
+                title={ownOnly ? 'No shifts yet' : 'No shift sessions'}
                 desc={
-                  filters.status !== 'all' || filters.cashier || filters.register || filters.date
-                    ? 'Try adjusting filters'
-                    : 'Shifts appear here after cashiers open and close registers in ERP'
+                  ownOnly
+                    ? 'Your shifts appear here after you open and close a register'
+                    : filters.status !== 'all' || filters.cashier || filters.register || filters.date
+                      ? 'Try adjusting filters'
+                      : 'Shifts appear here after cashiers open and close registers in ERP'
                 }
               />
             ) : (

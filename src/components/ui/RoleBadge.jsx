@@ -7,6 +7,7 @@ const LABELS = {
   cashier: { labelKey: 'roles.cashier', className: 'role-badge--pos' },
   inventory: { labelKey: 'nav.inventory', className: 'role-badge--inventory' },
   purchasing: { labelKey: 'nav.purchasing', className: 'role-badge--purchasing' },
+  hr: { labelKey: 'nav.hr', className: 'role-badge--manager' },
   desk_manager: { labelKey: 'roles.manager', className: 'role-badge--manager' },
   desk: { labelKey: 'roles.deskUser', className: '' },
 };

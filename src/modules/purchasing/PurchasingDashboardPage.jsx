@@ -4,16 +4,19 @@ import { useTranslation } from 'react-i18next';
 import { PageHeader, PageLoading, ApiErrorCard, StatCard, Btn, PartialDataBanner } from '../../components/ui';
 import { useAuth } from '../../hooks/useAuth';
 import { hasCapability } from '../../auth/capabilities';
+import { canExecutePurchasingFinance } from '../../auth/navigationConfig';
 import { DashboardLayout, LayoutSection, TableRegion } from '../../components/layout/page-layouts';
 import { getPurchasingAnalytics } from '../../services/purchasingService';
 import { getUserFriendlyMessage } from '../../utils/errorHandling';
 import { useOperationalRefresh } from '../../services/operationalRefresh';
 import { fmtCurrencyCompact } from '../../utils/format';
+import { financePath, purchasingPath } from '../../utils/workspacePaths';
 
 export default function PurchasingDashboardPage() {
   const { t } = useTranslation();
   const { capabilities } = useAuth();
   const showApprovals = hasCapability(capabilities, 'canViewPurchaseApprovals');
+  const showFinanceActions = canExecutePurchasingFinance(capabilities);
   const [data, setData] = useState(null);
   const [warnings, setWarnings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -71,7 +74,9 @@ export default function PurchasingDashboardPage() {
       <section className="layout-grid layout-grid--kpi" aria-label="Key metrics">
         <StatCard label={t('nav.suppliers')} value={data.supplierCount} icon="🏭" color="blue" compact />
         <StatCard label={t('purchasing.totalPurchases')} value={fmtCurrencyCompact(data.totalPurchases)} icon="💰" color="accent" compact />
-        <StatCard label={t('finance.outstanding')} value={fmtCurrencyCompact(data.totalOutstanding)} icon="📋" color="red" compact />
+        {showFinanceActions && (
+          <StatCard label={t('finance.outstanding')} value={fmtCurrencyCompact(data.totalOutstanding)} icon="📋" color="red" compact />
+        )}
         <StatCard label={t('purchasing.thisMonth')} value={fmtCurrencyCompact(data.monthPurchases)} icon="📅" color="green" compact />
       </section>
 
@@ -84,13 +89,17 @@ export default function PurchasingDashboardPage() {
             </p>
           </div>
           <div className="workflow-bar__actions">
-            <Link to="/admin/purchasing/receive" className="btn btn--primary btn--sm">{t('purchasing.receiveStock')}</Link>
+            <Link to={purchasingPath('receive')} className="btn btn--primary btn--sm">{t('purchasing.receiveStock')}</Link>
             {showApprovals && (
-              <Link to="/admin/purchasing/approvals" className="btn btn--ghost btn--sm">{t('nav.approvals')}</Link>
+              <Link to={purchasingPath('approvals')} className="btn btn--ghost btn--sm">{t('nav.approvals')}</Link>
             )}
-            <Link to="/admin/purchasing/invoices" className="btn btn--ghost btn--sm">{t('purchasing.newInvoice')}</Link>
-            <Link to="/admin/purchasing/matching" className="btn btn--ghost btn--sm">{t('nav.matching')}</Link>
-            <Link to="/admin/purchasing/suppliers" className="btn btn--ghost btn--sm">{t('nav.suppliers')}</Link>
+            {showFinanceActions && (
+              <>
+                <Link to={purchasingPath('invoices')} className="btn btn--ghost btn--sm">{t('purchasing.newInvoice')}</Link>
+                <Link to={financePath('matching')} className="btn btn--ghost btn--sm">{t('nav.matching')}</Link>
+              </>
+            )}
+            <Link to={purchasingPath('suppliers')} className="btn btn--ghost btn--sm">{t('nav.suppliers')}</Link>
           </div>
         </div>
       </LayoutSection>
@@ -100,7 +109,11 @@ export default function PurchasingDashboardPage() {
         subtitle={t('purchasing.byInvoiceValue')}
         variant="raised"
         fit={sparseTable}
-        actions={<Link to="/admin/purchasing/reports" className="btn btn--ghost btn--sm">{t('purchasing.fullReport')}</Link>}
+        actions={
+          showFinanceActions ? (
+            <Link to={purchasingPath('reports')} className="btn btn--ghost btn--sm">{t('purchasing.fullReport')}</Link>
+          ) : null
+        }
       >
         {supplierRows.length === 0 ? (
           <p className="empty-inline">{t('purchasing.noInvoicesYet')}</p>
@@ -113,20 +126,22 @@ export default function PurchasingDashboardPage() {
                     <th>{t('nav.suppliers')}</th>
                     <th>{t('purchasing.table.inv')}</th>
                     <th>{t('finance.table.total')}</th>
-                    <th>{t('finance.outstanding')}</th>
+                    {showFinanceActions && <th>{t('finance.outstanding')}</th>}
                   </tr>
                 </thead>
                 <tbody>
                   {supplierRows.map((row) => (
                     <tr key={row.supplier}>
                       <td>
-                        <Link to={`/admin/purchasing/suppliers/${encodeURIComponent(row.supplier)}`}>
+                        <Link to={purchasingPath(`suppliers/${encodeURIComponent(row.supplier)}`)}>
                           {row.supplier}
                         </Link>
                       </td>
                       <td className="mono">{row.count}</td>
                       <td className="mono">{fmtCurrencyCompact(row.total)}</td>
-                      <td className="mono">{fmtCurrencyCompact(row.outstanding)}</td>
+                      {showFinanceActions && (
+                        <td className="mono">{fmtCurrencyCompact(row.outstanding)}</td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

@@ -55,14 +55,24 @@ def _append_pe_audit(pe_name: str, event: dict) -> None:
 
 
 def _require_ap_read():
+	from elmahdi.api.spa_authorization import assert_may_access_finance
+
+	assert_may_access_finance()
 	frappe.has_permission("Purchase Invoice", "read", throw=True)
 
 
 def _require_payment_create():
 	frappe.has_permission("Payment Entry", "create", throw=True)
-	from elmahdi.api.payment_authorization import assert_may_record_supplier_payment
+	from elmahdi.api.spa_authorization import assert_may_record_supplier_payment
 
 	assert_may_record_supplier_payment()
+
+
+def _require_payment_read():
+	from elmahdi.api.spa_authorization import assert_may_view_supplier_payments
+
+	assert_may_view_supplier_payments()
+	frappe.has_permission("Payment Entry", "read", throw=True)
 
 
 def _default_company():
@@ -462,7 +472,7 @@ def list_payment_accounts(company=None, account_type=None):
 
 @frappe.whitelist()
 def list_supplier_payment_history(supplier=None, company=None, limit=50):
-	frappe.has_permission("Payment Entry", "read", throw=True)
+	_require_payment_read()
 	company = company or _default_company()
 	filters = {
 		"docstatus": ["!=", 2],

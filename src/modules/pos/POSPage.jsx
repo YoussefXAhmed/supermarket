@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { usePOS } from '../../hooks/usePOS';
@@ -22,6 +22,7 @@ import { getERPImageUrl } from '../../utils/erpLinks';
 import { getUserFriendlyMessage } from '../../utils/errorHandling';
 import { useNotify } from '../../context/NotificationContext';
 import { availableQty } from '../../utils/posStock';
+import { getPOSSessionLinks } from '../../auth/navigationConfig';
 import { IS_DEV } from '../../config/erp';
 import '../../styles/pos.css';
 
@@ -94,17 +95,23 @@ export default function POSPage() {
   const { t } = useTranslation();
   const {
     canOperatePOS,
-    canCreateReturns,
     canManageShift,
     canMonitorCashiers,
-    canAccessInventory,
-    canAccessAdminWorkspace,
+    capabilities,
     logout,
     user,
   } = useAuth();
   const navigate = useNavigate();
   const notify = useNotify();
   const pos = usePOS(user);
+
+  const posSessionLinks = useMemo(
+    () => getPOSSessionLinks(capabilities).map((link) => ({
+      label: t(link.labelKey),
+      onClick: () => navigate(link.to),
+    })),
+    [capabilities, navigate, t],
+  );
 
   const handleEndShift = useCallback(async () => {
     try {
@@ -302,11 +309,7 @@ export default function POSPage() {
           <UserSessionActions
             user={user}
             compact
-            links={[
-              ...(canCreateReturns ? [{ label: t('nav.returns'), onClick: () => navigate('/pos/returns') }] : []),
-              ...(canAccessInventory ? [{ label: t('nav.stock'), onClick: () => navigate('/inventory') }] : []),
-              ...(canAccessAdminWorkspace ? [{ label: t('common.admin'), onClick: () => navigate('/admin') }] : []),
-            ]}
+            links={posSessionLinks}
             onLogout={async () => { await logout(); navigate('/login'); }}
           />
         </div>

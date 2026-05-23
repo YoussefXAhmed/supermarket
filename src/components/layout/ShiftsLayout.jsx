@@ -1,30 +1,26 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useMemo } from 'react';
 import { useAuth } from '../../hooks/useAuth';
-import { hasCapability } from '../../auth/capabilities';
+import { getShiftsNavItems, getShiftsSessionLinks } from '../../auth/navigationConfig';
 import UserSessionActions from './UserSessionActions';
-
-const LINKS = [
-  { to: 'open', labelKey: 'shifts.openShift', cap: 'canOpenShift' },
-  { to: 'close', labelKey: 'shifts.closeShift', cap: 'canCloseShift' },
-  { to: 'history', labelKey: 'nav.history', cap: 'canViewShiftReports' },
-  { to: '/pos/returns', labelKey: 'nav.returns', cap: 'canCreateReturns' },
-  { to: '/pos', labelKey: 'common.pos', cap: 'canViewPOS' },
-];
 
 export default function ShiftsLayout() {
   const { t } = useTranslation();
-  const { user, logout, capabilities, canAccessAdminWorkspace } = useAuth();
+  const { user, logout, capabilities } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const inAdminShell = location.pathname.startsWith('/admin/');
 
-  const sessionLinks =
-    canAccessAdminWorkspace && !inAdminShell
-      ? [{ label: t('common.admin'), onClick: () => navigate('/admin') }]
-      : [];
+  const sessionLinks = useMemo(
+    () => getShiftsSessionLinks(capabilities, inAdminShell).map((link) => ({
+      label: t(link.labelKey),
+      onClick: () => navigate(link.to),
+    })),
+    [capabilities, inAdminShell, navigate, t],
+  );
 
-  const links = LINKS.filter((l) => hasCapability(capabilities, l.cap));
+  const links = useMemo(() => getShiftsNavItems(capabilities), [capabilities]);
 
   return (
     <div className="shifts-layout">
@@ -36,16 +32,6 @@ export default function ShiftsLayout() {
         <UserSessionActions user={user} onLogout={logout} links={sessionLinks} />
       </header>
       <nav className="shifts-layout__nav">
-        {canAccessAdminWorkspace && !inAdminShell && (
-          <NavLink
-            to="/admin"
-            className={({ isActive }) =>
-              `shifts-layout__link shifts-layout__link--admin ${isActive ? 'shifts-layout__link--active' : ''}`
-            }
-          >
-            {t('common.admin')}
-          </NavLink>
-        )}
         {links.map((l) => (
           <NavLink
             key={l.to}

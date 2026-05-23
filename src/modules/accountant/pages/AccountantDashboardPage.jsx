@@ -5,15 +5,17 @@ import { DashboardLayout, LayoutSection } from '../../../components/layout/page-
 import { useAuth } from '../../../hooks/useAuth';
 import { useApprovalQueues } from '../../approvals/hooks/useApprovalQueues';
 import { RoleBadge } from '../../../components/ui';
+import { financePath } from '../../../utils/workspacePaths';
 
 const LINKS = [
-  { to: '/admin/accounting/matching', labelKey: 'nav.invoiceMatching', descKey: 'finance.links.invoiceMatching', icon: '🧾', cap: 'canAccessInvoiceMatching' },
-  { to: '/admin/accounting/payments', labelKey: 'nav.supplierPayments', descKey: 'finance.links.supplierPayments', icon: '💳', cap: 'canViewSupplierPayments' },
-  { to: '/admin/approvals', labelKey: 'finance.links.approvalsHub', descKey: 'finance.links.approvalsDesc', icon: '✓' },
-  { to: '/admin/invoices', labelKey: 'finance.links.salesInvoices', descKey: 'finance.links.salesInvoicesDesc', icon: '🧾', cap: 'canViewInvoices' },
-  { to: '/admin/reports', labelKey: 'finance.links.financialReports', descKey: 'finance.links.financialReportsDesc', icon: '📊', cap: 'canViewReports' },
-  { to: '/admin/shifts/history', labelKey: 'finance.links.shiftApprovals', descKey: 'finance.links.shiftApprovalsDesc', icon: '◷', cap: 'canViewShiftReports' },
-  { to: '/admin/purchasing/approvals', labelKey: 'nav.purchaseRates', descKey: 'finance.links.purchaseRatesDesc', icon: '🛍️', cap: 'canViewPurchaseApprovals' },
+  { to: financePath('matching'), labelKey: 'nav.invoiceMatching', descKey: 'finance.links.invoiceMatching', icon: '🧾', cap: 'canAccessInvoiceMatching' },
+  { to: financePath('payments'), labelKey: 'nav.supplierPayments', descKey: 'finance.links.supplierPayments', icon: '💳', cap: 'canViewSupplierPayments' },
+  { to: financePath('approvals'), labelKey: 'finance.links.approvalsHub', descKey: 'finance.links.approvalsDesc', icon: '✓' },
+  { to: financePath('invoices'), labelKey: 'finance.links.salesInvoices', descKey: 'finance.links.salesInvoicesDesc', icon: '🧾', cap: 'canViewInvoices' },
+  { to: financePath('reports'), labelKey: 'finance.links.financialReports', descKey: 'finance.links.financialReportsDesc', icon: '📊', cap: 'canViewReports' },
+  { to: financePath('shifts/history'), labelKey: 'finance.links.shiftApprovals', descKey: 'finance.links.shiftApprovalsDesc', icon: '◷', cap: 'canViewShiftReports' },
+  { to: financePath('purchase-approvals'), labelKey: 'nav.purchaseRates', descKey: 'finance.links.purchaseRatesDesc', icon: '🛍️', cap: 'canViewPurchaseApprovals' },
+  { to: financePath('ledger'), labelKey: 'nav.ledger', descKey: 'finance.links.financialReportsDesc', icon: '📒', cap: 'canViewStockLedgerReadOnly' },
 ];
 
 export default function AccountantDashboardPage() {

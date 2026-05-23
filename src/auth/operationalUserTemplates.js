@@ -39,6 +39,13 @@ export const OPERATIONAL_USER_TEMPLATES = {
     warehouseRule: 'none',
     requiresPriceList: false,
   },
+  hr_officer: {
+    id: 'hr_officer',
+    label: 'HR Officer',
+    roleProfileName: 'Elmahdi HR Officer',
+    warehouseRule: 'none',
+    requiresPriceList: false,
+  },
 };
 
 export const TEMPLATE_IDS = Object.keys(OPERATIONAL_USER_TEMPLATES);

@@ -1,23 +1,14 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import ErrorBoundary from '../common/ErrorBoundary';
+import { useMemo } from 'react';
 import { useAuth } from '../../hooks/useAuth';
-import { hasCapability } from '../../auth/capabilities';
-
-const NAV = [
-  { to: '/admin/purchasing', labelKey: 'nav.overview', end: true },
-  { to: '/admin/purchasing/suppliers', labelKey: 'nav.suppliers' },
-  { to: '/admin/purchasing/receive', labelKey: 'nav.receive' },
-  { to: '/admin/purchasing/approvals', labelKey: 'nav.approvals', cap: 'canViewPurchaseApprovals' },
-  { to: '/admin/purchasing/invoices', labelKey: 'common.invoices' },
-  { to: '/admin/purchasing/matching', labelKey: 'nav.matching', cap: 'canAccessInvoiceMatching' },
-  { to: '/admin/purchasing/reports', labelKey: 'nav.reports' },
-];
+import { getPurchasingNavItems } from '../../auth/navigationConfig';
+import ErrorBoundary from '../common/ErrorBoundary';
 
 export default function PurchasingLayout() {
   const { t } = useTranslation();
   const { capabilities } = useAuth();
-  const links = NAV.filter((item) => !item.cap || hasCapability(capabilities, item.cap));
+  const links = useMemo(() => getPurchasingNavItems(capabilities), [capabilities]);
 
   return (
     <div className="dense-module">

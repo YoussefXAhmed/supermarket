@@ -15,6 +15,8 @@ import { listWarehouses } from '../../services/inventoryApi';
 import { getItems } from '../../services/api';
 import { getCompanies } from '../../services/api';
 import { getUserFriendlyMessage } from '../../utils/errorHandling';
+import { canExecutePurchasingFinance } from '../../auth/navigationConfig';
+import { approvalsHubPath, financePath, purchasingPath } from '../../utils/workspacePaths';
 import {
   approvalLevelLabel,
   evaluatePurchaseApproval,
@@ -36,6 +38,7 @@ const emptyLine = () => ({
 export default function ReceiveStockPage() {
   const { t } = useTranslation();
   const { capabilities } = useAuth();
+  const showFinanceActions = canExecutePurchasingFinance(capabilities);
   const [searchParams] = useSearchParams();
   const [suppliers, setSuppliers] = useState([]);
   const [warehouses, setWarehouses] = useState([]);
@@ -203,14 +206,25 @@ export default function ReceiveStockPage() {
               {pendingReceiptMessage(lastReceipt)}
             </p>
             <p className="page-header__sub" style={{ marginTop: 8 }}>
-              {t('purchasing.trackStatusIn')} <Link to="/admin/purchasing/reports">{t('purchasing.purchaseHistory')}</Link>
-              {capabilities.canViewApprovalsDashboard ? (
+              {showFinanceActions && (
                 <>
-                  {' '}
-                  {t('common.or')} <Link to="/admin/approvals">{t('nav.approvals')}</Link>
+                  {t('purchasing.trackStatusIn')}{' '}
+                  <Link to={purchasingPath('reports')}>{t('purchasing.purchaseHistory')}</Link>
+                  {capabilities.canViewApprovalsDashboard ? (
+                    <>
+                      {' '}
+                      {t('common.or')} <Link to={approvalsHubPath(capabilities)}>{t('nav.approvals')}</Link>
+                    </>
+                  ) : null}
+                  .
                 </>
-              ) : null}
-              .
+              )}
+              {!showFinanceActions && capabilities.canViewApprovalsDashboard && (
+                <>
+                  {t('purchasing.trackStatusIn')}{' '}
+                  <Link to={approvalsHubPath(capabilities)}>{t('nav.approvals')}</Link>.
+                </>
+              )}
             </p>
           </div>
         )}
@@ -232,10 +246,12 @@ export default function ReceiveStockPage() {
               ))}
             </select>
           </label>
-          <p className="page-header__sub" style={{ marginBottom: 12 }}>
-            After manager approval, supplier payables are created automatically. Use{' '}
-            <Link to="/admin/purchasing/matching">Invoice matching</Link> only for variance or partial billing.
-          </p>
+          {showFinanceActions && (
+            <p className="page-header__sub" style={{ marginBottom: 12 }}>
+              After manager approval, supplier payables are created automatically. Use{' '}
+              <Link to={financePath('matching')}>Invoice matching</Link> only for variance or partial billing.
+            </p>
+          )}
 
           {approvalPreview.requiresApproval && (
             <p className="receive-approval-hint" role="status">

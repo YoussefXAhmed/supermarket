@@ -568,10 +568,7 @@ export async function listShiftSessions({
     // Open shifts AND closed/pending sessions need ERP summary — POS Closing Entry
     // grand_total is not sales; without this, Sales today stays 0 after approve.
     const enrichTargets = sessions.filter(
-      (s) =>
-        s.openingName &&
-        s.openingDocstatus === 1 &&
-        (s.sessionStatus === 'open' || Boolean(s.closing)),
+      (s) => s.openingName && s.openingDocstatus === 1,
     );
     await Promise.all(
       enrichTargets.map(async (session) => {

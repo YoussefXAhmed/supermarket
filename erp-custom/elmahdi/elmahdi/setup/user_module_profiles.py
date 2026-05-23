@@ -23,6 +23,7 @@ ALLOWED_MODULES_BY_ROLE_PROFILE: dict[str, tuple[str, ...]] = {
 		"Stock",
 		"Setup",
 	),
+	"Elmahdi HR Officer": (*_BASE_DESK, "Setup"),
 }
 
 
