@@ -1,6 +1,6 @@
 import { Btn } from '../../../components/ui';
 import { fmtCurrency, fmtDateTime } from '../../../utils/format';
-import { canManagerActOnSession } from '../../../utils/shiftSessions';
+import { canActOnShiftSession } from '../../../utils/shiftSessions';
 import ShiftStatusBadge from './ShiftStatusBadge';
 
 function DetailRow({ label, value, mono }) {
@@ -23,7 +23,7 @@ export default function ShiftSessionDetailDrawer({
   if (!session) return null;
 
   const audit = session.audit;
-  const showManagerActions = canManagerActOnSession(session, user, canApprove);
+  const showManagerActions = canActOnShiftSession(session, user, canApprove);
   const timeline = session.timeline || [];
 
   return (

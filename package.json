@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:mobile": "vite --host 0.0.0.0",
     "build": "vite build",
+    "build:mobile": "bash deploy/setup-mobile-nginx.sh",
     "preview": "vite preview"
   },
   "dependencies": {

@@ -5,7 +5,9 @@ import { fmtCurrency } from '../../utils/format';
 import StatusPill from './StatusPill';
 import ApprovalAuditPanel from './ApprovalAuditPanel';
 import { ApprovalStatus, shiftSessionApprovalStatus } from '../../utils/approvalStatuses';
-import { canManagerActOnSession } from '../../utils/shiftSessions';
+import { canActOnShiftSession } from '../../utils/shiftSessions';
+import { shiftHistoryPath } from '../../utils/workspacePaths';
+import { useAuth } from '../../hooks/useAuth';
 
 export default function ShiftApprovalCard({
   session,
@@ -17,8 +19,9 @@ export default function ShiftApprovalCard({
   compact = false,
 }) {
   const { t } = useTranslation();
+  const { capabilities } = useAuth();
   const status = shiftSessionApprovalStatus(session);
-  const canAct = canManagerActOnSession(session, user, canApprove);
+  const canAct = canActOnShiftSession(session, user, canApprove);
   const notes = session.audit?.close_notes || session.closing?.remarks || '';
 
   return (
@@ -50,12 +53,12 @@ export default function ShiftApprovalCard({
         approvedAt={session.audit?.approved_at}
         rejectedBy={session.audit?.rejected_by}
         rejectedAt={session.audit?.rejected_at}
-        pendingApprover={status === ApprovalStatus.PENDING ? 'Manager / Accountant' : undefined}
+        pendingApprover={status === ApprovalStatus.PENDING ? t('approvals.pendingAccountant') : undefined}
       />
 
       <footer className="approval-card__foot">
         {!compact && (
-          <Link to="/admin/shifts/history" className="btn btn--ghost btn--sm">
+          <Link to={shiftHistoryPath(capabilities)} className="btn btn--ghost btn--sm">
             {t('approvals.fullHistory')}
           </Link>
         )}

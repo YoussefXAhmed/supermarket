@@ -278,6 +278,14 @@ export default function App() {
                 </CapabilityRoute>
               )}
             />
+            <Route
+              path="purchase-approvals"
+              element={(
+                <CapabilityRoute cap="canViewPurchaseApprovals">
+                  <LazyPage><PurchaseApprovalsPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
           </Route>
 
           <Route
@@ -341,11 +349,7 @@ export default function App() {
             />
             <Route
               path="purchase-approvals"
-              element={(
-                <CapabilityRoute cap="canViewPurchaseApprovals">
-                  <LazyPage><PurchaseApprovalsPage /></LazyPage>
-                </CapabilityRoute>
-              )}
+              element={<Navigate to="/finance/approvals" replace />}
             />
             <Route
               path="ledger"

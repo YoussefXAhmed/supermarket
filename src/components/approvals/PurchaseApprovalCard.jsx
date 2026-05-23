@@ -12,11 +12,8 @@ import StatusPill from './StatusPill';
 import ApprovalAuditPanel from './ApprovalAuditPanel';
 import WarehouseScopeBar from './WarehouseScopeBar';
 
-export function canActOnPurchaseReceipt(caps, level) {
-  if (caps.canManageSystem) return true;
-  const l = String(level || '').toLowerCase();
-  if (l === 'accountant') return caps.canApprovePurchasingAccountant;
-  return caps.canApprovePurchasing || caps.canApprovePurchasingAccountant;
+export function canActOnPurchaseReceipt(caps) {
+  return Boolean(caps?.canExecutePurchaseApproval || caps?.canManageSystem);
 }
 
 export default function PurchaseApprovalCard({

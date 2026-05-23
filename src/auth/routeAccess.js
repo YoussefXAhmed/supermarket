@@ -47,6 +47,7 @@ export const ROUTE_ACCESS = [
   { prefix: '/manager/shifts/history', anyOf: ['canViewShiftReports'] },
   { prefix: '/manager/shifts', anyOf: ['canViewShiftReports'] },
   { prefix: '/manager/approvals', anyOf: ['canViewApprovalsDashboard'] },
+  { prefix: '/manager/purchase-approvals', anyOf: ['canViewPurchaseApprovals'] },
   { prefix: '/manager/reports', anyOf: ['canViewReports'] },
   { prefix: '/manager', anyOf: ['canAccessManagerWorkspace'] },
   { prefix: '/finance/ledger', anyOf: ['canViewStockLedgerReadOnly', 'canManageSystem'] },

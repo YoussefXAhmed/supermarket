@@ -245,6 +245,7 @@
   "approvals": {
     "approveAndSubmit": "موافقة وإرسال",
     "fullHistory": "السجل الكامل",
+    "pendingAccountant": "مراجعة المحاسب",
     "reject": "رفض",
     "requestedBy": "طلب بواسطة",
     "total": "الإجمالي",
@@ -443,7 +444,7 @@
   "purchasing": {
     "subtitle": "الموردون · الاستلامات · المستحقات",
     "purchaseApprovals": "موافقات الشراء",
-    "purchaseApprovalsSubtitle": "المديرون والمحاسبون يوافقون على أسعار الشراء قبل استلام المخزون.",
+    "purchaseApprovalsSubtitle": "مديرو المتاجر يوافقون على أسعار الشراء قبل استلام المخزون.",
     "totalPurchases": "إجمالي المشتريات",
     "thisMonth": "هذا الشهر",
     "workflow": "سير العمل",

@@ -9,11 +9,14 @@ import {
 } from '../../../components/ui';
 import { TablePageLayout, LayoutSection } from '../../../components/layout/page-layouts';
 import { useAuth } from '../../../hooks/useAuth';
+import { useNotify } from '../../../context/NotificationContext';
+import { canExecuteShiftClosingApproval } from '../../../auth/capabilities';
 import {
   listShiftSessions,
   approveShiftClosing,
   rejectShiftClosing,
 } from '../../../services/shiftsService';
+import { resolveShiftApprovalError } from '../../../utils/shiftApprovalErrors';
 import { getUserFriendlyMessage } from '../../../utils/errorHandling';
 import { fmtCurrency } from '../../../utils/format';
 import {
@@ -32,7 +35,9 @@ import ShiftRejectConfirmModal from '../components/ShiftRejectConfirmModal';
 const DEFAULT_FILTERS = { cashier: '', register: '', status: 'all', date: '' };
 
 export default function ShiftHistoryPage() {
-  const { user, capabilities, canViewShiftReports, canApproveShift } = useAuth();
+  const { user, capabilities, canViewShiftReports } = useAuth();
+  const notify = useNotify();
+  const canExecuteShiftApproval = canExecuteShiftClosingApproval(capabilities);
   const ownOnly = isOwnShiftHistoryOnly(capabilities);
   const canView = canAccessShiftHistory(capabilities);
   const [sessions, setSessions] = useState([]);
@@ -82,14 +87,14 @@ export default function ShiftHistoryPage() {
 
   const cardProps = {
     user,
-    canApprove: canApproveShift,
+    canApprove: canExecuteShiftApproval,
     onSelect: setDetailSession,
-    onApprove: canApproveShift ? setApproveSession : undefined,
-    onReject: canApproveShift ? setRejectSession : undefined,
+    onApprove: canExecuteShiftApproval ? setApproveSession : undefined,
+    onReject: canExecuteShiftApproval ? setRejectSession : undefined,
   };
 
   const runApprove = async () => {
-    if (!approveSession?.closingName || !canApproveShift || actionLoading) return;
+    if (!approveSession?.closingName || !canExecuteShiftApproval || actionLoading) return;
     setActionLoading(true);
     setError('');
     try {
@@ -97,21 +102,23 @@ export default function ShiftHistoryPage() {
         closingEntryName: approveSession.closingName,
         approver: user?.email || user?.name,
         opener: approveSession.audit?.operator || approveSession.cashier,
-        canApprove: canApproveShift,
+        canApprove: canExecuteShiftApproval,
         notes: approveSession.audit?.notes,
       });
       setApproveSession(null);
       setDetailSession(null);
       await load();
     } catch (e) {
-      setError(getUserFriendlyMessage(e));
+      setApproveSession(null);
+      setRejectSession(null);
+      notify.error(resolveShiftApprovalError(e));
     } finally {
       setActionLoading(false);
     }
   };
 
   const runReject = async (reason) => {
-    if (!rejectSession?.closingName || !canApproveShift || actionLoading) return;
+    if (!rejectSession?.closingName || !canExecuteShiftApproval || actionLoading) return;
     setActionLoading(true);
     setError('');
     try {
@@ -119,14 +126,16 @@ export default function ShiftHistoryPage() {
         closingEntryName: rejectSession.closingName,
         approver: user?.email || user?.name,
         opener: rejectSession.audit?.operator || rejectSession.cashier,
-        canApprove: canApproveShift,
+        canApprove: canExecuteShiftApproval,
         reason,
       });
       setRejectSession(null);
       setDetailSession(null);
       await load();
     } catch (e) {
-      setError(getUserFriendlyMessage(e));
+      setApproveSession(null);
+      setRejectSession(null);
+      notify.error(resolveShiftApprovalError(e));
     } finally {
       setActionLoading(false);
     }
@@ -200,11 +209,15 @@ export default function ShiftHistoryPage() {
         <PageLoading size={26} />
       ) : (
         <>
-          {canApproveShift && !ownOnly && pendingSessions.length > 0 && (
+          {!ownOnly && pendingSessions.length > 0 && (
             <LayoutSection
               variant="raised"
               title="Pending approval"
-              subtitle="Draft closings awaiting manager submit in ERPNext"
+              subtitle={
+                canExecuteShiftApproval
+                  ? 'Draft closings awaiting accountant submit in ERPNext'
+                  : 'Draft closings awaiting accountant review'
+              }
             >
               <div className="shift-session-list">
                 {pendingSessions.map((session) => (
@@ -247,30 +260,42 @@ export default function ShiftHistoryPage() {
         session={detailSession}
         user={user}
         onClose={() => setDetailSession(null)}
-        canApprove={canApproveShift}
-        onApprove={(s) => {
-          setDetailSession(null);
-          setApproveSession(s);
-        }}
-        onReject={(s) => {
-          setDetailSession(null);
-          setRejectSession(s);
-        }}
+        canApprove={canExecuteShiftApproval}
+        onApprove={
+          canExecuteShiftApproval
+            ? (s) => {
+              setDetailSession(null);
+              setApproveSession(s);
+            }
+            : undefined
+        }
+        onReject={
+          canExecuteShiftApproval
+            ? (s) => {
+              setDetailSession(null);
+              setRejectSession(s);
+            }
+            : undefined
+        }
       />
 
-      <ShiftApprovalConfirmModal
-        session={approveSession}
-        loading={actionLoading}
-        onConfirm={runApprove}
-        onCancel={() => setApproveSession(null)}
-      />
+      {canExecuteShiftApproval && (
+        <>
+          <ShiftApprovalConfirmModal
+            session={approveSession}
+            loading={actionLoading}
+            onConfirm={runApprove}
+            onCancel={() => !actionLoading && setApproveSession(null)}
+          />
 
-      <ShiftRejectConfirmModal
-        session={rejectSession}
-        loading={actionLoading}
-        onConfirm={runReject}
-        onCancel={() => setRejectSession(null)}
-      />
+          <ShiftRejectConfirmModal
+            session={rejectSession}
+            loading={actionLoading}
+            onConfirm={runReject}
+            onCancel={() => !actionLoading && setRejectSession(null)}
+          />
+        </>
+      )}
     </TablePageLayout>
   );
 }

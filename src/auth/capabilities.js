@@ -56,16 +56,8 @@ export const PURCHASING_ACCOUNTANT_APPROVE_ROLES = new Set([
   'accounts user',
 ]);
 
-/** May approve/submit draft POS Closing Entry (manager workflow) */
-export const SHIFT_APPROVE_ROLES = new Set([
-  'accounts manager',
-  'accounts user',
-  'store manager',
-  'pos manager',
-  'sales manager',
-  'stock manager',
-  'purchase manager',
-]);
+/** ERP role fallback for shift approve — profile must be Elmahdi Accountant (no manager bypass). */
+export const SHIFT_APPROVE_ROLES = new Set(['accounts manager', 'accounts user']);
 
 const CAPABILITY_DEFAULTS = {
   canViewPOS: false,
@@ -74,6 +66,7 @@ const CAPABILITY_DEFAULTS = {
   canOpenShift: false,
   canCloseShift: false,
   canApproveShift: false,
+  canExecuteShiftClosingApproval: false,
   canViewShiftReports: false,
   canViewOwnShiftHistory: false,
   canViewInvoices: false,
@@ -82,6 +75,7 @@ const CAPABILITY_DEFAULTS = {
   canAccessPurchasing: false,
   canApprovePurchasing: false,
   canApprovePurchasingAccountant: false,
+  canExecutePurchaseApproval: false,
   canViewPurchaseApprovals: false,
   canViewApprovalsDashboard: false,
   canAccessAccountantWorkspace: false,
@@ -146,14 +140,22 @@ function finalizeCapabilities(caps) {
     c.canAccessPurchasing = Boolean(c.canManageSystem || c.isPurchasing);
   }
 
+  // Purchase receipt approve/reject — store manager workspace + administrator break-glass only.
+  c.canExecutePurchaseApproval = Boolean(
+    c.canApprovePurchasing &&
+    (c.canManageSystem ||
+      (c.operationalPersona === 'store_manager' && c.canAccessManagerWorkspace)),
+  );
+
   c.canViewPurchaseApprovals = Boolean(
-    c.canApprovePurchasing || c.canApprovePurchasingAccountant || c.canManageSystem,
+    c.canExecutePurchaseApproval || c.canManageSystem,
   );
 
   c.canViewApprovalsDashboard = Boolean(
     c.canViewApprovalsDashboard ||
+      c.canExecuteShiftClosingApproval ||
       c.canApproveShift ||
-      c.canViewPurchaseApprovals ||
+      c.canExecutePurchaseApproval ||
       c.canManageSystem,
   );
 
@@ -168,6 +170,13 @@ function finalizeCapabilities(caps) {
     c.canAccessInvoiceMatching ||
       c.canAccessAccountantWorkspace ||
       c.canManageSystem,
+  );
+
+  // POS shift close approve/reject — accountant workspace + administrator break-glass only.
+  c.canExecuteShiftClosingApproval = Boolean(
+    c.canApproveShift &&
+    (c.canManageSystem ||
+      (c.operationalPersona === 'accountant' && c.canAccessAccountantWorkspace)),
   );
 
   return c;
@@ -363,4 +372,14 @@ export function capabilitiesFromInferredPath() {
 
 export function hasCapability(caps, capName) {
   return Boolean(caps?.[capName]);
+}
+
+/** Accountant + administrator may approve/reject POS shift closings. */
+export function canExecuteShiftClosingApproval(caps) {
+  return hasCapability(caps, 'canExecuteShiftClosingApproval');
+}
+
+/** Store manager + administrator may approve/reject purchase receipts. */
+export function canExecutePurchaseApproval(caps) {
+  return hasCapability(caps, 'canExecutePurchaseApproval');
 }

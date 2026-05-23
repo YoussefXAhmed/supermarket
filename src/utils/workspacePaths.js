@@ -40,11 +40,12 @@ export function shiftHistoryPath(caps) {
   return '/shifts/history';
 }
 
-/** Purchase rate approvals — finance for accountants, purchasing shell for admins. */
+/** Purchase rate approvals — manager workspace only (admin uses admin hub). */
 export function purchaseApprovalsPath(caps) {
   const persona = resolveNavPersona(caps);
-  if (persona === 'accountant') return financePath('purchase-approvals');
-  return purchasingPath('approvals');
+  if (persona === 'store_manager') return '/manager/purchase-approvals';
+  if (hasCapability(caps, 'canManageSystem')) return '/admin/approvals';
+  return '/manager/purchase-approvals';
 }
 
 /** Approvals hub — manager vs finance vs admin. */

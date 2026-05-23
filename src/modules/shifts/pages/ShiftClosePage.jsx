@@ -18,7 +18,7 @@ import ShiftStatusBadge from '../components/ShiftStatusBadge';
 
 export default function ShiftClosePage() {
   const { t } = useTranslation();
-  const { user, canCloseShift, canApproveShift } = useAuth();
+  const { user, canCloseShift, canExecuteShiftClosingApproval } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const openingParam = searchParams.get('opening');
@@ -74,7 +74,7 @@ export default function ShiftClosePage() {
         notes,
         operator: user?.email || user?.name,
         canClose: canCloseShift,
-        canSubmitClosing: canApproveShift,
+        canSubmitClosing: canExecuteShiftClosingApproval,
       });
       if (result.submitted) {
         setMsg(t('shifts.closedSubmitted', { name: result.closing?.name }));

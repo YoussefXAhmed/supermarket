@@ -88,24 +88,20 @@ export function shiftSessionApprovalStatus(session) {
 
 export function pendingApproverLabel(level, caps) {
   const normalized = normalizeApprovalLevel(level);
-  if (normalized === 'accountant') {
-    return caps?.canApprovePurchasingAccountant ? 'You (Accountant)' : 'Accountant';
-  }
-  if (normalized === 'manager') {
-    return caps?.canApprovePurchasing ? 'You (Manager)' : 'Store Manager';
+  if (normalized === 'accountant' || normalized === 'manager') {
+    return caps?.canExecutePurchaseApproval ? 'You (Store Manager)' : 'Store Manager';
   }
   return '—';
 }
 
 export function purchaseApprovalActionState(doc, caps, user) {
-  const level = normalizeApprovalLevel(doc?.approval_level || doc?.purchase_approval_level);
   const status = purchaseReceiptApprovalStatus(doc);
 
   if (doc?.can_approve === false && doc?.approve_blocked_reason) {
     return { canAct: false, reason: doc.approve_blocked_reason };
   }
   if (doc?.can_approve === true) {
-    return { canAct: true, reason: '' };
+    return { canAct: Boolean(caps?.canExecutePurchaseApproval || caps?.canManageSystem), reason: '' };
   }
 
   const requester = doc?.requested_by || '';
@@ -114,30 +110,16 @@ export function purchaseApprovalActionState(doc, caps, user) {
     return { canAct: false, reason: 'You cannot approve your own purchase receipt.' };
   }
 
-  if (status === APPROVAL_STATUS.PENDING_ACCOUNTANT && !caps?.canApprovePurchasingAccountant) {
-    return { canAct: false, reason: 'Waiting for accountant approval.' };
-  }
-  if (
-    status === APPROVAL_STATUS.PENDING_MANAGER &&
-    !caps?.canApprovePurchasing &&
-    !caps?.canApprovePurchasingAccountant
-  ) {
-    return { canAct: false, reason: 'Waiting for store manager approval.' };
+  if (!caps?.canExecutePurchaseApproval && !caps?.canManageSystem) {
+    if (isPendingPurchaseStatus(status)) {
+      return { canAct: false, reason: 'Waiting for store manager approval.' };
+    }
+    return { canAct: false, reason: 'Store manager approval required — your role cannot approve this receipt.' };
   }
 
-  if (caps?.canManageSystem) return { canAct: true, reason: '' };
-  if (level === 'accountant' && !caps?.canApprovePurchasingAccountant) {
-    return {
-      canAct: false,
-      reason: 'Accountant approval required — your role cannot approve this receipt.',
-    };
-  }
-  if (level === 'manager' && !caps?.canApprovePurchasing && !caps?.canApprovePurchasingAccountant) {
-    return {
-      canAct: false,
-      reason: 'Manager approval required — your role cannot approve this receipt.',
-    };
+  if (isPendingPurchaseStatus(status)) {
+    return { canAct: true, reason: '' };
   }
 
-  return { canAct: true, reason: '' };
+  return { canAct: false, reason: '' };
 }

@@ -24,6 +24,8 @@ const ROUTE_ACCESS = [
   { prefix: '/hr/users', anyOf: ['canManageOperationalUsers'] },
   { prefix: '/hr', anyOf: ['canAccessHRWorkspace'] },
   { prefix: '/manager', anyOf: ['canAccessManagerWorkspace'] },
+  { prefix: '/finance/purchase-approvals', anyOf: ['canViewPurchaseApprovals'] },
+  { prefix: '/manager/purchase-approvals', anyOf: ['canViewPurchaseApprovals'] },
   { prefix: '/finance/payments', anyOf: ['canViewSupplierPayments'] },
   { prefix: '/finance', anyOf: ['canAccessAccountantWorkspace'] },
   { prefix: '/purchasing/invoices', anyOf: ['canManageSystem'] },
@@ -71,14 +73,28 @@ function finalizeCapabilities(caps) {
   if (!c.canAccessPurchasing && c.operationalPersona === 'purchasing') {
     c.canAccessPurchasing = true;
   }
+  c.canExecutePurchaseApproval = Boolean(
+    c.canApprovePurchasing &&
+    (c.canManageSystem ||
+      (c.operationalPersona === 'store_manager' && c.canAccessManagerWorkspace)),
+  );
   c.canViewPurchaseApprovals = Boolean(
-    c.canApprovePurchasing || c.canApprovePurchasingAccountant || c.canManageSystem,
+    c.canExecutePurchaseApproval || c.canManageSystem,
   );
   c.canViewApprovalsDashboard = Boolean(
-    c.canViewApprovalsDashboard || c.canApproveShift || c.canViewPurchaseApprovals || c.canManageSystem,
+    c.canViewApprovalsDashboard ||
+      c.canExecuteShiftClosingApproval ||
+      c.canApproveShift ||
+      c.canExecutePurchaseApproval ||
+      c.canManageSystem,
   );
   c.canViewSupplierPayments = Boolean(
     c.canManageSupplierPayments || c.canAccessAccountantWorkspace || c.canManageSystem,
+  );
+  c.canExecuteShiftClosingApproval = Boolean(
+    c.canApproveShift &&
+    (c.canManageSystem ||
+      (c.operationalPersona === 'accountant' && c.canAccessAccountantWorkspace)),
   );
   return c;
 }
@@ -103,7 +119,8 @@ const ROLE_CAPS = {
   }),
   accountant: finalizeCapabilities({
     canAccessAccountantWorkspace: true, canViewSupplierPayments: true,
-    canViewInvoices: true, canAccessInventory: false, canInventoryTransfer: false,
+    canViewInvoices: true, canApproveShift: true, canViewApprovalsDashboard: true,
+    canViewShiftReports: true, canAccessInventory: false, canInventoryTransfer: false,
     operationalPersona: 'accountant',
   }),
   hr: finalizeCapabilities({
@@ -140,7 +157,7 @@ const FORBIDDEN_MATRIX = {
   inventory: ['/inventory/items', '/inventory/reports', '/finance', '/purchasing/invoices'],
   purchasing: ['/finance', '/purchasing/reports', '/purchasing/invoices', '/inventory/items'],
   store_manager: ['/pos', '/inventory/stock-entry', '/purchasing/receive', '/finance/payments'],
-  accountant: ['/inventory/transfer', '/inventory/stock-entry/create'],
+  accountant: ['/inventory/transfer', '/inventory/stock-entry/create', '/finance/purchase-approvals', '/manager/purchase-approvals'],
   hr: ['/finance', '/inventory', '/purchasing', '/manager', '/shifts/open'],
 };
 

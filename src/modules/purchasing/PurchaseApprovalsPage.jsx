@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { fmtCurrency } from '../../utils/format';
-import { financePath, invoiceMatchingPath } from '../../utils/workspacePaths';
+import { financePath, invoiceMatchingPath, approvalsHubPath } from '../../utils/workspacePaths';
 import {
   ApiErrorCard,
   Btn,
@@ -12,6 +12,7 @@ import {
 } from '../../components/ui';
 import { TablePageLayout, LayoutSection } from '../../components/layout/page-layouts';
 import { useAuth } from '../../hooks/useAuth';
+import { canExecutePurchaseApproval } from '../../auth/capabilities';
 import PurchaseApprovalCard from '../../components/approvals/PurchaseApprovalCard';
 import {
   approvePurchaseReceipt,
@@ -23,6 +24,7 @@ import { getUserFriendlyMessage } from '../../utils/errorHandling';
 export default function PurchaseApprovalsPage() {
   const { t } = useTranslation();
   const { capabilities, user } = useAuth();
+  const canExecutePurchase = canExecutePurchaseApproval(capabilities);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -50,6 +52,7 @@ export default function PurchaseApprovalsPage() {
   }, [load]);
 
   const onApprove = async (name) => {
+    if (!canExecutePurchase) return;
     setActionId(name);
     setActionError('');
     try {
@@ -65,6 +68,7 @@ export default function PurchaseApprovalsPage() {
   };
 
   const onReject = async (name) => {
+    if (!canExecutePurchase) return;
     if (!window.confirm(t('approvals.rejectPurchaseConfirm', { name }))) return;
     setActionId(name);
     setActionError('');
@@ -87,22 +91,24 @@ export default function PurchaseApprovalsPage() {
         dense
         actions={
           capabilities.canViewApprovalsDashboard ? (
-            <Link to="/admin/approvals" className="btn btn--ghost btn--sm">
+            <Link to={approvalsHubPath(capabilities)} className="btn btn--ghost btn--sm">
               {t('approvals.allApprovals')}
             </Link>
           ) : null
         }
       />
       <LayoutSection variant="raised">
-        <label className="approval-notes-field">
-          {t('approvals.approvalNotes')}
-          <input
-            className="input"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder={t('approvals.reasonPlaceholder')}
-          />
-        </label>
+        {canExecutePurchase && (
+          <label className="approval-notes-field">
+            {t('approvals.approvalNotes')}
+            <input
+              className="input"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder={t('approvals.reasonPlaceholder')}
+            />
+          </label>
+        )}
         {approveSuccess?.purchase_invoice && (
           <div className="inv-success" role="status">
             {t('approvals.receiptSubmitted', { invoice: approveSuccess.purchase_invoice })}{' '}
@@ -142,8 +148,9 @@ export default function PurchaseApprovalsPage() {
                 user={user}
                 notes={notes}
                 busy={actionId === doc.name}
-                onApprove={onApprove}
-                onReject={onReject}
+                readOnly={!canExecutePurchase}
+                onApprove={canExecutePurchase ? onApprove : undefined}
+                onReject={canExecutePurchase ? onReject : undefined}
               />
             ))}
           </div>

@@ -245,6 +245,7 @@
   "approvals": {
     "approveAndSubmit": "Approve & submit",
     "fullHistory": "Full history",
+    "pendingAccountant": "Accountant review",
     "reject": "Reject",
     "requestedBy": "Requested by",
     "total": "Total",
@@ -443,7 +444,7 @@
   "purchasing": {
     "subtitle": "Suppliers · receipts · payables",
     "purchaseApprovals": "Purchase approvals",
-    "purchaseApprovalsSubtitle": "Managers and accountants approve buying rates before stock is received.",
+    "purchaseApprovalsSubtitle": "Store managers approve buying rates before stock is received.",
     "totalPurchases": "Total purchases",
     "thisMonth": "This month",
     "workflow": "Workflow",

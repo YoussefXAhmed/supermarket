@@ -14,7 +14,6 @@ const LINKS = [
   { to: financePath('invoices'), labelKey: 'finance.links.salesInvoices', descKey: 'finance.links.salesInvoicesDesc', icon: '🧾', cap: 'canViewInvoices' },
   { to: financePath('reports'), labelKey: 'finance.links.financialReports', descKey: 'finance.links.financialReportsDesc', icon: '📊', cap: 'canViewReports' },
   { to: financePath('shifts/history'), labelKey: 'finance.links.shiftApprovals', descKey: 'finance.links.shiftApprovalsDesc', icon: '◷', cap: 'canViewShiftReports' },
-  { to: financePath('purchase-approvals'), labelKey: 'nav.purchaseRates', descKey: 'finance.links.purchaseRatesDesc', icon: '🛍️', cap: 'canViewPurchaseApprovals' },
   { to: financePath('ledger'), labelKey: 'nav.ledger', descKey: 'finance.links.financialReportsDesc', icon: '📒', cap: 'canViewStockLedgerReadOnly' },
 ];
 
@@ -41,7 +40,6 @@ export default function AccountantDashboardPage() {
       </div>
 
       <section className="layout-grid layout-grid--kpi" aria-label="Pending work">
-        <StatCard label={t('finance.purchaseApprovals')} value={loading ? '…' : counts.purchases} icon="🛍️" color="amber" compact />
         <StatCard label={t('finance.shiftApprovals')} value={loading ? '…' : counts.shifts} icon="◷" color="blue" compact />
         <StatCard label={t('finance.highVariance')} value={loading ? '…' : counts.highVariance} icon="⚠" color="red" compact />
       </section>

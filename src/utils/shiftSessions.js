@@ -59,11 +59,16 @@ export function isSelfShiftAction(session, user) {
 }
 
 /**
- * Show Approve/Reject for Administrator, Store Manager, Accountant (canApproveShift).
+ * Show Approve/Reject only when user may execute shift closing approval (accountant / admin).
  */
-export function canManagerActOnSession(session, user, canApprove) {
-  if (!canApprove || !isAwaitingSubmission(session)) return false;
+export function canActOnShiftSession(session, user, canExecuteShiftApproval) {
+  if (!canExecuteShiftApproval || !isAwaitingSubmission(session)) return false;
   return !isSelfShiftAction(session, user);
+}
+
+/** @deprecated use canActOnShiftSession */
+export function canManagerActOnSession(session, user, canExecuteShiftApproval) {
+  return canActOnShiftSession(session, user, canExecuteShiftApproval);
 }
 
 export function buildApprovalTimeline(session) {

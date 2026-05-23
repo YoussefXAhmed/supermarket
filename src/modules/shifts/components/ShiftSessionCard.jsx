@@ -1,5 +1,5 @@
 import { fmtCurrency, fmtDateTime } from '../../../utils/format';
-import { canManagerActOnSession } from '../../../utils/shiftSessions';
+import { canActOnShiftSession } from '../../../utils/shiftSessions';
 import ShiftStatusBadge from './ShiftStatusBadge';
 
 function Metric({ label, value, mono }) {
@@ -26,7 +26,7 @@ export default function ShiftSessionCard({
         ? 'shift-session-card__variance--warn'
         : '';
 
-  const showManagerActions = canManagerActOnSession(session, user, canApprove);
+  const showManagerActions = canActOnShiftSession(session, user, canApprove);
 
   return (
     <article

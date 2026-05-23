@@ -90,7 +90,6 @@ export const FINANCE_NAV = [
   { to: '/finance/invoices', labelKey: 'common.invoices', icon: '🧾', cap: 'canViewInvoices' },
   { to: '/finance/reports', labelKey: 'nav.reports', icon: '📊', cap: 'canViewReports' },
   { to: '/finance/shifts/history', labelKey: 'nav.shifts', icon: '◷', cap: 'canViewShiftReports' },
-  { to: '/finance/purchase-approvals', labelKey: 'nav.purchaseRates', icon: '🛍️', cap: 'canViewPurchaseApprovals' },
   { to: '/finance/ledger', labelKey: 'nav.ledger', icon: '📒', cap: 'canViewStockLedgerReadOnly' },
 ];
 
@@ -272,4 +271,9 @@ export function canExecutePurchasingFinance(capabilities) {
 /** @param {import('./capabilities').Capabilities} capabilities */
 export function isManagerMonitorOnly(capabilities) {
   return resolveNavPersona(capabilities) === 'store_manager';
+}
+
+/** @param {import('./capabilities').Capabilities} capabilities */
+export function canExecuteShiftApproval(capabilities) {
+  return hasCapability(capabilities, 'canExecuteShiftClosingApproval');
 }
