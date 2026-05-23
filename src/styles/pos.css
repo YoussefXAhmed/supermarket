@@ -304,26 +304,44 @@
 }
 .cart-row__remove:hover { color: var(--red); }
 
-/* ── Cart Footer ── */
+/* ── Cart Footer ──
+   Sticky bottom panel: clear hierarchy with subtotal (muted) > grand total
+   (prominent) > checkout button. Tabular numerics keep amounts aligned. */
 .pos-cart__footer {
   border-top: 1px solid var(--border);
-  padding: 14px 16px;
+  padding: var(--space-4) var(--space-4) var(--space-5);
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: var(--space-2);
   flex-shrink: 0;
   position: sticky;
   bottom: 0;
-  background: var(--bg-2);
-  z-index: 5;
-  box-shadow: 0 -10px 24px rgba(0,0,0,0.22);
+  background: linear-gradient(180deg, var(--bg-2) 0%, var(--bg-2) 100%);
+  z-index: var(--z-sticky);
+  box-shadow: 0 -12px 28px rgba(0,0,0,0.28);
 }
 .pos-cart__subtotal, .pos-cart__total {
   display: flex; justify-content: space-between;
-  font-size: 0.85rem; color: var(--text-2);
+  font-size: var(--font-sm); color: var(--text-2);
+  font-variant-numeric: tabular-nums;
 }
-.pos-cart__total { font-size: 0.95rem; font-weight: 600; color: var(--text); }
-.pos-cart__total-amount { font-size: 1.1rem; color: var(--accent); font-family: 'DM Mono', monospace; }
+.pos-cart__total {
+  font-size: var(--font-base);
+  font-weight: 600;
+  color: var(--text);
+  align-items: baseline;
+  padding-top: var(--space-2);
+  margin-top: var(--space-1);
+  border-top: 1px dashed var(--border);
+}
+.pos-cart__total-amount {
+  font-size: 1.55rem;
+  font-weight: 700;
+  color: var(--accent);
+  font-family: 'DM Mono', monospace;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
 .pos-cart__error {
   background: var(--red-bg); color: var(--red); border: 1px solid rgba(239,68,68,0.3);
   border-radius: var(--radius-sm); padding: 8px 12px; font-size: 0.8rem;
@@ -547,17 +565,35 @@
 .pos-payment__split { display: flex; gap: 8px; }
 .pos-payment__split label { flex: 1; font-size: 0.75rem; color: var(--text-2); display: flex; flex-direction: column; gap: 4px; }
 .pos-payment__hint { font-size: 0.75rem; color: var(--text-3); }
-.pos-payment__hint--warn { color: var(--amber, #f59e0b); }
+.pos-payment__hint--warn { color: var(--amber); }
 
 /* ── Stock on cards ── */
 .item-card__stock { font-size: 0.7rem; margin-top: 2px; }
 .item-card__stock--ok { color: var(--green); }
-.item-card__stock--low { color: #f59e0b; }
+.item-card__stock--low { color: var(--amber); }
 .item-card__stock--out { color: var(--red); }
 .item-card:disabled { opacity: 0.45; cursor: not-allowed; }
 .item-card__code { font-size: 0.72rem; color: var(--text-3); font-family: 'DM Mono', monospace; }
 
-.cart-row__stock { font-size: 0.72rem; color: var(--text-3); }
+/* ── Cart row stock indicator ──
+   Icon + colored chip; not color-only, for accessibility (colorblind-safe). */
+.cart-row__stock {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--font-2xs);
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 99px;
+  margin-top: 2px;
+  background: var(--bg-4);
+  color: var(--text-3);
+  letter-spacing: 0.01em;
+}
+.cart-row__stock--ok   { background: var(--green-bg); color: var(--green); }
+.cart-row__stock--low  { background: var(--amber-bg); color: var(--amber); }
+.cart-row__stock--out  { background: var(--red-bg);   color: var(--red); }
+.cart-row__stock-icon  { width: 12px; height: 12px; display: inline-block; }
 .cart-row__qty-input {
   width: 48px;
   min-height: 34px;
@@ -570,7 +606,7 @@
   padding: 2px;
 }
 .pos-cart__shift-warn {
-  color: var(--amber, #f59e0b);
+  color: var(--amber);
   font-size: 0.82rem;
   padding: 8px 4px;
 }
@@ -690,6 +726,18 @@
   .pos-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
   .item-card { min-height: 205px; }
   .item-card__img { height: 100px; }
+}
+
+/* Tablet portrait (e.g., iPad 1024×768 portrait, 901–1024px): keep 2-column
+   layout, but narrow the cart and tighten the header so search doesn't wrap. */
+@media (max-width: 1024px) and (min-width: 901px) {
+  .pos-body { grid-template-columns: minmax(0, 1fr) 310px; }
+  .pos-header { padding: 10px 14px; gap: 10px; }
+  .pos-header__center { max-width: 480px; min-width: 220px; }
+  .pos-header__name { font-size: 0.92rem; }
+  .pos-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .item-card { min-height: 195px; }
+  .pos-products { padding: 14px; }
 }
 
 @media (max-width: 900px) {

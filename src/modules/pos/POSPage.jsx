@@ -12,6 +12,7 @@ import {
   EmptyState,
   PageLoading,
   ApiErrorCard,
+  ConfirmDialog,
 } from '../../components/ui';
 import UserSessionActions from '../../components/layout/UserSessionActions';
 import POSThermalReceipt from '../../components/pos/POSThermalReceipt';
@@ -66,12 +67,26 @@ function ItemCard({ item, onAdd, disabled }) {
 function CartRow({ item, onQty, onRemove, maxQty }) {
   const { t } = useTranslation();
   const avail = availableQty(item);
+  // Stock badge: not color-only — pair every level with a glyph so colorblind
+  // users see the same signal cashiers see at a glance.
+  let stockClass = '';
+  let stockGlyph = '';
+  if (avail !== null) {
+    if (avail <= 0) { stockClass = 'cart-row__stock--out'; stockGlyph = '⚠'; }
+    else if (avail < 5) { stockClass = 'cart-row__stock--low'; stockGlyph = '!'; }
+    else { stockClass = 'cart-row__stock--ok'; stockGlyph = '✓'; }
+  }
   return (
     <div className="cart-row">
       <div className="cart-row__info">
         <p className="cart-row__name">{item.item_name}</p>
         <p className="cart-row__rate">{t('pos.rateEach', { rate: item.rate.toFixed(2) })}</p>
-        {avail !== null && <p className="cart-row__stock">{t('pos.available', { count: avail })}</p>}
+        {avail !== null && (
+          <span className={`cart-row__stock ${stockClass}`}>
+            <span aria-hidden="true">{stockGlyph}</span>
+            {t('pos.available', { count: avail })}
+          </span>
+        )}
       </div>
       <div className="cart-row__qty">
         <button type="button" className="cart-row__qty-btn" aria-label="Decrease" onClick={() => onQty(item.item_code, item.qty - 1)}>−</button>
@@ -136,6 +151,7 @@ export default function POSPage() {
     if (!canOperatePOS && viewMode === 'sell') setViewMode('invoices');
   }, [canOperatePOS, viewMode]);
   const [showReceipt, setShowReceipt] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
   const [initError, setInitError] = useState('');
   const initDone = useRef(false);
 
@@ -230,7 +246,7 @@ export default function POSPage() {
 
   const handleClearCart = () => {
     if (!pos.cart.length) return;
-    if (window.confirm(t('pos.clearCartConfirm'))) pos.clearCart();
+    setConfirmClear(true);
   };
 
   const handleCheckout = async () => {
@@ -510,6 +526,16 @@ export default function POSPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmClear}
+        title={t('pos.clearCartTitle', { defaultValue: 'Clear cart?' })}
+        message={t('pos.clearCartConfirm')}
+        confirmLabel={t('pos.clearCart', { defaultValue: 'Clear cart' })}
+        variant="danger"
+        onCancel={() => setConfirmClear(false)}
+        onConfirm={() => { pos.clearCart(); setConfirmClear(false); }}
+      />
     </div>
   );
 }

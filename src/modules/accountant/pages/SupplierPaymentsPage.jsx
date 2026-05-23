@@ -250,41 +250,43 @@ export default function SupplierPaymentsPage() {
         ) : (
           <LayoutSection variant="raised" flushHead>
             <TableRegion>
-              <table className="ap-invoices-table">
-                <thead>
-                  <tr>
-                    <th>{t('finance.table.invoice')}</th>
-                    <th>{t('nav.suppliers')}</th>
-                    <th>{t('finance.table.due')}</th>
-                    <th>{t('finance.table.total')}</th>
-                    <th>{t('finance.outstanding')}</th>
-                    <th>{t('finance.table.paidPct')}</th>
-                    <th>{t('finance.table.status')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {invoices.map((inv) => (
-                    <tr
-                      key={inv.name}
-                      className={
-                        inv.payment_status === PAY_STATUS.OVERDUE ? 'ap-invoices-table__overdue' : ''
-                      }
-                    >
-                      <td className="mono">{inv.name}</td>
-                      <td>{inv.supplier_name || inv.supplier}</td>
-                      <td>{inv.due_date || '—'}</td>
-                      <td>{fmtCurrency(inv.grand_total)}</td>
-                      <td>
-                        <strong>{fmtCurrency(inv.outstanding_amount)}</strong>
-                      </td>
-                      <td>{inv.paid_pct != null ? `${inv.paid_pct}%` : '—'}</td>
-                      <td>
-                        <ApPaymentStatusPill status={inv.payment_status} paidPct={inv.paid_pct} />
-                      </td>
+              <div className="table-wrap">
+                <table className="table table--compact">
+                  <thead>
+                    <tr>
+                      <th scope="col">{t('finance.table.invoice')}</th>
+                      <th scope="col">{t('nav.suppliers')}</th>
+                      <th scope="col">{t('finance.table.due')}</th>
+                      <th scope="col" className="num">{t('finance.table.total')}</th>
+                      <th scope="col" className="num">{t('finance.outstanding')}</th>
+                      <th scope="col" className="num">{t('finance.table.paidPct')}</th>
+                      <th scope="col">{t('finance.table.status')}</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {invoices.map((inv) => (
+                      <tr
+                        key={inv.name}
+                        className={
+                          inv.payment_status === PAY_STATUS.OVERDUE ? 'ap-invoices-table__overdue' : ''
+                        }
+                      >
+                        <td className="mono">{inv.name}</td>
+                        <td>{inv.supplier_name || inv.supplier}</td>
+                        <td>{inv.due_date || '—'}</td>
+                        <td className="num">{fmtCurrency(inv.grand_total)}</td>
+                        <td className="num">
+                          <strong>{fmtCurrency(inv.outstanding_amount)}</strong>
+                        </td>
+                        <td className="num">{inv.paid_pct != null ? `${inv.paid_pct}%` : '—'}</td>
+                        <td>
+                          <ApPaymentStatusPill status={inv.payment_status} paidPct={inv.paid_pct} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </TableRegion>
           </LayoutSection>
         )

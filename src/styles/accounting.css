@@ -1,15 +1,15 @@
 .ap-workflow-banner {
   font-size: 0.875rem;
-  color: var(--text-muted, #64748b);
-  background: var(--muted-bg, #f8fafc);
-  border: 1px solid var(--border, #e2e8f0);
+  color: var(--text-2);
+  background: var(--bg-3);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 0.75rem 1rem;
   margin-bottom: 1rem;
 }
 
 .ap-workflow-banner a {
-  color: var(--primary, #ea580c);
+  color: var(--accent);
 }
 
 .ap-pill {
@@ -29,33 +29,33 @@
 }
 
 .ap-pill--unpaid {
-  background: #fef3c7;
-  color: #92400e;
-  border-color: #fcd34d;
+  background: var(--amber-bg);
+  color: var(--amber);
+  border-color: rgba(245, 158, 11, 0.32);
 }
 
 .ap-pill--partial {
-  background: #eff6ff;
-  color: #1d4ed8;
-  border-color: #93c5fd;
+  background: var(--blue-bg);
+  color: var(--blue);
+  border-color: rgba(59, 130, 246, 0.32);
 }
 
 .ap-pill--paid {
-  background: #ecfdf5;
-  color: #047857;
-  border-color: #6ee7b7;
+  background: var(--green-bg);
+  color: var(--green);
+  border-color: rgba(34, 197, 94, 0.32);
 }
 
 .ap-pill--overdue {
-  background: #fef2f2;
-  color: #b91c1c;
-  border-color: #fca5a5;
+  background: var(--red-bg);
+  color: var(--red);
+  border-color: rgba(239, 68, 68, 0.32);
 }
 
 .ap-pill--cancelled,
 .ap-pill--draft {
-  background: var(--muted-bg, #f1f5f9);
-  color: var(--text-muted, #64748b);
+  background: var(--bg-4);
+  color: var(--text-2);
 }
 
 .ap-lifecycle-pill {
@@ -66,8 +66,8 @@
   letter-spacing: 0.04em;
   padding: 0.15rem 0.45rem;
   border-radius: 4px;
-  background: var(--primary-bg, #fff7ed);
-  color: var(--primary, #ea580c);
+  background: var(--accent-glow);
+  color: var(--accent);
   margin-right: 0.5rem;
 }
 
@@ -79,13 +79,13 @@
 .receipt-matching-card__lifecycle {
   font-size: 0.875rem;
   margin: 0 0 0.75rem;
-  color: var(--text-muted, #64748b);
+  color: var(--text-2);
 }
 
 .receipt-matching-card__outstanding {
   display: block;
   font-size: 0.75rem;
-  color: var(--amber, #b45309);
+  color: var(--amber);
 }
 
 .ap-aging-grid {
@@ -98,7 +98,7 @@
 .ap-aging-grid__label {
   display: block;
   font-size: 0.75rem;
-  color: var(--text-muted, #64748b);
+  color: var(--text-2);
 }
 
 .ap-payments-toolbar {
@@ -131,11 +131,11 @@
 .ap-invoices-table td {
   padding: 0.6rem 0.75rem;
   text-align: left;
-  border-bottom: 1px solid var(--border, #e2e8f0);
+  border-bottom: 1px solid var(--border);
 }
 
 .ap-invoices-table__overdue {
-  background: #fffbeb;
+  background: var(--amber-bg);
 }
 
 .ap-payment-history {
@@ -149,13 +149,13 @@
   flex-wrap: wrap;
   gap: 0.5rem 1rem;
   padding: 0.65rem 0;
-  border-bottom: 1px solid var(--border, #e2e8f0);
+  border-bottom: 1px solid var(--border);
   font-size: 0.875rem;
 }
 
 .ap-payment-form__intro {
   font-size: 0.875rem;
-  color: var(--text-muted, #64748b);
+  color: var(--text-2);
   margin: 0 0 1rem;
 }
 
@@ -177,7 +177,7 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  border: 1px solid var(--border, #e2e8f0);
+  border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -188,7 +188,7 @@
   gap: 0.75rem;
   align-items: center;
   padding: 0.5rem 0.75rem;
-  border-bottom: 1px solid var(--border, #e2e8f0);
+  border-bottom: 1px solid var(--border);
   font-size: 0.875rem;
 }
 

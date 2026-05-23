@@ -1,6 +1,8 @@
 /* ════════════════════════════════════
    Shared UI primitives
 ════════════════════════════════════ */
+import { useEffect, useId, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 
 /* ── Button ── */
@@ -64,14 +66,17 @@ export function ApiErrorCard({
   );
 }
 
-/* ── EmptyState ── */
-export function EmptyState({ icon = '📭', title, desc = '' }) {
+/* ── EmptyState ──
+   icon may be a string (emoji) or a React node (svg/jsx).
+   compact: shrink padding for inline contexts (dropdowns, small panels). */
+export function EmptyState({ icon = '📭', title, desc = '', action, compact = false }) {
   const { t } = useTranslation();
   return (
-    <div className="empty-state">
-      <span className="empty-state__icon">{icon}</span>
+    <div className={`empty-state ${compact ? 'empty-state--compact' : ''}`.trim()} role="status">
+      <span className="empty-state__icon" aria-hidden="true">{icon}</span>
       <p className="empty-state__title">{title || t('ui.empty.nothingHere')}</p>
       {desc && <p className="empty-state__desc">{desc}</p>}
+      {action && <div className="empty-state__action">{action}</div>}
     </div>
   );
 }
@@ -164,6 +169,212 @@ export { default as PaginatedTable } from './PaginatedTable';
 export { default as ExportToolbar } from './ExportToolbar';
 export { default as RoleBadge } from './RoleBadge';
 export { default as UserAvatar } from './UserAvatar';
+
+/* ── Skeleton ──
+   Use as a placeholder while data loads. `variant` controls shape; `count`
+   repeats it for stacked lines. */
+export function Skeleton({ variant = 'text', width, height, count = 1, className = '', style }) {
+  const items = Array.from({ length: count }, (_, i) => (
+    <span
+      key={i}
+      className={`skeleton skeleton--${variant} ${className}`.trim()}
+      style={{ width, height, ...style }}
+      aria-hidden="true"
+    >
+      &nbsp;
+    </span>
+  ));
+  if (count === 1) return items[0];
+  return <div className="skeleton-stack">{items}</div>;
+}
+
+/* Convenience: skeleton row for tables (n columns) */
+export function SkeletonTableRows({ rows = 5, columns = 5 }) {
+  return Array.from({ length: rows }, (_, r) => (
+    <tr key={r}>
+      {Array.from({ length: columns }, (_, c) => (
+        <td key={c}><Skeleton variant="line" /></td>
+      ))}
+    </tr>
+  ));
+}
+
+/* ── Modal ──
+   Single shared dialog primitive. Adds: portal, role="dialog", aria-modal,
+   focus auto-set to first focusable, Esc + backdrop close, body scroll-lock,
+   size variants ('sm' 360px, 'md' 480px, 'lg' 640px, 'xl' 880px). */
+export function Modal({
+  open,
+  onClose,
+  title,
+  description,
+  size = 'md',
+  closeOnBackdrop = true,
+  closeOnEsc = true,
+  hideClose = false,
+  footer,
+  children,
+  className = '',
+}) {
+  const { t } = useTranslation();
+  const dialogRef = useRef(null);
+  const titleId = useId();
+  const descId = useId();
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const onKey = (e) => {
+      if (e.key === 'Escape' && closeOnEsc) {
+        e.stopPropagation();
+        onClose?.();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+
+    // Focus the first focusable element inside the dialog (or the dialog itself).
+    requestAnimationFrame(() => {
+      const node = dialogRef.current;
+      if (!node) return;
+      const focusable = node.querySelector(
+        'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      (focusable || node).focus();
+    });
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open, closeOnEsc, onClose]);
+
+  if (!open) return null;
+
+  const handleBackdrop = (e) => {
+    if (e.target === e.currentTarget && closeOnBackdrop) onClose?.();
+  };
+
+  return createPortal(
+    <div className="ui-modal-backdrop" onMouseDown={handleBackdrop} role="presentation">
+      <div
+        ref={dialogRef}
+        className={`ui-modal ui-modal--${size} ${className}`.trim()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={title ? titleId : undefined}
+        aria-describedby={description ? descId : undefined}
+        tabIndex={-1}
+      >
+        {(title || !hideClose) && (
+          <header className="ui-modal__head">
+            <div>
+              {title && <h2 id={titleId} className="ui-modal__title">{title}</h2>}
+              {description && <p id={descId} className="ui-modal__desc">{description}</p>}
+            </div>
+            {!hideClose && (
+              <button
+                type="button"
+                className="ui-modal__close"
+                onClick={() => onClose?.()}
+                aria-label={t('ui.modal.close', { defaultValue: 'Close' })}
+              >✕</button>
+            )}
+          </header>
+        )}
+        <div className="ui-modal__body">{children}</div>
+        {footer && <footer className="ui-modal__foot">{footer}</footer>}
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+/* ── FormField + form primitives ──
+   Wrap label, helper text, and validation message around any control.
+   Pass `id` to link <label> ↔ control; auto-generates one otherwise. */
+export function FormField({ label, htmlFor, hint, error, required, children, className = '' }) {
+  const autoId = useId();
+  const id = htmlFor || autoId;
+  return (
+    <div className={`form-field ${error ? 'form-field--error' : ''} ${className}`.trim()}>
+      {label && (
+        <label htmlFor={id} className="form-field__label">
+          {label}{required && <span className="form-field__required" aria-hidden="true"> *</span>}
+        </label>
+      )}
+      {typeof children === 'function' ? children({ id }) : children}
+      {hint && !error && <p className="form-field__hint">{hint}</p>}
+      {error && <p className="form-field__error" role="alert">{error}</p>}
+    </div>
+  );
+}
+
+/* Thin wrappers around .input — exist so a future style refactor only touches one place. */
+export function Input({ invalid, className = '', ...props }) {
+  return (
+    <input
+      className={`input ${className}`.trim()}
+      aria-invalid={invalid || undefined}
+      {...props}
+    />
+  );
+}
+export function Select({ invalid, className = '', children, ...props }) {
+  return (
+    <select
+      className={`input ${className}`.trim()}
+      aria-invalid={invalid || undefined}
+      {...props}
+    >{children}</select>
+  );
+}
+export function Textarea({ invalid, className = '', ...props }) {
+  return (
+    <textarea
+      className={`input ${className}`.trim()}
+      aria-invalid={invalid || undefined}
+      {...props}
+    />
+  );
+}
+
+/* ── ConfirmDialog ──
+   Convenience wrapper around Modal for yes/no flows. */
+export function ConfirmDialog({
+  open,
+  onCancel,
+  onConfirm,
+  title,
+  message,
+  confirmLabel,
+  cancelLabel,
+  variant = 'primary',
+  loading,
+}) {
+  const { t } = useTranslation();
+  return (
+    <Modal
+      open={open}
+      onClose={onCancel}
+      title={title}
+      size="sm"
+      footer={
+        <>
+          <Btn variant="ghost" size="md" onClick={onCancel} disabled={loading}>
+            {cancelLabel || t('ui.confirm.cancel', { defaultValue: 'Cancel' })}
+          </Btn>
+          <Btn variant={variant} size="md" onClick={onConfirm} loading={loading}>
+            {confirmLabel || t('ui.confirm.confirm', { defaultValue: 'Confirm' })}
+          </Btn>
+        </>
+      }
+    >
+      {typeof message === 'string' ? <p className="ui-modal__message">{message}</p> : message}
+    </Modal>
+  );
+}
 
 export function SearchInput({ value, onChange, placeholder, inputRef, autoFocus }) {
   const { t } = useTranslation();

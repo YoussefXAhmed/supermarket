@@ -123,10 +123,10 @@ export default function PurchasingDashboardPage() {
               <table className="table table--compact">
                 <thead>
                   <tr>
-                    <th>{t('nav.suppliers')}</th>
-                    <th>{t('purchasing.table.inv')}</th>
-                    <th>{t('finance.table.total')}</th>
-                    {showFinanceActions && <th>{t('finance.outstanding')}</th>}
+                    <th scope="col">{t('nav.suppliers')}</th>
+                    <th scope="col" className="num">{t('purchasing.table.inv')}</th>
+                    <th scope="col" className="num">{t('finance.table.total')}</th>
+                    {showFinanceActions && <th scope="col" className="num">{t('finance.outstanding')}</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -137,10 +137,10 @@ export default function PurchasingDashboardPage() {
                           {row.supplier}
                         </Link>
                       </td>
-                      <td className="mono">{row.count}</td>
-                      <td className="mono">{fmtCurrencyCompact(row.total)}</td>
+                      <td className="num mono">{row.count}</td>
+                      <td className="num mono">{fmtCurrencyCompact(row.total)}</td>
                       {showFinanceActions && (
-                        <td className="mono">{fmtCurrencyCompact(row.outstanding)}</td>
+                        <td className="num mono">{fmtCurrencyCompact(row.outstanding)}</td>
                       )}
                     </tr>
                   ))}

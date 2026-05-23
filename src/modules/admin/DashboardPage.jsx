@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { getDashboardStats } from '../../services/api';
-import { StatCard, PageHeader, PageLoading, ApiErrorCard, Badge, PartialDataBanner, Btn } from '../../components/ui';
+import { StatCard, PageHeader, PageLoading, ApiErrorCard, Badge, PartialDataBanner, Btn, Skeleton } from '../../components/ui';
 import TrendChart from '../../components/ui/TrendChart';
 import PaginatedTable from '../../components/ui/PaginatedTable';
 import { DashboardLayout, LayoutSection } from '../../components/layout/page-layouts';
@@ -37,7 +37,44 @@ export default function DashboardPage({ monitorOnly = false }) {
     load();
   }, []);
 
-  if (loading) return <PageLoading size={24} />;
+  if (loading) {
+    // Skeleton dashboard: same shape as the real one so layout doesn't shift
+    // when data arrives — a far less jarring loading state than a centered spinner.
+    return (
+      <DashboardLayout className="dashboard">
+        <PageHeader title={t('dashboardPage.title')} subtitle={t('dashboardPage.subtitle')} dense />
+        <section className="layout-grid layout-grid--kpi" aria-hidden="true">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="stat-card stat-card--compact">
+              <Skeleton variant="circle" width={34} height={34} />
+              <div className="stat-card__body" style={{ flex: 1 }}>
+                <Skeleton variant="text" width="55%" />
+                <div style={{ height: 6 }} />
+                <Skeleton variant="title" width="70%" />
+              </div>
+            </div>
+          ))}
+        </section>
+        <section className="layout-grid layout-grid--kpi" aria-hidden="true">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="stat-card stat-card--compact">
+              <Skeleton variant="circle" width={34} height={34} />
+              <div className="stat-card__body" style={{ flex: 1 }}>
+                <Skeleton variant="text" width="60%" />
+                <div style={{ height: 6 }} />
+                <Skeleton variant="title" width="50%" />
+              </div>
+            </div>
+          ))}
+        </section>
+        <div className="card" aria-hidden="true">
+          <Skeleton variant="title" width="32%" />
+          <div style={{ height: 14 }} />
+          <Skeleton variant="block" height={120} />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   if (error) {
     return (

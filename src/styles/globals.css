@@ -47,11 +47,74 @@ ul { list-style: none; }
 
   --shadow:       0 2px 12px rgba(0,0,0,0.4);
   --shadow-lg:    0 8px 32px rgba(0,0,0,0.5);
+  --shadow-popover: 0 12px 40px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.35);
+
+  /* Spacing scale — use these everywhere instead of magic px values */
+  --space-1:      4px;
+  --space-2:      8px;
+  --space-3:      12px;
+  --space-4:      16px;
+  --space-5:      20px;
+  --space-6:      24px;
+  --space-7:      28px;
+  --space-8:      32px;
+  --space-10:     40px;
+  --space-12:     48px;
+  --space-16:     64px;
+
+  /* Typography scale */
+  --font-2xs:     0.68rem;   /* 10.2px — micro labels, eyebrows */
+  --font-xs:      0.72rem;   /* 10.8px — captions, table headers */
+  --font-sm:      0.82rem;   /* 12.3px — secondary text */
+  --font-md:      0.88rem;   /* 13.2px — body */
+  --font-base:    0.95rem;   /* 14.25px — emphasized body */
+  --font-lg:      1.1rem;    /* 16.5px — section titles */
+  --font-xl:      1.4rem;    /* 21px — page titles */
+  --font-2xl:     1.8rem;    /* 27px — large numerics */
+  --line-tight:   1.25;
+  --line-normal:  1.45;
+
+  /* Icon scale */
+  --icon-xs:      12px;
+  --icon-sm:      14px;
+  --icon-md:      16px;
+  --icon-lg:      20px;
+  --icon-xl:      24px;
+  --icon-2xl:     32px;
 
   --sidebar-w:    230px;
   --header-h:     58px;
 
+  /* Motion */
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 240ms;
+  --ease-out:     cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out:  cubic-bezier(0.4, 0, 0.2, 1);
   --transition:   150ms ease;
+
+  /* Focus ring — apply consistently to all interactives */
+  --ring-focus:   0 0 0 3px var(--accent-glow);
+  --ring-danger:  0 0 0 3px rgba(239, 68, 68, 0.22);
+
+  /* Z-index scale — predictable stacking */
+  --z-base:       1;
+  --z-sticky:     50;
+  --z-overlay:    100;
+  --z-dropdown:   500;
+  --z-modal:      1000;
+  --z-popover:    2000;
+  --z-toast:      10000;
+}
+
+/* Honor users with reduced-motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* ── Scrollbar ── */
