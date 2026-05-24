@@ -138,40 +138,32 @@ function finalizeCapabilities(caps) {
       (c.canAccessManagerWorkspace && !c.canManageSystem),
   );
 
-  if (!c.canAccessPurchasing && (c.canManageSystem || c.isPurchasing)) {
-    c.canAccessPurchasing = Boolean(c.canManageSystem || c.isPurchasing);
+  if (!c.canAccessPurchasing && c.isPurchasing) {
+    c.canAccessPurchasing = Boolean(c.isPurchasing);
   }
 
-  // Purchase receipt approve/reject — store manager workspace + administrator break-glass only.
+  // Purchase receipt approve/reject — store manager workspace only.
   c.canExecutePurchaseApproval = Boolean(
     c.canApprovePurchasing &&
-    (c.canManageSystem ||
-      (c.operationalPersona === 'store_manager' && c.canAccessManagerWorkspace)),
+    c.operationalPersona === 'store_manager' &&
+    c.canAccessManagerWorkspace,
   );
 
-  c.canViewPurchaseApprovals = Boolean(
-    c.canExecutePurchaseApproval || c.canManageSystem,
-  );
+  c.canViewPurchaseApprovals = Boolean(c.canExecutePurchaseApproval);
 
   c.canViewApprovalsDashboard = Boolean(
     c.canViewApprovalsDashboard ||
       c.canExecuteShiftClosingApproval ||
       c.canApproveShift ||
-      c.canExecutePurchaseApproval ||
-      c.canManageSystem,
+      c.canExecutePurchaseApproval,
   );
 
   c.canViewSupplierPayments = Boolean(
-    c.canManageSupplierPayments || c.canAccessAccountantWorkspace || c.canManageSystem,
+    c.canManageSupplierPayments || c.canAccessAccountantWorkspace,
   );
-  if (c.canManageSystem) {
-    c.canManageSupplierPayments = true;
-  }
 
   c.canAccessInvoiceMatching = Boolean(
-    c.canAccessInvoiceMatching ||
-      c.canAccessAccountantWorkspace ||
-      c.canManageSystem,
+    c.canAccessInvoiceMatching || c.canAccessAccountantWorkspace,
   );
 
   c.canViewEmployees = Boolean(
@@ -180,11 +172,11 @@ function finalizeCapabilities(caps) {
       c.canManageSystem,
   );
 
-  // POS shift close approve/reject — accountant workspace + administrator break-glass only.
+  // POS shift close approve/reject — accountant workspace only.
   c.canExecuteShiftClosingApproval = Boolean(
     c.canApproveShift &&
-    (c.canManageSystem ||
-      (c.operationalPersona === 'accountant' && c.canAccessAccountantWorkspace)),
+    c.operationalPersona === 'accountant' &&
+    c.canAccessAccountantWorkspace,
   );
 
   return c;
@@ -205,43 +197,14 @@ export function buildCapabilities(overrides = {}) {
 export const EMPTY_CAPABILITIES = buildCapabilities({});
 
 function administratorCapabilities(roleList = [], roleProfileName = '') {
+  const profileCaps = CAPS_BY_ROLE_PROFILE['Elmahdi Administrator'] || {};
   return mergeCaps(
     {
       roleLabel: roleList.find((r) => ADMIN_ROLES.has(r)) || 'Administrator',
-      roleProfileName,
-      operationalPersona: 'administrator',
-      canViewPOS: true,
-      canOperatePOS: true,
-      canManageShift: true,
-      canOpenShift: true,
-      canCloseShift: true,
-      canApproveShift: true,
-      canViewShiftReports: true,
-      canViewInvoices: true,
-      canAccessAdminWorkspace: true,
-      canViewReports: true,
-      canViewAnalytics: true,
-      canMonitorCashiers: true,
-      canApproveReturns: true,
-      canApproveReconciliation: true,
-      canApprovePurchasing: true,
-      canApprovePurchasingAccountant: true,
-      canAccessAccountantWorkspace: true,
-      canViewApprovalsDashboard: true,
-      canAccessPurchasing: true,
-      canViewSuppliers: true,
-      canAccessInventory: true,
-      canViewReturns: true,
-      canCreateReturns: true,
-      canApproveReturns: true,
-      canManageUsers: true,
-      canManageSettings: true,
-      canManageSystem: true,
+      roleProfileName: roleProfileName || 'Elmahdi Administrator',
+      ...profileCaps,
     },
-    deriveInventoryCapabilities(
-      { canManageSystem: true, canAccessInventory: true },
-      roleList,
-    ),
+    EMPTY_INVENTORY_CAPABILITIES,
   );
 }
 

@@ -35,8 +35,7 @@ export const EMPTY_INVENTORY_CAPABILITIES = {
  */
 export function deriveInventoryCapabilities(baseCaps = {}, roleList = []) {
   const normalized = roleList.map(normalizeRole).filter(Boolean);
-  const canManageSystem = Boolean(baseCaps.canManageSystem);
-  const canAccessInventory = Boolean(baseCaps.canAccessInventory || canManageSystem);
+  const canAccessInventory = Boolean(baseCaps.canAccessInventory);
 
   const hasClerkRole = normalized.some((r) => INVENTORY_CLERK_ROLES.has(r));
   const hasManagerInventoryRole = normalized.some((r) => INVENTORY_MANAGER_ROLES.has(r));
@@ -45,18 +44,18 @@ export function deriveInventoryCapabilities(baseCaps = {}, roleList = []) {
 
   const canInventoryOperate =
     canAccessInventory &&
-    (canManageSystem || hasAnyInventoryRole || hasClerkRole || hasManagerInventoryRole);
+    (hasAnyInventoryRole || hasClerkRole || hasManagerInventoryRole);
 
   const canInventoryReceipt = canInventoryOperate;
 
-  const canInventoryTransfer = canManageSystem || hasManagerInventoryRole;
+  const canInventoryTransfer = hasManagerInventoryRole;
 
-  const canInventoryReconcile = canManageSystem || hasManagerInventoryRole;
+  const canInventoryReconcile = hasManagerInventoryRole;
 
-  const canInventoryValuation = canManageSystem || hasValuationRole;
+  const canInventoryValuation = hasValuationRole;
 
   const canInventoryManage =
-    canManageSystem || hasManagerInventoryRole || normalized.includes('item manager');
+    hasManagerInventoryRole || normalized.includes('item manager');
 
   const canInventoryAnalytics = canInventoryManage;
 

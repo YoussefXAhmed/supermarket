@@ -254,7 +254,7 @@ export default function App() {
             <Route
               path="invoices"
               element={(
-                <CapabilityRoute cap="canManageSystem">
+                <CapabilityRoute cap="canAccessAccountantWorkspace">
                   <LazyPage><PurchaseInvoicesPage /></LazyPage>
                 </CapabilityRoute>
               )}
@@ -262,7 +262,7 @@ export default function App() {
             <Route
               path="reports"
               element={(
-                <CapabilityRoute cap="canManageSystem">
+                <CapabilityRoute cap="canAccessAccountantWorkspace">
                   <LazyPage><PurchaseReportsPage /></LazyPage>
                 </CapabilityRoute>
               )}

@@ -8,10 +8,15 @@ import PaginatedTable from '../../components/ui/PaginatedTable';
 import { DashboardLayout, LayoutSection } from '../../components/layout/page-layouts';
 import { getUserFriendlyMessage } from '../../utils/errorHandling';
 import { fmtCurrency, fmtCurrencyCompact, fmtPercent } from '../../utils/format';
-import { purchasingPath } from '../../utils/workspacePaths';
+import { useAuth } from '../../hooks/useAuth';
+import { hasCapability } from '../../auth/capabilities';
+import { isAdministratorPersona } from '../../auth/navigationConfig';
 
 export default function DashboardPage({ monitorOnly = false }) {
   const { t, i18n } = useTranslation();
+  const { capabilities } = useAuth();
+  const isGovernanceAdmin = isAdministratorPersona(capabilities);
+  const canViewInvoices = hasCapability(capabilities, 'canViewInvoices');
   const [stats, setStats] = useState(null);
   const [warnings, setWarnings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -104,6 +109,8 @@ export default function DashboardPage({ monitorOnly = false }) {
       ? `${stats.revenueTrend >= 0 ? '+' : ''}${stats.revenueTrend}%`
       : '—';
 
+  const showFinancialKpis = !monitorOnly && stats?.hasFinancialKpis;
+
   const primaryKpis = [
     {
       label: t('dashboardPage.revenueMtd'),
@@ -118,12 +125,14 @@ export default function DashboardPage({ monitorOnly = false }) {
       icon: '🛍️',
       color: 'blue',
     },
-    {
-      label: t('dashboardPage.netProfit'),
-      value: fmtCurrencyCompact(stats?.netProfit || 0),
-      icon: '📈',
-      color: 'green',
-    },
+    ...(showFinancialKpis
+      ? [{
+          label: t('dashboardPage.netProfit'),
+          value: fmtCurrencyCompact(stats?.netProfit || 0),
+          icon: '📈',
+          color: 'green',
+        }]
+      : []),
     {
       label: t('dashboardPage.salesCountMtd'),
       value: stats?.salesCount || 0,
@@ -173,10 +182,14 @@ export default function DashboardPage({ monitorOnly = false }) {
 
       <LayoutSection
         title={t('dashboardPage.salesTrend')}
-        subtitle={t('dashboardPage.salesTrendSubtitle', {
-          margin: fmtPercent(stats?.grossMarginPct ?? 0, 0),
-          trend: trendLabel,
-        })}
+        subtitle={
+          showFinancialKpis
+            ? t('dashboardPage.salesTrendSubtitle', {
+                margin: fmtPercent(stats?.grossMarginPct ?? 0, 0),
+                trend: trendLabel,
+              })
+            : t('dashboardPage.salesTrendSubtitleNoMargin', { trend: trendLabel })
+        }
         variant="raised"
       >
         <TrendChart data={stats?.salesTrend || []} valueKey="value" labelKey="label" />
@@ -187,7 +200,7 @@ export default function DashboardPage({ monitorOnly = false }) {
         subtitle={t('dashboardPage.thisMonth')}
         variant="raised"
         actions={
-          !monitorOnly ? (
+          !monitorOnly && canViewInvoices ? (
             <Link to="/admin/invoices" className="btn btn--ghost btn--sm">
               {t('dashboardPage.viewAll')}
             </Link>
@@ -204,14 +217,15 @@ export default function DashboardPage({ monitorOnly = false }) {
         />
       </LayoutSection>
 
-      {!monitorOnly && (
-        <LayoutSection title={t('dashboardPage.quickActions')} subtitle={t('dashboardPage.quickActionsSubtitle')} variant="flat">
+      {!monitorOnly && isGovernanceAdmin && (
+        <LayoutSection title={t('dashboardPage.quickActions')} subtitle={t('dashboardPage.adminQuickActionsSubtitle')} variant="flat">
           <div className="workflow-bar">
             <div className="workflow-bar__actions" style={{ marginLeft: 0 }}>
-              <Link to="/pos" className="btn btn--primary btn--sm">{t('common.pos')}</Link>
-              <Link to="/inventory" className="btn btn--ghost btn--sm">{t('nav.inventory')}</Link>
-              <Link to={purchasingPath()} className="btn btn--ghost btn--sm">{t('nav.purchasing')}</Link>
+              <Link to="/admin/users" className="btn btn--primary btn--sm">{t('nav.users')}</Link>
+              <Link to="/admin/products" className="btn btn--ghost btn--sm">{t('nav.products')}</Link>
+              <Link to="/admin/reports" className="btn btn--ghost btn--sm">{t('nav.reports')}</Link>
               <Link to="/admin/activity" className="btn btn--ghost btn--sm">{t('nav.activity')}</Link>
+              <Link to="/admin/settings" className="btn btn--ghost btn--sm">{t('nav.settings')}</Link>
             </div>
           </div>
         </LayoutSection>

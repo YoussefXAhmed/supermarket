@@ -101,7 +101,7 @@ export function purchaseApprovalActionState(doc, caps, user) {
     return { canAct: false, reason: doc.approve_blocked_reason };
   }
   if (doc?.can_approve === true) {
-    return { canAct: Boolean(caps?.canExecutePurchaseApproval || caps?.canManageSystem), reason: '' };
+    return { canAct: Boolean(caps?.canExecutePurchaseApproval), reason: '' };
   }
 
   const requester = doc?.requested_by || '';
@@ -110,7 +110,7 @@ export function purchaseApprovalActionState(doc, caps, user) {
     return { canAct: false, reason: 'You cannot approve your own purchase receipt.' };
   }
 
-  if (!caps?.canExecutePurchaseApproval && !caps?.canManageSystem) {
+  if (!caps?.canExecutePurchaseApproval) {
     if (isPendingPurchaseStatus(status)) {
       return { canAct: false, reason: 'Waiting for store manager approval.' };
     }

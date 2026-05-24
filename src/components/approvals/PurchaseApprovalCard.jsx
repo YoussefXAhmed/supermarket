@@ -13,7 +13,7 @@ import ApprovalAuditPanel from './ApprovalAuditPanel';
 import WarehouseScopeBar from './WarehouseScopeBar';
 
 export function canActOnPurchaseReceipt(caps) {
-  return Boolean(caps?.canExecutePurchaseApproval || caps?.canManageSystem);
+  return Boolean(caps?.canExecutePurchaseApproval);
 }
 
 export default function PurchaseApprovalCard({

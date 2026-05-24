@@ -36,16 +36,18 @@ export function shiftHistoryPath(caps) {
   const persona = resolveNavPersona(caps);
   if (persona === 'store_manager') return '/manager/shifts/history';
   if (persona === 'accountant') return financePath('shifts/history');
-  if (hasCapability(caps, 'canManageSystem')) return '/admin/shifts/history';
+  if (persona === 'administrator') return '/admin/approvals';
   return '/shifts/history';
 }
 
-/** Purchase rate approvals — manager workspace only (admin uses admin hub). */
+/** Purchase rate approvals — manager vs finance vs admin. */
 export function purchaseApprovalsPath(caps) {
   const persona = resolveNavPersona(caps);
   if (persona === 'store_manager') return '/manager/purchase-approvals';
-  if (hasCapability(caps, 'canManageSystem')) return '/admin/approvals';
-  return '/manager/purchase-approvals';
+  if (persona === 'accountant') return financePath('approvals');
+  if (persona === 'administrator') return '/admin/approvals';
+  if (hasCapability(caps, 'canViewPurchaseApprovals')) return '/manager/purchase-approvals';
+  return financePath('approvals');
 }
 
 /** Approvals hub — manager vs finance vs admin. */

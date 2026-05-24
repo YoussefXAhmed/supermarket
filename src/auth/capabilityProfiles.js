@@ -123,6 +123,40 @@ const STORE_MANAGER = inv({
   operationalPersona: 'store_manager',
 });
 
+/** System administrator — governance only (no POS / inventory / purchasing execution). */
+const ADMINISTRATOR = {
+  canManageSystem: true,
+  canManageUsers: true,
+  canManageSettings: true,
+  canManageOperationalUsers: true,
+  canAccessAdminWorkspace: true,
+  canViewReports: true,
+  canViewAnalytics: true,
+  canViewApprovalsDashboard: true,
+  canViewEmployees: true,
+  canViewPOS: false,
+  canOperatePOS: false,
+  canOpenShift: false,
+  canCloseShift: false,
+  canApproveShift: false,
+  canViewShiftReports: false,
+  canViewInvoices: false,
+  canViewReturns: false,
+  canCreateReturns: false,
+  canAccessPurchasing: false,
+  canViewSuppliers: false,
+  canAccessAccountantWorkspace: false,
+  canAccessInvoiceMatching: false,
+  canViewSupplierPayments: false,
+  canManageSupplierPayments: false,
+  canApprovePurchasing: false,
+  canApprovePurchasingAccountant: false,
+  canViewPurchaseApprovals: false,
+  canAccessInventory: false,
+  roleLabel: 'Administrator',
+  operationalPersona: 'administrator',
+};
+
 /** HR — workforce records + operational user provisioning (no finance/inventory/security). */
 const HR_OFFICER = {
   canAccessHRWorkspace: true,
@@ -139,6 +173,7 @@ const HR_OFFICER = {
 
 /** @type {Record<string, Partial<Capabilities>>} */
 export const CAPS_BY_ROLE_PROFILE = {
+  'Elmahdi Administrator': ADMINISTRATOR,
   [OPERATIONAL_USER_TEMPLATES.cashier.roleProfileName]: CASHIER,
   [OPERATIONAL_USER_TEMPLATES.inventory_clerk.roleProfileName]: INVENTORY_CLERK,
   [OPERATIONAL_USER_TEMPLATES.purchasing_officer.roleProfileName]: PURCHASING_OFFICER,

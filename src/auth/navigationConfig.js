@@ -41,20 +41,13 @@ export function filterNavPool(capabilities, pool) {
 /** @type {NavItem[]} */
 export const ADMIN_NAV = [
   { to: '/admin', labelKey: 'nav.dashboard', icon: '◈', exact: true },
-  { to: '/finance', labelKey: 'nav.finance', icon: '💼' },
-  { to: '/admin/approvals', labelKey: 'nav.approvals', icon: '✓' },
-  { to: '/admin/products', labelKey: 'nav.products', icon: '🛒' },
-  { to: '/admin/inventory', labelKey: 'nav.inventory', icon: '📦' },
-  { to: '/purchasing', labelKey: 'nav.purchasing', icon: '🛍️' },
-  { to: '/admin/invoices', labelKey: 'common.invoices', icon: '🧾' },
-  { to: '/admin/returns', labelKey: 'nav.returns', icon: '↩' },
-  { to: '/admin/shifts/history', labelKey: 'nav.shifts', icon: '◷' },
-  { to: '/admin/customers', labelKey: 'nav.customers', icon: '👥' },
-  { to: '/admin/activity', labelKey: 'nav.activity', icon: '📋' },
   { to: '/admin/users', labelKey: 'nav.users', icon: '🧑‍💼' },
+  { to: '/admin/products', labelKey: 'nav.products', icon: '🛒' },
+  { to: '/admin/customers', labelKey: 'nav.customers', icon: '👥' },
   { to: '/admin/warehouses', labelKey: 'nav.warehouses', icon: '🏬' },
+  { to: '/admin/approvals', labelKey: 'nav.approvals', icon: '✓' },
   { to: '/admin/reports', labelKey: 'nav.reports', icon: '📊' },
-  { to: '/pos', labelKey: 'common.pos', icon: '💳', cap: 'canOperatePOS' },
+  { to: '/admin/activity', labelKey: 'nav.activity', icon: '📋' },
   { to: '/admin/settings', labelKey: 'nav.settings', icon: '⚙️' },
 ];
 
@@ -70,6 +63,12 @@ export function getAdminNavItems(capabilities) {
 export const MANAGER_NAV = [
   { to: '/manager', labelKey: 'nav.dashboard', icon: '◈', exact: true },
   { to: '/manager/approvals', labelKey: 'nav.approvals', icon: '✓', cap: 'canViewApprovalsDashboard' },
+  {
+    to: '/manager/purchase-approvals',
+    labelKey: 'nav.purchaseApprovals',
+    icon: '🛍️',
+    cap: 'canViewPurchaseApprovals',
+  },
   { to: '/manager/reports', labelKey: 'nav.reports', icon: '📊', cap: 'canViewReports' },
   { to: '/manager/shifts/history', labelKey: 'nav.shifts', icon: '◷', cap: 'canViewShiftReports' },
 ];
@@ -118,23 +117,23 @@ export function getHRNavItems(capabilities) {
 
 /** @type {NavItem[]} */
 const INVENTORY_NAV_CLERK = [
-  { to: '/inventory', labelKey: 'nav.overview', exact: true },
-  { to: '/inventory/warehouses', labelKey: 'nav.warehouses' },
-  { to: '/inventory/stock-entry', labelKey: 'nav.stockEntry' },
-  { to: '/inventory/transfer', labelKey: 'nav.transfer', cap: 'canInventoryIssueTransfer' },
-  { to: '/inventory/alerts', labelKey: 'nav.alerts' },
-  { to: '/inventory/reorder', labelKey: 'nav.reorder' },
-  { to: '/inventory/ledger', labelKey: 'nav.ledger' },
+  { to: '/inventory', labelKey: 'nav.overview', icon: '◈', exact: true },
+  { to: '/inventory/warehouses', labelKey: 'nav.warehouses', icon: '🏬' },
+  { to: '/inventory/stock-entry', labelKey: 'nav.stockEntry', icon: '📥' },
+  { to: '/inventory/transfer', labelKey: 'nav.transfer', icon: '🔁', cap: 'canInventoryIssueTransfer' },
+  { to: '/inventory/alerts', labelKey: 'nav.alerts', icon: '⚠' },
+  { to: '/inventory/reorder', labelKey: 'nav.reorder', icon: '🛒' },
+  { to: '/inventory/ledger', labelKey: 'nav.ledger', icon: '📒' },
 ];
 
 /** @type {NavItem[]} */
 const INVENTORY_NAV_FULL = [
   ...INVENTORY_NAV_CLERK,
-  { to: '/inventory/items', labelKey: 'nav.items', cap: 'canInventoryManage' },
-  { to: '/inventory/batches', labelKey: 'nav.batches', cap: 'canInventoryManage' },
-  { to: '/inventory/reconciliation', labelKey: 'nav.reconcile', cap: 'canInventoryReconcile' },
-  { to: '/inventory/analytics', labelKey: 'nav.analytics', cap: 'canInventoryAnalytics' },
-  { to: '/inventory/reports', labelKey: 'nav.reports', cap: 'canInventoryManage' },
+  { to: '/inventory/items', labelKey: 'nav.items', icon: '📦', cap: 'canInventoryManage' },
+  { to: '/inventory/batches', labelKey: 'nav.batches', icon: '🧪', cap: 'canInventoryManage' },
+  { to: '/inventory/reconciliation', labelKey: 'nav.reconcile', icon: '⚖', cap: 'canInventoryReconcile' },
+  { to: '/inventory/analytics', labelKey: 'nav.analytics', icon: '📈', cap: 'canInventoryAnalytics' },
+  { to: '/inventory/reports', labelKey: 'nav.reports', icon: '📊', cap: 'canInventoryManage' },
 ];
 
 /** @param {import('./capabilities').Capabilities} capabilities */
@@ -172,8 +171,8 @@ const PURCHASING_SHELL_OFFICER = [
 const PURCHASING_SHELL_FULL = [
   ...PURCHASING_SHELL_OFFICER,
   { to: '/purchasing/approvals', labelKey: 'nav.approvals', icon: '✓', cap: 'canViewPurchaseApprovals' },
-  { to: '/purchasing/invoices', labelKey: 'common.invoices', icon: '🧾', cap: 'canManageSystem' },
-  { to: '/purchasing/reports', labelKey: 'nav.reports', icon: '📊', cap: 'canManageSystem' },
+  { to: '/purchasing/invoices', labelKey: 'common.invoices', icon: '🧾', cap: 'canAccessAccountantWorkspace' },
+  { to: '/purchasing/reports', labelKey: 'nav.reports', icon: '📊', cap: 'canAccessAccountantWorkspace' },
 ];
 
 /** @param {import('./capabilities').Capabilities} capabilities */
@@ -262,13 +261,18 @@ export function isStrictOperationalPersona(capabilities) {
 
 /** @param {import('./capabilities').Capabilities} capabilities */
 export function canManageItemMaster(capabilities) {
-  return hasCapability(capabilities, 'canInventoryManage') || hasCapability(capabilities, 'canManageSystem');
+  return hasCapability(capabilities, 'canInventoryManage')
+    || (hasCapability(capabilities, 'canManageSystem') && resolveNavPersona(capabilities) === 'administrator');
 }
 
 /** @param {import('./capabilities').Capabilities} capabilities */
 export function canExecutePurchasingFinance(capabilities) {
-  return hasCapability(capabilities, 'canManageSystem')
-    || hasCapability(capabilities, 'canAccessAccountantWorkspace');
+  return hasCapability(capabilities, 'canAccessAccountantWorkspace');
+}
+
+/** @param {import('./capabilities').Capabilities} capabilities */
+export function isAdministratorPersona(capabilities) {
+  return resolveNavPersona(capabilities) === 'administrator';
 }
 
 /** @param {import('./capabilities').Capabilities} capabilities */

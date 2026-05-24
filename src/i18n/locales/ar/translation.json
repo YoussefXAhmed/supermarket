@@ -103,6 +103,7 @@
     "overview": "نظرة عامة",
     "products": "المنتجات",
     "purchaseRates": "أسعار الشراء",
+    "purchaseApprovals": "موافقات الشراء",
     "purchasing": "المشتريات",
     "receive": "استلام",
     "reconcile": "تسوية",
@@ -144,12 +145,14 @@
     "customers": "العملاء",
     "salesTrend": "اتجاه المبيعات",
     "salesTrendSubtitle": "آخر 14 يوم · هامش {{margin}}% · {{trend}} مقارنة بالشهر الماضي",
+    "salesTrendSubtitleNoMargin": "آخر 14 يوم · {{trend}} مقارنة بالشهر الماضي",
     "recentInvoices": "آخر الفواتير",
     "thisMonth": "هذا الشهر",
     "viewAll": "عرض الكل",
     "noInvoices": "لا توجد فواتير هذا الشهر",
     "quickActions": "إجراءات سريعة",
     "quickActionsSubtitle": "الانتقال للوحدات الأساسية",
+    "adminQuickActionsSubtitle": "إعداد النظام والإشراف",
     "salesCountHint": "{{count}} فاتورة"
   },
   "pos": {

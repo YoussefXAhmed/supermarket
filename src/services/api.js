@@ -369,7 +369,7 @@ export const getDashboardStats = async () => {
     });
     kpi = kpiRes?.data?.message || kpiRes?.data;
   } catch {
-    warnings.push('Could not load ERP profit KPIs — using estimated margin.');
+    warnings.push('Could not load ERP dashboard KPIs.');
   }
 
   const [posInvoices, items, customers] = await Promise.allSettled([
@@ -410,9 +410,12 @@ export const getDashboardStats = async () => {
   const salesCount = kpi?.sales_count ?? invoiceData.length;
   const salesToday = kpi?.sales_today ?? 0;
   const salesTodayCount = kpi?.sales_today_count ?? 0;
-  const cogs = kpi?.cogs ?? 0;
-  const netProfit = kpi?.net_profit ?? revenue * 0.28;
-  const grossMarginPct = kpi?.gross_margin_pct ?? (revenue > 0 ? (netProfit / revenue) * 100 : 0);
+  const hasFinancialKpis = kpi != null && ('net_profit' in kpi || 'cogs' in kpi);
+  const cogs = hasFinancialKpis ? (kpi?.cogs ?? 0) : null;
+  const netProfit = hasFinancialKpis ? (kpi?.net_profit ?? 0) : null;
+  const grossMarginPct = hasFinancialKpis
+    ? (kpi?.gross_margin_pct ?? (revenue > 0 ? ((kpi?.net_profit ?? 0) / revenue) * 100 : 0))
+    : null;
   const revenueTrend = kpi?.revenue_trend ?? 0;
   const lastMonthRevenue = kpi?.last_month_revenue ?? 0;
   const avgTicket = kpi?.avg_ticket ?? (salesCount ? revenue / salesCount : 0);
@@ -441,6 +444,7 @@ export const getDashboardStats = async () => {
     salesTodayCount,
     cogs,
     netProfit,
+    hasFinancialKpis,
     estimatedProfit: netProfit,
     grossMarginPct,
     lastMonthRevenue,

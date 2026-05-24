@@ -103,6 +103,7 @@
     "overview": "Overview",
     "products": "Products",
     "purchaseRates": "Purchase rates",
+    "purchaseApprovals": "Purchase approvals",
     "purchasing": "Purchasing",
     "receive": "Receive",
     "reconcile": "Reconcile",
@@ -144,12 +145,14 @@
     "customers": "Customers",
     "salesTrend": "Sales trend",
     "salesTrendSubtitle": "Last 14 days · margin {{margin}}% · {{trend}} vs last month",
+    "salesTrendSubtitleNoMargin": "Last 14 days · {{trend}} vs last month",
     "recentInvoices": "Recent invoices",
     "thisMonth": "This month",
     "viewAll": "View all",
     "noInvoices": "No invoices this month",
     "quickActions": "Quick actions",
     "quickActionsSubtitle": "Jump to core modules",
+    "adminQuickActionsSubtitle": "System setup and oversight",
     "salesCountHint": "{{count}} invoices"
   },
   "pos": {
