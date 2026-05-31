@@ -114,6 +114,44 @@ export async function listPendingPurchaseApprovals(limit = 50) {
   return res?.data?.message || [];
 }
 
+export async function listPurchaseApprovalHistory({
+  status = 'all',
+  supplier = '',
+  fromDate = '',
+  toDate = '',
+  name = '',
+  limit = 200,
+} = {}) {
+  const res = await api.get(
+    '/api/method/elmahdi.api.purchase_approval_history.list_purchase_approval_history',
+    {
+      params: {
+        status: status || 'all',
+        supplier: supplier || undefined,
+        from_date: fromDate || undefined,
+        to_date: toDate || undefined,
+        name: name || undefined,
+        limit,
+      },
+    },
+  );
+  return (
+    res?.data?.message || {
+      rows: [],
+      totals: { approved_count: 0, rejected_count: 0, approved_value: 0, rejected_value: 0 },
+      month_totals: { approved_count: 0, rejected_count: 0, approved_value: 0, rejected_value: 0 },
+    }
+  );
+}
+
+export async function getPurchaseApprovalDetail(name) {
+  const res = await api.get(
+    '/api/method/elmahdi.api.purchase_approval_history.get_purchase_approval_detail',
+    { params: { name } },
+  );
+  return res?.data?.message || null;
+}
+
 export async function approvePurchaseReceipt(name, { notes = '' } = {}) {
   const res = await api.post('/api/method/elmahdi.api.purchasing.approve_purchase_receipt', {
     name,

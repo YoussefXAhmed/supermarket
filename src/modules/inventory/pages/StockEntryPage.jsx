@@ -8,6 +8,7 @@ import { getSellableStock } from '../../../services/stockService';
 import { getUserFriendlyMessage } from '../../../utils/errorHandling';
 import { invalidateStockCache } from '../../../utils/stockCache';
 import { useInventoryCapabilities } from '../../../hooks/useInventoryCapabilities';
+import { useNotify } from '../../../context/NotificationContext';
 
 const ENTRY_TYPES = [
   { value: 'Material Receipt', cap: 'receipt' },
@@ -17,6 +18,7 @@ const ENTRY_TYPES = [
 
 export default function StockEntryPage() {
   const { t } = useTranslation();
+  const notify = useNotify();
   const {
     canInventoryReceipt,
     canInventoryIssueTransfer,
@@ -37,7 +39,6 @@ export default function StockEntryPage() {
   });
   const [sourceAvail, setSourceAvail] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
 
   useEffect(() => {
@@ -74,11 +75,10 @@ export default function StockEntryPage() {
   const onSubmit = async (e) => {
     e.preventDefault();
     if (!allowedTypes.includes(form.stock_entry_type)) {
-      setErr('You do not have permission for this stock entry type in ERPNext.');
+      setErr('You do not have permission for this stock adjustment type.');
       return;
     }
     setErr('');
-    setMsg('');
     setSaving(true);
     try {
       const sourceWarehouse = warehouses.find((w) => w.name === form.source_warehouse);
@@ -95,13 +95,13 @@ export default function StockEntryPage() {
         sourceQty: sourceAvail,
       });
 
-      setMsg(`Submitted: ${result.name} (stock updated in ERPNext)`);
+      notify.success(`Approved: ${result.name} — stock updated.`);
       invalidateStockCache({ source: 'stock_entry', name: result.name, warehouse: form.target_warehouse || form.source_warehouse });
       setForm((f) => ({ ...f, item_code: '', qty: '' }));
       setSourceAvail(null);
     } catch (e2) {
       if (e2.draftName) {
-        setErr(`${getUserFriendlyMessage(e2)} Draft: ${e2.draftName}. Submit or cancel in ERPNext.`);
+        setErr(`${getUserFriendlyMessage(e2)} Draft: ${e2.draftName}. Approve or cancel in admin console.`);
       } else {
         setErr(getUserFriendlyMessage(e2));
       }
@@ -174,7 +174,6 @@ export default function StockEntryPage() {
             {t('inventory.stockEntry.createSubmit')}
           </Btn>
         </form>
-        {msg && <p className="inv-success">{msg}</p>}
         {err && <ApiErrorCard title={t('inventory.stockEntry.failed')} message={err} />}
       </LayoutSection>
     </FormPageLayout>

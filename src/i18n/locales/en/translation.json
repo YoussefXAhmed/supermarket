@@ -28,7 +28,7 @@
   "auth": {
     "invalidCredentials": "Incorrect email or password",
     "sessionExpired": "Your session may have expired. Please sign in again.",
-    "networkError": "Unable to reach ERPNext. Check your connection and that the server is running."
+    "networkError": "Cannot reach the system. Check your connection and try again."
   },
   "ui": {
     "loading": "Loading...",
@@ -96,24 +96,27 @@
     "finance": "Finance",
     "history": "History",
     "inventory": "Inventory",
-    "invoiceMatching": "Invoice matching",
+    "invoiceMatching": "Match supplier bills",
     "items": "Items",
-    "ledger": "Ledger",
-    "matching": "Matching",
+    "ledger": "Stock movement",
+    "matching": "Match bills",
     "overview": "Overview",
     "products": "Products",
     "purchaseRates": "Purchase rates",
-    "purchaseApprovals": "Purchase approvals",
+    "purchaseApprovals": "Goods receipt approvals",
     "purchasing": "Purchasing",
-    "receive": "Receive",
-    "reconcile": "Reconcile",
+    "purchasingHistory": "Purchasing history",
+    "posProfiles": "POS Terminals",
+    "approvalHistory": "Approval history",
+    "receive": "Receive goods",
+    "reconcile": "Stock Count",
     "reorder": "Reorder",
     "reports": "Reports",
     "returns": "Returns",
     "settings": "Settings",
     "shifts": "Shifts",
     "stock": "Stock",
-    "stockEntry": "Stock entry",
+    "stockEntry": "Stock adjustment",
     "supplierPayments": "Supplier payments",
     "suppliers": "Suppliers",
     "transfer": "Transfer",
@@ -226,13 +229,13 @@
     "viewReceiptHint": "View receipt and print from the list.",
     "walkIn": "Walk-in",
     "walkInCustomer": "Walk-in Customer",
-    "whLabel": "WH:"
+    "whLabel": "Warehouse"
   },
   "shifts": {
     "closeShift": "Close shift",
     "openShift": "Open shift",
     "shiftControl": "Shift control",
-    "subtitle": "Cash reconciliation · ERPNext POS Opening/Closing",
+    "subtitle": "Cash reconciliation · Shift opening and closing",
     "accessDenied": "Access denied",
     "noPermissionOpen": "You do not have permission to open shifts.",
     "noPermissionClose": "You do not have permission to close shifts.",
@@ -244,15 +247,15 @@
     "openingFloat": "Opening float",
     "openingCash": "Opening cash (EGP)",
     "modeOfPayment": "Mode of payment",
-    "createsOpeningEntry": "Creates a submitted POS Opening Entry in ERPNext for cashier {{cashier}}.",
-    "closeSubtitle": "Cash reconciliation against ERP sales",
+    "createsOpeningEntry": "Opens a new shift for cashier {{cashier}}.",
+    "closeSubtitle": "Cash reconciliation against shift sales",
     "noOpenShift": "No open shift found for your register.",
     "shiftStatus": "Shift status",
     "cashCount": "Cash count",
-    "closedSubmitted": "Shift closed — {{name}} submitted in ERPNext.",
-    "closingNeedsVariance": "Closing {{name}} saved as draft — manager must approve variance (EGP {{variance}}).",
-    "closingNeedsManager": "Closing {{name}} saved as draft — a store manager must submit it in ERPNext.",
-    "closingDraftSaved": "Closing draft saved — check ERPNext Desk."
+    "closedSubmitted": "Shift closed — {{name}} approved.",
+    "closingNeedsVariance": "Shift {{name}} saved as draft — manager must approve variance (EGP {{variance}}).",
+    "closingNeedsManager": "Shift {{name}} saved as draft — an accountant must approve it.",
+    "closingDraftSaved": "Shift draft saved. Waiting for accountant approval."
   },
   "approvals": {
     "approveAndSubmit": "Approve & submit",
@@ -288,10 +291,10 @@
     "openShiftHistory": "Open shift history",
     "allApprovals": "All approvals",
     "recordPayment": "Record payment →",
-    "receiptSubmitted": "Receipt submitted. Payable {{invoice}}",
+    "receiptSubmitted": "Goods received. Supplier bill {{invoice}} created.",
     "outstanding": "outstanding",
-    "receiptApprovedNoPayable": "Receipt approved but payable was not created: {{message}}. Check Invoice matching to retry.",
-    "rejectPurchaseConfirm": "Reject purchase receipt {{name}}?",
+    "receiptApprovedNoPayable": "Goods received but supplier bill was not created: {{message}}. Open Match Supplier Bill to retry.",
+    "rejectPurchaseConfirm": "Reject goods receipt {{name}}?",
     "table": {
       "item": "Item",
       "qty": "Qty",
@@ -302,7 +305,7 @@
     }
   },
   "inventory": {
-    "subtitle": "Stock snapshot from ERPNext",
+    "subtitle": "Current stock snapshot",
     "searchItems": "Search items",
     "allWarehouses": "All warehouses",
     "newItem": "New item",
@@ -344,8 +347,8 @@
       "qty": "Qty"
     },
     "stockEntry": {
-      "title": "Stock Entry",
-      "subtitle": "Create and submit stock movements",
+      "title": "Stock Adjustment",
+      "subtitle": "Create and approve stock movements",
       "entryType": "Entry Type",
       "item": "Item",
       "itemCode": "Item Code",
@@ -384,18 +387,18 @@
     },
     "reorder": {
       "title": "Reorder suggestions",
-      "subtitle": "Items at or below reorder level from ERPNext Item reorder table",
+      "subtitle": "Items at or below reorder level",
       "suggestedOrder": "Suggested Order",
       "suggestedQty": "Suggested qty",
       "load": "Load suggestions",
       "empty": "Load to see reorder suggestions"
     },
     "ledger": {
-      "title": "Stock Ledger",
-      "subtitle": "Movement history from Stock Ledger Entry",
+      "title": "Stock Movement History",
+      "subtitle": "Every increase and decrease in stock, by warehouse and date",
       "filterItemCode": "Filter by item code",
       "load": "Load Movements",
-      "emptyTitle": "No ledger entries loaded",
+      "emptyTitle": "No movements loaded",
       "emptyDesc": "Use filter and click Load Movements."
     },
     "reports": {
@@ -421,7 +424,7 @@
     },
     "batches": {
       "title": "Batch & Expiry",
-      "subtitle": "Near-expiry and expired batches from ERPNext",
+      "subtitle": "Near-expiry and expired batches",
       "alertWithin": "Alert within (days)",
       "loadBatches": "Load batches",
       "empty": "No near-expiry batches — click Load batches",
@@ -455,34 +458,34 @@
   },
   "purchasing": {
     "subtitle": "Suppliers · receipts · payables",
-    "purchaseApprovals": "Purchase approvals",
+    "purchaseApprovals": "Goods receipt approvals",
     "purchaseApprovalsSubtitle": "Store managers approve buying rates before stock is received.",
     "totalPurchases": "Total purchases",
     "thisMonth": "This month",
     "workflow": "Workflow",
-    "receiveStock": "Receive stock",
-    "receiveStockSubtitle": "Purchase Receipt — increases warehouse stock on submit",
-    "newInvoice": "New invoice",
+    "receiveStock": "Receive goods",
+    "receiveStockSubtitle": "Goods Receipt — increases warehouse stock when approved",
+    "newInvoice": "New bill",
     "topSuppliers": "Top suppliers",
-    "byInvoiceValue": "By purchase invoice value",
+    "byInvoiceValue": "By supplier bill value",
     "fullReport": "Full report",
-    "noInvoicesYet": "No purchase invoices yet. Receive stock or create a purchase invoice to get started.",
+    "noInvoicesYet": "No supplier bills yet. Receive goods or create a supplier bill to get started.",
     "newSupplier": "New supplier",
     "searchSuppliers": "Search suppliers...",
     "noSuppliers": "No suppliers",
     "noSuppliersDesc": "Create your first supplier to start purchasing.",
-    "purchaseInvoices": "Purchase invoices",
+    "purchaseInvoices": "Supplier bills",
     "purchaseInvoicesSubtitle": "Supplier payables and bill matching",
     "exceptionalBilling": "Exceptional billing",
-    "newPurchaseInvoice": "New purchase invoice",
-    "noPurchaseInvoices": "No purchase invoices",
+    "newPurchaseInvoice": "New supplier bill",
+    "noPurchaseInvoices": "No supplier bills",
     "supplierBillNo": "Supplier bill #",
     "rate": "Rate",
     "line": "Line",
     "submitInvoice": "Submit invoice",
     "selectSupplier": "Select supplier",
     "receivingWarehouse": "Receiving warehouse",
-    "lineItems": "Line items",
+    "lineItems": "Items",
     "lineTotal": "Line total",
     "buyingRate": "Buying rate",
     "expected": "Expected",
@@ -508,7 +511,7 @@
   },
   "hr": {
     "dashboard": {
-      "kpiLabel": "Workforce metrics",
+      "kpiLabel": "Staff metrics",
       "totalEmployees": "Total employees",
       "activeEmployees": "Active employees",
       "withAccess": "With system access",
@@ -517,19 +520,19 @@
       "byDepartment": "Employees by department",
       "byRole": "Employees by operational role",
       "quickLinks": "Quick links",
-      "employeesDesc": "Workforce records — with or without login",
-      "usersDesc": "Provision operational ERP accounts",
-      "loadError": "Could not load workforce data"
+      "employeesDesc": "Staff records — with or without login",
+      "usersDesc": "Provision operational accounts",
+      "loadError": "Could not load staff data"
     },
     "employees": {
       "title": "Employees",
-      "subtitle": "Workforce records stored in ERPNext Employee",
+      "subtitle": "Staff records",
       "add": "Add employee",
       "addTitle": "New employee",
       "editTitle": "Edit employee",
       "search": "Search by name, ID, department…",
       "empty": "No employees yet",
-      "emptyDesc": "Create workforce records here. System login is optional.",
+      "emptyDesc": "Create staff records here. System login is optional.",
       "loadError": "Failed to load employees",
       "nameRequired": "Full name is required",
       "emailRequiredForAccess": "Work email is required to create system access",
@@ -559,7 +562,7 @@
       "sendWelcomeEmail": "Send welcome email (password reset)",
       "createAccount": "Create account",
       "resetPassword": "Send welcome email",
-      "welcomeEmailSent": "Welcome email triggered in ERPNext"
+      "welcomeEmailSent": "Welcome email sent"
     },
     "departments": {
       "subtitle": "Department master — coming soon"
@@ -579,9 +582,9 @@
   "finance": {
     "workspaceTitle": "Finance workspace",
     "workspaceSubtitle": "Approvals, payments, and reporting — no POS selling or inventory execution.",
-    "workspaceHint": "Scoped to your ERP company and warehouse permissions. Stock transfers and reconciliation are not available in this workspace.",
+    "workspaceHint": "Scoped to your company and warehouse permissions. Stock transfers and counts are not available in this workspace.",
     "salesInvoices": "Sales Invoices",
-    "salesInvoicesSubtitle": "All invoices from ERPNext",
+    "salesInvoicesSubtitle": "All invoices",
     "noInvoicesFound": "No invoices found",
     "invoiceNumber": "Invoice #",
     "customer": "Customer",
@@ -590,7 +593,7 @@
     "outstandingLabel": "Outstanding",
     "status": "Status",
     "loadInvoicesError": "Failed to load invoices",
-    "purchaseApprovals": "Purchase approvals",
+    "purchaseApprovals": "Goods receipt approvals",
     "shiftApprovals": "Shift approvals",
     "highVariance": "High variance",
     "quickLinks": "Quick links",
@@ -599,8 +602,8 @@
     "overdueCount": "Overdue count",
     "agingTitle": "Aging (outstanding)",
     "links": {
-      "invoiceMatching": "Create bills from receipts",
-      "supplierPayments": "AP, aging, ERP Payment Entry",
+      "invoiceMatching": "Match supplier bills",
+      "supplierPayments": "Payables, aging, supplier payments",
       "approvalsHub": "Approvals hub",
       "approvalsDesc": "Purchases, shifts, variance, history",
       "salesInvoices": "Sales invoices",
@@ -612,7 +615,7 @@
       "purchaseRatesDesc": "Buying price variance queue"
     },
     "payments": {
-      "subtitle": "Accounts payable — unpaid invoices, aging, and ERPNext Payment Entry",
+      "subtitle": "Accounts payable — unpaid bills, aging, and supplier payments",
       "closeForm": "Close form",
       "newPayment": "New payment",
       "recordPayment": "Record supplier payment",
@@ -641,5 +644,185 @@
       "paidPct": "Paid %",
       "status": "Status"
     }
+  },
+  "posProfiles": {
+    "title": "POS Terminals",
+    "subtitle": "Assign warehouse and selling price list per POS terminal",
+    "editTitle": "Manage POS terminal",
+    "editHint": "Warehouse switching takes effect on the next POS load. Cashiers with an open shift will keep posting to the previous warehouse until they reopen the POS.",
+    "active": "Active",
+    "disabled": "Disabled",
+    "noop": "No changes to save.",
+    "savedSummary": "Saved: {{fields}}",
+    "error": "Could not load POS terminals",
+    "empty": "No POS terminals configured",
+    "emptyDesc": "Create POS terminals in the admin console first, then assign warehouses here.",
+    "field": {
+      "warehouse": "Warehouse",
+      "priceList": "Selling price list",
+      "disabled": "Disabled (hide from cashiers)"
+    },
+    "col": {
+      "name": "POS Terminal",
+      "company": "Company",
+      "warehouse": "Warehouse",
+      "priceList": "Price list",
+      "currency": "Currency",
+      "state": "State",
+      "actions": "Actions"
+    }
+  },
+  "purchHist": {
+    "title": "Purchasing History",
+    "titlePR": "Goods Receipts",
+    "titlePI": "Supplier Bills",
+    "subtitle": "Operational purchasing records",
+    "kpis": "Purchasing KPIs",
+    "print": "Print",
+    "csv": "CSV",
+    "xlsx": "Excel",
+    "pdf": "PDF",
+    "error": "Could not load history",
+    "tabs": { "receipts": "Goods Receipts", "invoices": "Supplier Bills" },
+    "kpi": {
+      "pending": "Pending purchases",
+      "approved": "Approved purchases",
+      "rejected": "Rejected purchases",
+      "outstanding": "Outstanding invoices",
+      "paid": "Paid invoices"
+    },
+    "filter": {
+      "status": "Status",
+      "supplier": "Supplier",
+      "supplierPlaceholder": "Supplier code",
+      "from": "From",
+      "to": "To",
+      "name": "Document #",
+      "prPlaceholder": "MAT-PRE-…",
+      "piPlaceholder": "ACC-PINV-…"
+    },
+    "col": {
+      "receipt": "Receipt #",
+      "invoice": "Bill #",
+      "supplier": "Supplier",
+      "supplierCode": "Code",
+      "total": "Total",
+      "paid": "Paid",
+      "outstanding": "Outstanding",
+      "status": "Status",
+      "payStatus": "Payment status",
+      "decidedBy": "Decided by",
+      "decidedAt": "Decided at",
+      "created": "Created",
+      "posting": "Posting",
+      "due": "Due",
+      "warehouse": "Warehouse",
+      "phone": "Phone",
+      "requestedBy": "Created by",
+      "notes": "Notes",
+      "paymentEntry": "Payment",
+      "allocated": "Allocated"
+    },
+    "empty": {
+      "pr": "No goods receipts match these filters",
+      "pi": "No supplier bills match these filters"
+    },
+    "emptyDesc": "Try widening the date range or clearing the status filter.",
+    "detail": {
+      "prTitle": "Goods receipt",
+      "piTitle": "Supplier bill",
+      "error": "Could not load details",
+      "receiptInfo": "Receipt",
+      "invoiceInfo": "Bill",
+      "supplierInfo": "Supplier",
+      "approval": "Approval history",
+      "payment": "Payment status",
+      "items": "Items",
+      "item": "Item",
+      "qty": "Qty",
+      "uom": "UOM",
+      "rate": "Rate",
+      "amount": "Amount",
+      "total": "Total",
+      "linkedPr": "Source receipt",
+      "linkedReceipts": "Linked receipts (approval trail)",
+      "payments": "Payments",
+      "audit": "Audit trail"
+    }
+  },
+  "history": {
+    "title": "Goods Receipt Approval History",
+    "subtitle": "Approved and rejected goods receipts",
+    "kpis": "Approval KPIs",
+    "print": "Print",
+    "csv": "CSV",
+    "xlsx": "Excel",
+    "pdf": "PDF",
+    "error": "Could not load history",
+    "empty": "No decisions match these filters",
+    "emptyDesc": "Try widening the date range or clearing the supplier filter.",
+    "allDecisions": "All decisions",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "kpi": {
+      "approvedMonth": "Approved this month",
+      "rejectedMonth": "Rejected this month",
+      "approvedValue": "Total approved value",
+      "rejectedValue": "Total rejected value"
+    },
+    "filter": {
+      "status": "Status",
+      "supplier": "Supplier",
+      "supplierPlaceholder": "Supplier code",
+      "from": "From",
+      "to": "To",
+      "name": "Receipt #",
+      "namePlaceholder": "MAT-PRE-…"
+    },
+    "col": {
+      "receipt": "Receipt #",
+      "supplier": "Supplier",
+      "supplierCode": "Code",
+      "total": "Total",
+      "status": "Status",
+      "decidedBy": "Decided by",
+      "decidedAt": "Decided at",
+      "created": "Created",
+      "posting": "Posting date",
+      "warehouse": "Warehouse",
+      "email": "Email",
+      "phone": "Phone",
+      "notes": "Notes"
+    },
+    "detail": {
+      "title": "Goods receipt details",
+      "error": "Could not load details",
+      "receiptInfo": "Receipt information",
+      "supplierInfo": "Supplier information",
+      "decisionInfo": "Decision",
+      "items": "Items",
+      "item": "Item",
+      "qty": "Qty",
+      "uom": "UOM",
+      "rate": "Rate",
+      "amount": "Amount",
+      "total": "Total",
+      "audit": "Audit trail"
+    }
+  },
+  "purchReports": {
+    "empty": {
+      "title": "No documents to show",
+      "desc": "Choose a supplier or date range and click Load."
+    }
+  },
+  "logoutBlocked": {
+    "title": "Close your shift first",
+    "message": "You have an open POS shift. Please close and reconcile it before signing out — cash variance must be recorded.",
+    "closeNow": "Close shift now",
+    "cancel": "Stay signed in"
+  },
+  "approvalsExtra": {
+    "viewHistory": "View approval history"
   }
 }

@@ -99,12 +99,23 @@ export function usePOS(user) {
     }
   }, []);
 
+  const [shiftClosedExternally, setShiftClosedExternally] = useState(false);
+  const acknowledgeShiftClosedExternally = useCallback(
+    () => setShiftClosedExternally(false),
+    [],
+  );
+
   const refreshShift = useCallback(async (p = profileRef.current) => {
     if (!p) return null;
     setShiftLoading(true);
     setShiftError(null);
     try {
       const open = await getOpenPOSOpeningEntry(p.name, user?.name);
+      // Detect a shift that was open in this session but closed elsewhere
+      // (admin closed it from ERPNext, another tab closed it, etc.). The
+      // POS page reacts to this flag to surface a banner + clear the cart.
+      const prev = shiftRef.current;
+      if (prev?.name && !open) setShiftClosedExternally(true);
       setShift(open);
       shiftRef.current = open;
       if (open) await refreshMetrics();
@@ -117,6 +128,24 @@ export function usePOS(user) {
       setShiftLoading(false);
     }
   }, [user?.name, refreshMetrics]);
+
+  // Poll the active shift and revalidate when the tab regains focus so the
+  // cashier's view stays in sync with ERPNext without manual refresh.
+  useEffect(() => {
+    if (!profile?.name) return undefined;
+    const id = setInterval(() => { refreshShift(); }, 30000);
+    const onFocus = () => { refreshShift(); };
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') refreshShift();
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [profile?.name, refreshShift]);
 
   const openShift = useCallback(async ({ openingAmount = 0, modeOfPayment = 'Cash' } = {}) => {
     const p = profileRef.current;
@@ -486,6 +515,27 @@ export function usePOS(user) {
     return () => window.removeEventListener(STOCK_INVALIDATE_EVENT, onInvalidate);
   }, [loadItems, query, cart, syncCartStock]);
 
+  // When the POS tab regains focus, re-pull shelf stock so concurrent sales
+  // from another terminal (or ERPNext stock adjustments) are reflected.
+  useEffect(() => {
+    if (!profile?.name) return undefined;
+    const onFocus = () => {
+      loadItems(query);
+      if (cartRef.current?.length) {
+        syncCartStock(cartRef.current).then(setCart);
+      }
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') onFocus();
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [profile?.name, loadItems, query, syncCartStock]);
+
   const shiftOpen = Boolean(
     shift &&
       !shift.pendingClose &&
@@ -501,6 +551,8 @@ export function usePOS(user) {
     shiftOpen,
     shiftLoading,
     shiftError,
+    shiftClosedExternally,
+    acknowledgeShiftClosedExternally,
     paymentModes,
     metrics,
     items,

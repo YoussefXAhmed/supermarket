@@ -1,5 +1,8 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from './services/reports';
+import { getReportRouteAnyOf } from './auth/reportAccess';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/layout/ProtectedRoute';
 import CapabilityRoute from './components/layout/CapabilityRoute';
@@ -24,7 +27,14 @@ const InvoicesPage = lazy(() => import('./modules/admin/InvoicesPage'));
 const CustomersPage = lazy(() => import('./modules/admin/CustomersPage'));
 const UsersPage = lazy(() => import('./modules/admin/UsersPage'));
 const AdminWarehousesPage = lazy(() => import('./modules/admin/AdminWarehousesPage'));
+const POSProfilesPage = lazy(() => import('./modules/admin/POSProfilesPage'));
 const ReportsPage = lazy(() => import('./modules/admin/ReportsPage'));
+const SalesRegisterPage = lazy(() => import('./modules/reports/SalesRegisterPage'));
+const DailyCashRegisterPage = lazy(() => import('./modules/reports/DailyCashRegisterPage'));
+const StockBalancePage = lazy(() => import('./modules/reports/StockBalancePage'));
+const CustomerLedgerPage = lazy(() => import('./modules/reports/CustomerLedgerPage'));
+const ProfitAndLossPage = lazy(() => import('./modules/reports/ProfitAndLossPage'));
+const ItemWiseSalesPage = lazy(() => import('./modules/reports/ItemWiseSalesPage'));
 const SettingsPage = lazy(() => import('./modules/admin/SettingsPage'));
 const ActivityLogPage = lazy(() => import('./modules/admin/ActivityLogPage'));
 const InventoryDashboardPage = lazy(() => import('./modules/inventory/InventoryPage'));
@@ -47,9 +57,11 @@ const PurchaseInvoicesPage = lazy(() => import('./modules/purchasing/PurchaseInv
 const InvoiceMatchingPage = lazy(() => import('./modules/purchasing/InvoiceMatchingPage'));
 const PurchaseReportsPage = lazy(() => import('./modules/purchasing/PurchaseReportsPage'));
 const PurchaseApprovalsPage = lazy(() => import('./modules/purchasing/PurchaseApprovalsPage'));
+const PurchasingHistoryPage = lazy(() => import('./modules/purchasing/PurchasingHistoryPage'));
 const AccountantDashboardPage = lazy(() => import('./modules/accountant/pages/AccountantDashboardPage'));
 const SupplierPaymentsPage = lazy(() => import('./modules/accountant/pages/SupplierPaymentsPage'));
 const ApprovalsDashboardPage = lazy(() => import('./modules/approvals/pages/ApprovalsDashboardPage'));
+const PurchaseApprovalHistoryPage = lazy(() => import('./modules/approvals/pages/PurchaseApprovalHistoryPage'));
 const ReturnsPage = lazy(() => import('./modules/returns/ReturnsPage'));
 const ShiftsLayout = lazy(() => import('./components/layout/ShiftsLayout'));
 const ShiftOpenPage = lazy(() => import('./modules/shifts/pages/ShiftOpenPage'));
@@ -57,7 +69,6 @@ const ShiftClosePage = lazy(() => import('./modules/shifts/pages/ShiftClosePage'
 const ShiftHistoryPage = lazy(() => import('./modules/shifts/pages/ShiftHistoryPage'));
 const HRDashboardPage = lazy(() => import('./modules/hr/HRDashboardPage'));
 const HREmployeesPage = lazy(() => import('./modules/hr/EmployeesPage'));
-const HRPlaceholderPage = lazy(() => import('./modules/hr/HRPlaceholderPage'));
 
 function LazyPage({ children }) {
   return <Suspense fallback={<PageLoading size={28} />}>{children}</Suspense>;
@@ -65,8 +76,9 @@ function LazyPage({ children }) {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LazyPage><LoginPage /></LazyPage>} />
 
@@ -156,22 +168,6 @@ export default function App() {
                 </CapabilityRoute>
               )}
             />
-            <Route
-              path="departments"
-              element={(
-                <CapabilityRoute cap="canAccessHRWorkspace">
-                  <LazyPage><HRPlaceholderPage titleKey="nav.departments" descKey="hr.departments.subtitle" /></LazyPage>
-                </CapabilityRoute>
-              )}
-            />
-            <Route
-              path="positions"
-              element={(
-                <CapabilityRoute cap="canAccessHRWorkspace">
-                  <LazyPage><HRPlaceholderPage titleKey="nav.positions" descKey="hr.positions.subtitle" /></LazyPage>
-                </CapabilityRoute>
-              )}
-            />
           </Route>
 
           <Route
@@ -244,6 +240,14 @@ export default function App() {
             <Route path="suppliers/:id" element={<LazyPage><SupplierDetailPage /></LazyPage>} />
             <Route path="receive" element={<LazyPage><ReceiveStockPage /></LazyPage>} />
             <Route
+              path="history"
+              element={(
+                <CapabilityRoute anyOf={['canViewPurchasingHistory', 'canManageSystem']}>
+                  <LazyPage><PurchasingHistoryPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
               path="approvals"
               element={(
                 <CapabilityRoute cap="canViewPurchaseApprovals">
@@ -254,7 +258,7 @@ export default function App() {
             <Route
               path="invoices"
               element={(
-                <CapabilityRoute cap="canAccessAccountantWorkspace">
+                <CapabilityRoute anyOf={['canAccessAccountantWorkspace', 'canManageSystem']}>
                   <LazyPage><PurchaseInvoicesPage /></LazyPage>
                 </CapabilityRoute>
               )}
@@ -262,7 +266,7 @@ export default function App() {
             <Route
               path="reports"
               element={(
-                <CapabilityRoute cap="canAccessAccountantWorkspace">
+                <CapabilityRoute anyOf={['canAccessAccountantWorkspace', 'canManageSystem']}>
                   <LazyPage><PurchaseReportsPage /></LazyPage>
                 </CapabilityRoute>
               )}
@@ -289,10 +293,74 @@ export default function App() {
               )}
             />
             <Route
+              path="approvals/history"
+              element={(
+                <CapabilityRoute cap="canViewPurchaseApprovals">
+                  <LazyPage><PurchaseApprovalHistoryPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="pos-profiles"
+              element={(
+                <CapabilityRoute anyOf={['canManagePOSProfiles', 'canManageSystem']}>
+                  <LazyPage><POSProfilesPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
               path="reports"
               element={(
                 <CapabilityRoute cap="canViewReports">
                   <LazyPage><ReportsPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="reports/sales-register"
+              element={(
+                <CapabilityRoute anyOf={getReportRouteAnyOf('sales-register')}>
+                  <LazyPage><SalesRegisterPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="reports/daily-cash"
+              element={(
+                <CapabilityRoute anyOf={getReportRouteAnyOf('daily-cash-register')}>
+                  <LazyPage><DailyCashRegisterPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="reports/stock-balance"
+              element={(
+                <CapabilityRoute anyOf={getReportRouteAnyOf('stock-balance')}>
+                  <LazyPage><StockBalancePage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="reports/customer-ledger"
+              element={(
+                <CapabilityRoute anyOf={getReportRouteAnyOf('customer-ledger')}>
+                  <LazyPage><CustomerLedgerPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="reports/profit-and-loss"
+              element={(
+                <CapabilityRoute anyOf={getReportRouteAnyOf('profit-and-loss')}>
+                  <LazyPage><ProfitAndLossPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="reports/item-wise-sales"
+              element={(
+                <CapabilityRoute anyOf={getReportRouteAnyOf('item-wise-sales')}>
+                  <LazyPage><ItemWiseSalesPage /></LazyPage>
                 </CapabilityRoute>
               )}
             />
@@ -366,6 +434,54 @@ export default function App() {
               )}
             />
             <Route
+              path="reports/sales-register"
+              element={(
+                <CapabilityRoute anyOf={getReportRouteAnyOf('sales-register')}>
+                  <LazyPage><SalesRegisterPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="reports/daily-cash"
+              element={(
+                <CapabilityRoute anyOf={getReportRouteAnyOf('daily-cash-register')}>
+                  <LazyPage><DailyCashRegisterPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="reports/stock-balance"
+              element={(
+                <CapabilityRoute anyOf={getReportRouteAnyOf('stock-balance')}>
+                  <LazyPage><StockBalancePage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="reports/customer-ledger"
+              element={(
+                <CapabilityRoute anyOf={getReportRouteAnyOf('customer-ledger')}>
+                  <LazyPage><CustomerLedgerPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="reports/profit-and-loss"
+              element={(
+                <CapabilityRoute anyOf={getReportRouteAnyOf('profit-and-loss')}>
+                  <LazyPage><ProfitAndLossPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="reports/item-wise-sales"
+              element={(
+                <CapabilityRoute anyOf={getReportRouteAnyOf('item-wise-sales')}>
+                  <LazyPage><ItemWiseSalesPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
               path="shifts/history"
               element={(
                 <CapabilityRoute cap="canViewShiftReports">
@@ -424,6 +540,14 @@ export default function App() {
               )}
             />
             <Route
+              path="approvals/history"
+              element={(
+                <CapabilityRoute anyOf={['canViewPurchaseApprovals', 'canManageSystem']}>
+                  <LazyPage><PurchaseApprovalHistoryPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
               path="products"
               element={(
                 <CapabilityRoute cap="canManageSystem">
@@ -432,9 +556,17 @@ export default function App() {
               )}
             />
             <Route
+              path="pos-profiles"
+              element={(
+                <CapabilityRoute anyOf={['canManagePOSProfiles', 'canManageSystem']}>
+                  <LazyPage><POSProfilesPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
               path="inventory"
               element={(
-                <CapabilityRoute cap="canAccessInventory">
+                <CapabilityRoute cap="canManageSystem">
                   <LazyPage><InventoryPage /></LazyPage>
                 </CapabilityRoute>
               )}
@@ -442,7 +574,7 @@ export default function App() {
             <Route
               path="invoices"
               element={(
-                <CapabilityRoute cap="canViewInvoices">
+                <CapabilityRoute cap="canManageSystem">
                   <LazyPage><InvoicesPage /></LazyPage>
                 </CapabilityRoute>
               )}
@@ -450,7 +582,7 @@ export default function App() {
             <Route
               path="returns"
               element={(
-                <CapabilityRoute cap="canViewReturns">
+                <CapabilityRoute cap="canManageSystem">
                   <LazyPage><ReturnsPage /></LazyPage>
                 </CapabilityRoute>
               )}
@@ -458,7 +590,7 @@ export default function App() {
             <Route
               path="customers"
               element={(
-                <CapabilityRoute cap="canViewReports">
+                <CapabilityRoute cap="canManageSystem">
                   <LazyPage><CustomersPage /></LazyPage>
                 </CapabilityRoute>
               )}
@@ -482,15 +614,63 @@ export default function App() {
             <Route
               path="reports"
               element={(
-                <CapabilityRoute cap="canViewReports">
+                <CapabilityRoute cap="canManageSystem">
                   <LazyPage><ReportsPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="reports/sales-register"
+              element={(
+                <CapabilityRoute anyOf={getReportRouteAnyOf('sales-register')}>
+                  <LazyPage><SalesRegisterPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="reports/daily-cash"
+              element={(
+                <CapabilityRoute anyOf={getReportRouteAnyOf('daily-cash-register')}>
+                  <LazyPage><DailyCashRegisterPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="reports/stock-balance"
+              element={(
+                <CapabilityRoute anyOf={getReportRouteAnyOf('stock-balance')}>
+                  <LazyPage><StockBalancePage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="reports/customer-ledger"
+              element={(
+                <CapabilityRoute anyOf={getReportRouteAnyOf('customer-ledger')}>
+                  <LazyPage><CustomerLedgerPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="reports/profit-and-loss"
+              element={(
+                <CapabilityRoute anyOf={getReportRouteAnyOf('profit-and-loss')}>
+                  <LazyPage><ProfitAndLossPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="reports/item-wise-sales"
+              element={(
+                <CapabilityRoute anyOf={getReportRouteAnyOf('item-wise-sales')}>
+                  <LazyPage><ItemWiseSalesPage /></LazyPage>
                 </CapabilityRoute>
               )}
             />
             <Route
               path="activity"
               element={(
-                <CapabilityRoute cap="canViewReports">
+                <CapabilityRoute cap="canManageSystem">
                   <LazyPage><ActivityLogPage /></LazyPage>
                 </CapabilityRoute>
               )}
@@ -498,7 +678,7 @@ export default function App() {
             <Route
               path="settings"
               element={(
-                <CapabilityRoute cap="canManageSettings">
+                <CapabilityRoute anyOf={['canManageSettings', 'canManageSystem']}>
                   <LazyPage><SettingsPage /></LazyPage>
                 </CapabilityRoute>
               )}
@@ -506,7 +686,7 @@ export default function App() {
             <Route
               path="shifts"
               element={(
-                <CapabilityRoute anyOf={['canViewShiftReports', 'canViewOwnShiftHistory']}>
+                <CapabilityRoute cap="canManageSystem">
                   <LazyPage><ShiftsLayout /></LazyPage>
                 </CapabilityRoute>
               )}
@@ -542,6 +722,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </BrowserRouter>
-    </AuthProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }

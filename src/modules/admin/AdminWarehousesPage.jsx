@@ -304,7 +304,7 @@ export default function AdminWarehousesPage() {
     <AdminPageLayout className={layoutClass}>
       <PageHeader
         title="Warehouses"
-        subtitle="Create and manage ERPNext warehouses from admin"
+        subtitle="Create and manage warehouses"
         dense
         actions={(
           <Btn variant="primary" size="sm" onClick={openCreate} disabled={optionsLoading}>
@@ -429,7 +429,7 @@ export default function AdminWarehousesPage() {
               </p>
               {deleteAssessment.deletable ? (
                 <p className="user-form__hint">
-                  This warehouse has no stock, ledger history, or child warehouses. Deletion is permanent in ERPNext.
+                  This warehouse has no stock, movement history, or child warehouses. Deletion is permanent.
                 </p>
               ) : (
                 <div>

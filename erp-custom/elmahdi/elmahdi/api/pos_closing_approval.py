@@ -97,7 +97,7 @@ def on_update_pos_closing(doc, method=None):
 		)
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def approve_pos_closing_entry(name, notes=""):
 	assert_may_act_as_pos_closing_approver()
 
@@ -126,7 +126,7 @@ def approve_pos_closing_entry(name, notes=""):
 	return {"name": doc.name, "docstatus": doc.docstatus, "status": "submitted"}
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def reject_pos_closing_entry(name, notes=""):
 	"""Reject a draft closing (keeps it in draft, clears pending flag, records reason)."""
 	assert_may_act_as_pos_closing_approver()

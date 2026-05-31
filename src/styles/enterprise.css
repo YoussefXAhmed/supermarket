@@ -38,7 +38,7 @@
 
 .toast-stack {
   position: fixed;
-  bottom: var(--space-5);
+  top: var(--space-5);
   right: var(--space-4);
   z-index: 10000;
   display: flex;

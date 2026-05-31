@@ -77,10 +77,14 @@ def execute():
 		# Cross-role bypass probes (finance + stock execution)
 		probes = [
 			("purchasing@elmahdi.com", "Payment Entry", "submit", False),
+			("purchasing@elmahdi.com", "Account", "read", False),
 			("inventory@elmahdi.com", "Payment Entry", "read", False),
 			("cashier@elmahdi.com", "Stock Entry", "submit", False),
+			("cashier@elmahdi.com", "Account", "read", False),
 			("manager@elmahdi.com", "Payment Entry", "read", False),
 			("manager@elmahdi.com", "Stock Entry", "submit", False),
+			("accountant@elmahdi.com", "Account", "read", True),
+			("accountant@elmahdi.com", "Account", "create", False),
 		]
 		for email, doctype, perm, expected in probes:
 			if not frappe.db.exists("User", email):

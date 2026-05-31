@@ -2,15 +2,17 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useMemo } from 'react';
 import { useAuth } from '../../hooks/useAuth';
+import { useGuardedLogout } from '../../hooks/useGuardedLogout';
 import { getShiftsNavItems, getShiftsSessionLinks } from '../../auth/navigationConfig';
 import UserSessionActions from './UserSessionActions';
 
 export default function ShiftsLayout() {
   const { t } = useTranslation();
-  const { user, logout, capabilities } = useAuth();
+  const { user, capabilities } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const inAdminShell = location.pathname.startsWith('/admin/');
+  const { requestLogout, guardModal } = useGuardedLogout();
 
   const sessionLinks = useMemo(
     () => getShiftsSessionLinks(capabilities, inAdminShell).map((link) => ({
@@ -29,7 +31,7 @@ export default function ShiftsLayout() {
           <h1 className="shifts-layout__title">{t('shifts.shiftControl')}</h1>
           <p className="page-header__sub">{t('shifts.subtitle')}</p>
         </div>
-        <UserSessionActions user={user} onLogout={logout} links={sessionLinks} />
+        <UserSessionActions user={user} onLogout={requestLogout} links={sessionLinks} />
       </header>
       <nav className="shifts-layout__nav">
         {links.map((l) => (
@@ -48,6 +50,7 @@ export default function ShiftsLayout() {
       <main className="shifts-layout__main">
         <Outlet />
       </main>
+      {guardModal}
     </div>
   );
 }

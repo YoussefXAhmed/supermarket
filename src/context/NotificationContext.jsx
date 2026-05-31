@@ -25,6 +25,7 @@ export function NotificationProvider({ children }) {
       success: (msg, duration) => notify(msg, 'success', duration),
       warning: (msg, duration) => notify(msg, 'warning', duration),
       error: (msg, duration) => notify(msg, 'error', duration),
+      info: (msg, duration) => notify(msg, 'info', duration),
       critical: (msg, duration) => notify(msg, 'critical', duration),
       dismiss,
     }),

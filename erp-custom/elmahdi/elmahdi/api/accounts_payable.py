@@ -594,7 +594,7 @@ def _validate_allocations(supplier, company, allocations):
 	return normalized, round(total, 2)
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def create_supplier_payment(
 	supplier,
 	company=None,

@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
-import { PageHeader, PageLoading, ApiErrorCard, PaginatedTable, Btn, PartialDataBanner, ExportToolbar } from '../../components/ui';
+import { PageHeader, PageLoading, ApiErrorCard, PaginatedTable, Btn, PartialDataBanner, ExportToolbar, EmptyState } from '../../components/ui';
+import { useTranslation } from 'react-i18next';
 import { TablePageLayout, LayoutSection } from '../../components/layout/page-layouts';
 import { getPurchaseHistoryReport } from '../../services/purchasingService';
 import { listSuppliers } from '../../services/purchasingApi';
@@ -18,6 +19,7 @@ const EXPORT_COLUMNS = [
 ];
 
 export default function PurchaseReportsPage() {
+  const { t } = useTranslation();
   const [suppliers, setSuppliers] = useState([]);
   const [supplier, setSupplier] = useState('');
   const [fromDate, setFromDate] = useState('');
@@ -144,14 +146,18 @@ export default function PurchaseReportsPage() {
             fit={sparse}
           >
             {rows.length === 0 ? (
-              <p className="empty-inline">No data loaded. Choose filters and click Load.</p>
+              <EmptyState
+                icon="📋"
+                title={t('purchReports.empty.title', { defaultValue: 'No documents to show' })}
+                desc={t('purchReports.empty.desc', { defaultValue: 'Choose a supplier or date range and click Load.' })}
+              />
             ) : (
               <PaginatedTable
                 columns={columns}
                 data={rows}
                 pageSize={20}
                 compact
-                emptyMsg="No documents"
+                emptyMsg={t('purchReports.empty.title', { defaultValue: 'No documents to show' })}
                 rowKey={(r) => `${r.doc_type}-${r.name}`}
               />
             )}

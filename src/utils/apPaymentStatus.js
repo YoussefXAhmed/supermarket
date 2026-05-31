@@ -20,13 +20,14 @@ const LABELS = {
   [PAY_STATUS.DRAFT]: 'Draft',
 };
 
+/** Generic Pill tones — keys consumed by the shared <Pill> primitive. */
 const TONES = {
-  [PAY_STATUS.UNPAID]: 'ap-pill--unpaid',
-  [PAY_STATUS.PARTIALLY_PAID]: 'ap-pill--partial',
-  [PAY_STATUS.PAID]: 'ap-pill--paid',
-  [PAY_STATUS.OVERDUE]: 'ap-pill--overdue',
-  [PAY_STATUS.CANCELLED]: 'ap-pill--cancelled',
-  [PAY_STATUS.DRAFT]: 'ap-pill--draft',
+  [PAY_STATUS.UNPAID]: 'warning',
+  [PAY_STATUS.PARTIALLY_PAID]: 'info',
+  [PAY_STATUS.PAID]: 'success',
+  [PAY_STATUS.OVERDUE]: 'danger',
+  [PAY_STATUS.CANCELLED]: 'default',
+  [PAY_STATUS.DRAFT]: 'draft',
 };
 
 export function normalizePayStatus(raw) {

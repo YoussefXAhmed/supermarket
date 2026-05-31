@@ -6,6 +6,8 @@ elmahdi.setup.approval_custom_fields
 elmahdi.setup.operational_permissions
 elmahdi.setup.grant_operational_item_price_read
 elmahdi.patches.harden_operational_approvals
+elmahdi.patches.harden_operational_security
 elmahdi.patches.provision_hr_officer
 elmahdi.patches.add_pos_idempotency_field
+elmahdi.patches.backfill_pos_closing_totals
 elmahdi.setup.letterhead

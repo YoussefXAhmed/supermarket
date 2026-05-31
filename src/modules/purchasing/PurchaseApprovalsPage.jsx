@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { fmtCurrency } from '../../utils/format';
-import { financePath, invoiceMatchingPath, approvalsHubPath } from '../../utils/workspacePaths';
+import { approvalsHubPath } from '../../utils/workspacePaths';
+import AccessibleLink from '../../components/auth/AccessibleLink';
 import {
   ApiErrorCard,
   Btn,
@@ -20,9 +20,11 @@ import {
   rejectPurchaseReceipt,
 } from '../../services/purchasingApprovalApi';
 import { getUserFriendlyMessage } from '../../utils/errorHandling';
+import { useNotify } from '../../context/NotificationContext';
 
 export default function PurchaseApprovalsPage() {
   const { t } = useTranslation();
+  const notify = useNotify();
   const { capabilities, user } = useAuth();
   const canExecutePurchase = canExecutePurchaseApproval(capabilities);
   const [rows, setRows] = useState([]);
@@ -30,7 +32,6 @@ export default function PurchaseApprovalsPage() {
   const [error, setError] = useState('');
   const [actionId, setActionId] = useState('');
   const [actionError, setActionError] = useState('');
-  const [approveSuccess, setApproveSuccess] = useState(null);
   const [notes, setNotes] = useState('');
 
   const load = useCallback(async () => {
@@ -57,11 +58,26 @@ export default function PurchaseApprovalsPage() {
     setActionError('');
     try {
       const result = await approvePurchaseReceipt(name, { notes });
-      setApproveSuccess(result);
+      if (result?.purchase_invoice) {
+        notify.success(
+          t('approvals.receiptSubmitted', { invoice: result.purchase_invoice })
+            + (result.purchase_invoice_outstanding != null
+              ? ` · ${t('approvals.outstanding')} ${fmtCurrency(result.purchase_invoice_outstanding)}`
+              : ''),
+        );
+      } else if (result?.purchase_invoice_message) {
+        notify.warning(
+          t('approvals.receiptApprovedNoPayable', { message: result.purchase_invoice_message }),
+        );
+      } else {
+        notify.success(`Goods receipt ${name} approved.`);
+      }
       setNotes('');
       await load();
     } catch (e) {
-      setActionError(getUserFriendlyMessage(e));
+      const msg = getUserFriendlyMessage(e);
+      setActionError(msg);
+      notify.error(msg);
     } finally {
       setActionId('');
     }
@@ -74,10 +90,13 @@ export default function PurchaseApprovalsPage() {
     setActionError('');
     try {
       await rejectPurchaseReceipt(name, { notes });
+      notify.info(`Goods receipt ${name} rejected.`);
       setNotes('');
       await load();
     } catch (e) {
-      setActionError(getUserFriendlyMessage(e));
+      const msg = getUserFriendlyMessage(e);
+      setActionError(msg);
+      notify.error(msg);
     } finally {
       setActionId('');
     }
@@ -91,9 +110,9 @@ export default function PurchaseApprovalsPage() {
         dense
         actions={
           capabilities.canViewApprovalsDashboard ? (
-            <Link to={approvalsHubPath(capabilities)} className="btn btn--ghost btn--sm">
+            <AccessibleLink to={approvalsHubPath(capabilities)} className="btn btn--ghost btn--sm">
               {t('approvals.allApprovals')}
-            </Link>
+            </AccessibleLink>
           ) : null
         }
       />
@@ -108,27 +127,6 @@ export default function PurchaseApprovalsPage() {
               placeholder={t('approvals.reasonPlaceholder')}
             />
           </label>
-        )}
-        {approveSuccess?.purchase_invoice && (
-          <div className="inv-success" role="status">
-            {t('approvals.receiptSubmitted', { invoice: approveSuccess.purchase_invoice })}{' '}
-            {approveSuccess.purchase_invoice_outstanding != null && (
-              <> · {t('approvals.outstanding')} {fmtCurrency(approveSuccess.purchase_invoice_outstanding)}</>
-            )}
-            .
-            {capabilities.canManageSupplierPayments && (
-              <>
-                {' '}
-                <Link to={financePath('payments')}>{t('approvals.recordPayment')}</Link>
-              </>
-            )}
-          </div>
-        )}
-        {approveSuccess && !approveSuccess.purchase_invoice && approveSuccess.purchase_invoice_message && (
-          <p className="inv-error" role="alert">
-            {t('approvals.receiptApprovedNoPayable', { message: approveSuccess.purchase_invoice_message })}{' '}
-            <Link to={invoiceMatchingPath(capabilities)}>{t('nav.invoiceMatching')}</Link>
-          </p>
         )}
         {loading && <PageLoading />}
         {!loading && error && <ApiErrorCard title={t('approvals.couldNotLoad')} message={error} />}

@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { ERP_API_BASE } from '../config/erp';
 import { normalizeERPError, logApiError } from '../utils/errorHandling';
+import { captureException } from './observability';
 
 export { extractERPError } from '../utils/errorHandling';
 
@@ -16,12 +17,132 @@ const api = axios.create({
   },
 });
 
+// Exported so the reports layer (src/services/reports/reportApi.js) can
+// reuse the same instance, inheriting CSRF + auth + error interceptors.
+// Internal callers in this file still use the local `api` reference.
+export { api };
+
+/* ══════════════════════════════════════
+   CSRF protection (Frappe v15)
+   ──────────────────────────────────────
+   Frappe validates `X-Frappe-CSRF-Token` on UNSAFE_HTTP_METHODS
+   (POST/PUT/PATCH/DELETE) whenever the session has a token stored
+   (frappe.auth.validate_csrf_token in apps/frappe/frappe/auth.py).
+   The token is materialized server-side by frappe.sessions.get_csrf_token
+   and persisted to session.data.csrf_token.
+
+   We bind the token via `elmahdi.api.auth.get_session_identity` (the SPA
+   bootstrap endpoint), which already runs on every app load and now also
+   returns the per-session token. The cache is in-memory only — never
+   localStorage, which would let an XSS exfiltrate it. On a CSRFTokenError
+   the cache is dropped and the request retried once after re-priming.
+   ══════════════════════════════════════ */
+const UNSAFE_METHODS = new Set(['post', 'put', 'patch', 'delete']);
+let csrfToken = null;
+let csrfFetchInflight = null;
+
+/**
+ * Allow the auth bootstrap path to seed the cache without an extra HTTP call.
+ * `probeLoggedInUser` already calls `get_session_identity`; the value comes
+ * back on that response, so we just hand it in here.
+ */
+export function primeCsrfToken(token) {
+  if (typeof token === 'string' && token) csrfToken = token;
+}
+
+async function fetchCsrfToken() {
+  // Dedupe concurrent fetches: any number of parallel mutations that hit a
+  // missing-token state share the same in-flight promise.
+  if (csrfFetchInflight) return csrfFetchInflight;
+  csrfFetchInflight = (async () => {
+    try {
+      // Re-use the SPA bootstrap endpoint — guaranteed whitelisted and
+      // capability-aware. Returns { message: { csrf_token, ... } }.
+      const res = await api.get(
+        '/api/method/elmahdi.api.auth.get_session_identity',
+        { skipCsrfInject: true, silentApi: true },
+      );
+      csrfToken = res?.data?.message?.csrf_token || null;
+      return csrfToken;
+    } catch {
+      // Likely 403 (no session yet) or network; leave token null so the
+      // next attempt re-fetches.
+      csrfToken = null;
+      return null;
+    } finally {
+      csrfFetchInflight = null;
+    }
+  })();
+  return csrfFetchInflight;
+}
+
+/**
+ * Drop the cached CSRF token. Call on logout so a re-login under a different
+ * user starts from a clean session-bound token.
+ */
+export function clearCsrfToken() {
+  csrfToken = null;
+  csrfFetchInflight = null;
+}
+
+api.interceptors.request.use(async (config) => {
+  const method = String(config.method || 'get').toLowerCase();
+  if (!UNSAFE_METHODS.has(method)) return config;
+  // Skip injection where it would either be impossible (no session yet) or
+  // would create an infinite loop (the token-fetch call itself).
+  if (config.skipCsrfInject) return config;
+  if (config.loginAttempt) return config;
+  if (!csrfToken) await fetchCsrfToken();
+  if (csrfToken) {
+    config.headers = config.headers || {};
+    config.headers['X-Frappe-CSRF-Token'] = csrfToken;
+  }
+  return config;
+});
+
 api.interceptors.response.use(
   (res) => res,
-  (err) => {
-    if (!err.config?.silentAuthProbe && !err.config?.silentApi) {
-      logApiError(err.config?.url || 'request', err);
+  async (err) => {
+    const cfg = err?.config || {};
+    // Retry once on Frappe CSRFTokenError. The 403 + exc_type pattern is the
+    // canonical signal; we also accept the exception name in `exception` for
+    // older Frappe builds.
+    const status = err?.response?.status;
+    const excType = String(err?.response?.data?.exc_type || '');
+    const excField = String(err?.response?.data?.exception || '');
+    const isCsrfError =
+      status === 403 &&
+      (excType.includes('CSRFTokenError') || excField.includes('CSRFTokenError'));
+    if (isCsrfError && !cfg._csrfRetried && !cfg.skipCsrfInject) {
+      cfg._csrfRetried = true;
+      csrfToken = null;
+      const fresh = await fetchCsrfToken();
+      if (fresh) {
+        cfg.headers = cfg.headers || {};
+        cfg.headers['X-Frappe-CSRF-Token'] = fresh;
+        return api.request(cfg);
+      }
     }
+
+    if (!cfg.silentAuthProbe && !cfg.silentApi) {
+      logApiError(cfg.url || 'request', err);
+    }
+
+    // Forward to observability only for things the user can do nothing about:
+    //  - 5xx server errors
+    //  - network failures (no status)
+    // 4xx (incl. CSRF, perm, validation) is expected business-logic flow.
+    if (!cfg.silentAuthProbe && !cfg.silentApi && !cfg.loginAttempt) {
+      const reportable = !status || status >= 500;
+      if (reportable) {
+        captureException(err, {
+          layer: 'api',
+          tags: { method: String(cfg.method || 'get').toUpperCase(), status: String(status || 'network') },
+          extra: { url: cfg.url, baseURL: cfg.baseURL },
+        });
+      }
+    }
+
     return Promise.reject(normalizeERPError(err));
   }
 );
@@ -46,11 +167,14 @@ export const getCurrentUser = () =>
 /**
  * Resolve logged-in username for SPA bootstrap.
  * Prefers elmahdi.api.auth.get_session_identity (no frappe.auth permission needed).
+ * Also primes the CSRF token cache from the same response — no extra round-trip.
  */
 export async function probeLoggedInUser() {
   try {
     const res = await getSessionIdentity();
-    const name = res.data?.message?.name;
+    const msg = res.data?.message || {};
+    const name = msg.name;
+    primeCsrfToken(msg.csrf_token);
     if (name && name !== 'Guest') return name;
     return null;
   } catch (e) {

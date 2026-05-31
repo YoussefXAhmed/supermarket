@@ -6,9 +6,17 @@ import { getPOSProfileWarehouse, getSellableStockBulk } from './stockService';
 
 const STORAGE_PROFILE_KEY = 'elmahdi_active_pos_profile';
 
+/**
+ * Cached POS profile name — sessionStorage rather than localStorage so an
+ * XSS payload can't exfiltrate it across browser sessions, and so closing
+ * the browser forces a fresh profile selection (a useful invariant: the
+ * cashier reconfirms which register they're operating). UX cost: cashiers
+ * who close + reopen mid-shift re-select once. The audit flagged this as
+ * blocker #14.
+ */
 export function getStoredPOSProfile() {
   try {
-    return localStorage.getItem(STORAGE_PROFILE_KEY) || '';
+    return sessionStorage.getItem(STORAGE_PROFILE_KEY) || '';
   } catch {
     return '';
   }
@@ -16,8 +24,11 @@ export function getStoredPOSProfile() {
 
 export function setStoredPOSProfile(name) {
   try {
-    if (name) localStorage.setItem(STORAGE_PROFILE_KEY, name);
-    else localStorage.removeItem(STORAGE_PROFILE_KEY);
+    if (name) sessionStorage.setItem(STORAGE_PROFILE_KEY, name);
+    else sessionStorage.removeItem(STORAGE_PROFILE_KEY);
+    // Eagerly clear any value that previous builds may have left in
+    // localStorage so the new policy actually takes effect on upgrade.
+    try { localStorage.removeItem(STORAGE_PROFILE_KEY); } catch { /* ignore */ }
   } catch {
     /* ignore */
   }
@@ -68,7 +79,8 @@ export async function resolveActivePOSProfile(preferredName) {
         return normalizePOSProfile(doc);
       }
     } catch {
-      /* fall through */
+      setStoredPOSProfile('');
+      /* fall through — stale name (e.g. "Main") or permission denied */
     }
   }
 

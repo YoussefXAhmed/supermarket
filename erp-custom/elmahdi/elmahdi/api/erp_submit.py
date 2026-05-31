@@ -239,7 +239,7 @@ def _submit_named(name: str, doctype: str, *, policy_check=None, **kwargs):
 	return document_response(doc)
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def submit_document(name, doctype):
 	"""Allowlisted native submit only — arbitrary doctype submit is blocked."""
 	from elmahdi.api.spa_authorization import assert_may_submit_doctype
@@ -249,21 +249,21 @@ def submit_document(name, doctype):
 	return _submit_named(name, dt)
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def submit_stock_entry(name):
 	from elmahdi.api.spa_authorization import assert_may_operate_inventory
 
 	return _submit_named(name, "Stock Entry", policy_check=assert_may_operate_inventory)
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def submit_stock_reconciliation(name):
 	from elmahdi.api.spa_authorization import assert_may_inventory_reconcile
 
 	return _submit_named(name, "Stock Reconciliation", policy_check=assert_may_inventory_reconcile)
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def submit_purchase_receipt(name):
 	from elmahdi.api.purchasing import assert_may_submit_purchase_receipt_direct
 
@@ -274,21 +274,21 @@ def submit_purchase_receipt(name):
 	)
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def submit_purchase_invoice(name):
 	from elmahdi.api.spa_authorization import assert_may_manage_supplier_payable
 
 	return _submit_named(name, "Purchase Invoice", policy_check=assert_may_manage_supplier_payable)
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def submit_sales_invoice(name):
 	from elmahdi.api.spa_authorization import assert_may_access_finance
 
 	return _submit_named(name, "Sales Invoice", policy_check=assert_may_access_finance)
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def submit_pos_invoice(name):
 	"""Draft POS sale invoice — forces update_stock before submit."""
 	from elmahdi.api.spa_authorization import assert_may_operate_pos
@@ -303,7 +303,7 @@ def submit_pos_invoice(name):
 	return document_response(doc)
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def submit_pos_invoice_return(name):
 	"""Draft POS return — stock reversal via native submit."""
 	from elmahdi.api.spa_authorization import assert_may_operate_pos
@@ -318,28 +318,28 @@ def submit_pos_invoice_return(name):
 	return document_response(doc)
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def submit_delivery_note(name):
 	from elmahdi.api.spa_authorization import assert_may_operate_inventory
 
 	return _submit_named(name, "Delivery Note", policy_check=assert_may_operate_inventory)
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def submit_purchase_return(name):
 	from elmahdi.api.spa_authorization import assert_may_access_purchasing
 
 	return _submit_named(name, "Purchase Return", policy_check=assert_may_access_purchasing)
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def submit_payment_entry(name):
 	from elmahdi.api.spa_authorization import assert_may_record_supplier_payment
 
 	return _submit_named(name, "Payment Entry", policy_check=assert_may_record_supplier_payment)
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def submit_pos_opening_entry(name):
 	from elmahdi.api.spa_authorization import assert_may_open_shift
 

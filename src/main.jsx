@@ -2,7 +2,12 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
 import { NotificationProvider } from './context/NotificationContext';
+import { initObservability } from './services/observability';
 import './i18n';
+
+// Boot observability before React renders so component-tree errors get
+// captured. No-op when VITE_SENTRY_DSN is unset (dev).
+initObservability();
 import './styles/admin.css';
 import './styles/components.css';
 import './styles/enterprise.css';
@@ -15,6 +20,7 @@ import './styles/shifts.css';
 import './styles/purchasing.css';
 import './styles/approvals.css';
 import './styles/accounting.css';
+import './styles/reports.css';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

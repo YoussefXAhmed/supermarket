@@ -112,7 +112,7 @@ export default function LoginPage() {
         </form>
 
         <p className="login-hint">
-          Powered by <span>ERPNext</span> · Frappe Framework
+          Elmahdi Supermarket
         </p>
       </div>
     </div>

@@ -16,7 +16,7 @@ export default function DashboardPage({ monitorOnly = false }) {
   const { t, i18n } = useTranslation();
   const { capabilities } = useAuth();
   const isGovernanceAdmin = isAdministratorPersona(capabilities);
-  const canViewInvoices = hasCapability(capabilities, 'canViewInvoices');
+  const canViewAdminInvoices = hasCapability(capabilities, 'canManageSystem');
   const [stats, setStats] = useState(null);
   const [warnings, setWarnings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -200,7 +200,7 @@ export default function DashboardPage({ monitorOnly = false }) {
         subtitle={t('dashboardPage.thisMonth')}
         variant="raised"
         actions={
-          !monitorOnly && canViewInvoices ? (
+          !monitorOnly && canViewAdminInvoices ? (
             <Link to="/admin/invoices" className="btn btn--ghost btn--sm">
               {t('dashboardPage.viewAll')}
             </Link>

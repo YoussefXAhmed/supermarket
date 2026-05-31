@@ -2,12 +2,15 @@
 Elmahdi SPA session identity — install this app on ERPNext.
 
 Exposes server-side roles (frappe.get_roles) without User / Has Role DocType read
-permissions on the client.
+permissions on the client. Also materializes the per-session CSRF token so the
+SPA can inject `X-Frappe-CSRF-Token` on every unsafe-method request without
+needing a second round-trip.
 
 API: GET /api/method/elmahdi.api.auth.get_session_identity
 """
 
 import frappe
+from frappe.sessions import get_csrf_token as _get_session_csrf_token
 
 
 @frappe.whitelist(allow_guest=True)
@@ -24,6 +27,7 @@ def get_session_identity():
             "user_image": None,
             "role_profile_name": "",
             "roles": [],
+            "csrf_token": "",
         }
 
     roles = list(frappe.get_roles(user))
@@ -46,6 +50,17 @@ def get_session_identity():
     last_name = row.get("last_name") or ""
     full_name = " ".join(x for x in (first_name, last_name) if x) or user
 
+    # Materialize the per-session CSRF token. `get_csrf_token` generates one
+    # lazily on first call and persists it to session.data.csrf_token —
+    # subsequent requests validate against the same value.
+    csrf_token = ""
+    try:
+        csrf_token = _get_session_csrf_token() or ""
+    except Exception:
+        # Never block the identity probe on CSRF-bootstrap failure; the SPA
+        # has a retry path that will re-fetch on the next CSRFTokenError.
+        csrf_token = ""
+
     return {
         "name": user,
         "email": row.get("email") or user,
@@ -55,4 +70,5 @@ def get_session_identity():
         "user_image": row.get("user_image"),
         "role_profile_name": row.get("role_profile_name") or "",
         "roles": roles,
+        "csrf_token": csrf_token,
     }

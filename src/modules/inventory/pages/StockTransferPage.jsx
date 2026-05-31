@@ -6,15 +6,16 @@ import { getItems } from '../../../services/api';
 import { createAndSubmitStockEntry, listWarehouses } from '../../../services/inventoryApi';
 import { getUserFriendlyMessage } from '../../../utils/errorHandling';
 import { getSellableStock } from '../../../services/stockService';
+import { useNotify } from '../../../context/NotificationContext';
 
 export default function StockTransferPage() {
   const { t } = useTranslation();
+  const notify = useNotify();
   const [warehouses, setWarehouses] = useState([]);
   const [items, setItems] = useState([]);
   const [form, setForm] = useState({ item_code: '', qty: '', source_warehouse: '', target_warehouse: '' });
   const [sourceAvail, setSourceAvail] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
 
   useEffect(() => {
@@ -35,7 +36,6 @@ export default function StockTransferPage() {
   const onSubmit = async (e) => {
     e.preventDefault();
     setErr('');
-    setMsg('');
     setSaving(true);
     try {
       const src = warehouses.find((w) => w.name === form.source_warehouse);
@@ -49,7 +49,7 @@ export default function StockTransferPage() {
         target_warehouse: form.target_warehouse,
         sourceQty: sourceAvail,
       });
-      setMsg(`Transfer submitted: ${result.name}`);
+      notify.success(`Stock transfer approved: ${result.name}`);
       setForm({ item_code: '', qty: '', source_warehouse: form.source_warehouse, target_warehouse: form.target_warehouse });
     } catch (e2) {
       setErr(e2.draftName ? `${getUserFriendlyMessage(e2)} Draft: ${e2.draftName}` : getUserFriendlyMessage(e2));
@@ -88,7 +88,6 @@ export default function StockTransferPage() {
           </label>
           <Btn type="submit" variant="primary" size="md" loading={saving}>{t('inventory.transfer.submit')}</Btn>
         </form>
-        {msg && <p className="inv-success">{msg}</p>}
         {err && <ApiErrorCard message={err} />}
       </LayoutSection>
     </FormPageLayout>

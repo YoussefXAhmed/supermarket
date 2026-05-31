@@ -584,7 +584,7 @@ def suggest_invoice_matches(receipt_name, limit=5):
 	return _suggest_matches_for_receipt(pr, limit=limit)
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def link_receipt_to_invoice(receipt_name, invoice_name, lines=None):
 	"""
 	Link PR lines to a draft PI (line-level).
@@ -953,7 +953,7 @@ def list_receipts_pending_invoice(company=None, supplier=None, limit=50):
 	return get_receipts_ready_for_billing(company=company, supplier=supplier, limit=limit)
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def retry_auto_payable_for_receipt(receipt_name):
 	"""Retry payable creation when auto-invoice failed after approval."""
 	from elmahdi.api.spa_authorization import assert_may_manage_supplier_payable
@@ -962,7 +962,7 @@ def retry_auto_payable_for_receipt(receipt_name):
 	return auto_create_and_submit_purchase_invoice_for_receipt(receipt_name)
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def create_purchase_invoice_from_receipt(receipt_name, submit=0):
 	"""Manual billing for exceptional cases; normal receipts use auto_create on approval."""
 	from elmahdi.api.spa_authorization import assert_may_manage_supplier_payable

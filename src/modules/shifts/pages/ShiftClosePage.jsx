@@ -15,9 +15,11 @@ import ShiftSummaryCard from '../components/ShiftSummaryCard';
 import CashCountForm from '../components/CashCountForm';
 import VarianceBanner from '../components/VarianceBanner';
 import ShiftStatusBadge from '../components/ShiftStatusBadge';
+import { useNotify } from '../../../context/NotificationContext';
 
 export default function ShiftClosePage() {
   const { t } = useTranslation();
+  const notify = useNotify();
   const { user, canCloseShift, canExecuteShiftClosingApproval } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -26,7 +28,6 @@ export default function ShiftClosePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [msg, setMsg] = useState('');
   const [summary, setSummary] = useState(null);
   const [actualCash, setActualCash] = useState('');
   const [notes, setNotes] = useState('');
@@ -66,7 +67,6 @@ export default function ShiftClosePage() {
     if (!canCloseShift || saving || !summary?.opening?.name) return;
     setSaving(true);
     setError('');
-    setMsg('');
     try {
       const result = await closeShift({
         openingEntryName: summary.opening.name,
@@ -77,17 +77,17 @@ export default function ShiftClosePage() {
         canSubmitClosing: canExecuteShiftClosingApproval,
       });
       if (result.submitted) {
-        setMsg(t('shifts.closedSubmitted', { name: result.closing?.name }));
+        notify.success(t('shifts.closedSubmitted', { name: result.closing?.name }));
         setTimeout(() => navigate('/pos'), 1500);
       } else if (result.needsVarianceApproval) {
-        setMsg(t('shifts.closingNeedsVariance', {
+        notify.warning(t('shifts.closingNeedsVariance', {
           name: result.closing?.name,
           variance: result.variance.variance.toFixed(2),
         }));
       } else if (result.needsManagerSubmit) {
-        setMsg(t('shifts.closingNeedsManager', { name: result.closing?.name }));
+        notify.info(t('shifts.closingNeedsManager', { name: result.closing?.name }));
       } else {
-        setMsg(result.message || t('shifts.closingDraftSaved'));
+        notify.info(result.message || t('shifts.closingDraftSaved'));
       }
     } catch (e2) {
       setError(getUserFriendlyMessage(e2));
@@ -158,7 +158,6 @@ export default function ShiftClosePage() {
               loading={saving}
               disabled={!canCloseShift}
             />
-            {msg && <p className="inv-success">{msg}</p>}
             {error && <ApiErrorCard message={error} onRetry={load} />}
           </LayoutSection>
         </>

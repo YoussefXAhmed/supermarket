@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../hooks/useAuth';
+import { useGuardedLogout } from '../../hooks/useGuardedLogout';
 import { hasCapability } from '../../auth/capabilities';
 import { getAdminNavItems } from '../../auth/navigationConfig';
 import UserSessionActions from './UserSessionActions';
@@ -10,15 +11,11 @@ import { RoleBadge, UserAvatar } from '../ui';
 
 export default function AdminLayout() {
   const { t } = useTranslation();
-  const { user, logout, capabilities } = useAuth();
+  const { user, capabilities } = useAuth();
   const navigate = useNavigate();
+  const { requestLogout, guardModal } = useGuardedLogout();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
-
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
-  };
 
   const navItems = useMemo(
     () => getAdminNavItems(capabilities),
@@ -74,7 +71,7 @@ export default function AdminLayout() {
               user={user}
               compact
               links={profileLink}
-              onLogout={handleLogout}
+              onLogout={requestLogout}
             />
           )}
         </div>
@@ -87,6 +84,7 @@ export default function AdminLayout() {
           </ErrorBoundary>
         </div>
       </main>
+      {guardModal}
     </div>
   );
 }

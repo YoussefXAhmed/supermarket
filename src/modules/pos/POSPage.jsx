@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { usePOS } from '../../hooks/usePOS';
 import { useAuth } from '../../hooks/useAuth';
+import { useGuardedLogout } from '../../hooks/useGuardedLogout';
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
 import { getCustomers, getMyPOSInvoices, getPOSInvoice } from '../../services/api';
 import {
@@ -24,7 +25,6 @@ import { getUserFriendlyMessage } from '../../utils/errorHandling';
 import { useNotify } from '../../context/NotificationContext';
 import { availableQty } from '../../utils/posStock';
 import { getPOSSessionLinks } from '../../auth/navigationConfig';
-import { IS_DEV } from '../../config/erp';
 import '../../styles/pos.css';
 
 const DEFAULT_PAYMENT = { mode: 'cash', singleMode: 'Cash', cashAmount: '', cardAmount: '', cashMode: 'Cash', cardMode: 'Card' };
@@ -42,23 +42,34 @@ function ItemCard({ item, onAdd, disabled }) {
   const img = getERPImageUrl(item.image);
   const stock = stockLabel(item, t);
   const out = stock?.className === 'item-card__stock--out';
-  const dev = IS_DEV;
+  const low = stock?.className === 'item-card__stock--low';
   return (
-    <button type="button" className="item-card" onClick={() => onAdd(item)} disabled={disabled || out}>
+    <button
+      type="button"
+      className={`item-card ${out ? 'item-card--out' : ''} ${low ? 'item-card--low' : ''}`}
+      onClick={() => onAdd(item)}
+      disabled={disabled || out}
+    >
       <div className="item-card__img">
         {img ? <img src={img} alt={item.item_name} /> : <span className="item-card__placeholder">🛒</span>}
+        {stock && (
+          <span className={`item-card__badge ${stock.className}`}>{stock.text}</span>
+        )}
+        {out && (
+          <span className="item-card__overlay" aria-hidden>
+            {t('pos.outOfStock')}
+          </span>
+        )}
       </div>
       <div className="item-card__body">
-        <p className="item-card__name">{item.item_name}</p>
-        <p className="item-card__code mono">{item.item_code}</p>
-        {stock && <p className={`item-card__stock ${stock.className}`}>{stock.text}</p>}
-        {dev && item?.is_stock_item !== 0 && (
-          <p className="item-card__stock mono" style={{ opacity: 0.75 }}>
-            wh: {item.pos_warehouse || '—'} · actual: {Number(item.actual_qty || 0)} · reserved:{' '}
-            {Number(item.reserved_qty || 0)} · sellable: {Number(item.sellable_qty || 0)}
-          </p>
-        )}
-        <p className="item-card__price">EGP {(item.standard_rate || 0).toFixed(2)}</p>
+        <p className="item-card__name" title={item.item_name}>{item.item_name}</p>
+        <span className="item-card__code mono">{item.item_code}</span>
+        <div className="item-card__foot">
+          <span className="item-card__price">EGP {(item.standard_rate || 0).toFixed(2)}</span>
+          {!out && (
+            <span className="item-card__add" aria-hidden>+ {t('pos.add', { defaultValue: 'Add' })}</span>
+          )}
+        </div>
       </div>
     </button>
   );
@@ -113,12 +124,12 @@ export default function POSPage() {
     canManageShift,
     canMonitorCashiers,
     capabilities,
-    logout,
     user,
   } = useAuth();
   const navigate = useNavigate();
   const notify = useNotify();
   const pos = usePOS(user);
+  const { requestLogout, guardModal } = useGuardedLogout();
 
   const posSessionLinks = useMemo(
     () => getPOSSessionLinks(capabilities).map((link) => ({
@@ -187,6 +198,21 @@ export default function POSPage() {
     if (pos.profile?.defaultCustomer) setCustomer(pos.profile.defaultCustomer);
   }, [pos.profile?.defaultCustomer]);
 
+  // If the cashier's shift was closed elsewhere (admin from ERPNext, another
+  // tab), clear the cart and send them to the shift-open screen.
+  useEffect(() => {
+    if (!pos.shiftClosedExternally) return;
+    pos.clearCart?.();
+    notify.warning(
+      t('pos.shiftClosedExternally', {
+        defaultValue:
+          'Your shift was closed elsewhere. Open a new shift to continue selling.',
+      }),
+    );
+    pos.acknowledgeShiftClosedExternally?.();
+    if (canOperatePOS) navigate('/shifts/open');
+  }, [pos.shiftClosedExternally, pos.acknowledgeShiftClosedExternally, pos.clearCart, notify, t, navigate, canOperatePOS]);
+
   useEffect(() => {
     if (pos.paymentModes?.length) {
       const cash = pos.paymentModes.find((m) => /cash/i.test(m.name))?.name || pos.paymentModes[0].name;
@@ -210,6 +236,33 @@ export default function POSPage() {
   useEffect(() => {
     loadMyInvoices();
   }, [loadMyInvoices, pos.lastInvoice]);
+
+  // Live "remaining on shelf" — subtract cart-reserved quantities from the
+  // backend sellable_qty so the cashier sees stock drop in real time as items
+  // are added. The authoritative count still re-syncs on next backend fetch.
+  const shelfItems = useMemo(() => {
+    if (!pos.items?.length) return pos.items || [];
+    const reserved = new Map();
+    for (const line of pos.cart || []) {
+      reserved.set(line.item_code, (reserved.get(line.item_code) || 0) + Number(line.qty || 0));
+    }
+    if (reserved.size === 0) return pos.items;
+    return pos.items.map((item) => {
+      const r = reserved.get(item.item_code);
+      if (!r || item.sellable_qty == null) return item;
+      return { ...item, sellable_qty: Math.max(0, Number(item.sellable_qty) - r) };
+    });
+  }, [pos.items, pos.cart]);
+
+  // When the search/filter returns only out-of-stock items, surface a banner
+  // so the cashier knows nothing in view is sellable.
+  const allOutOfStock = useMemo(() => {
+    if (!shelfItems?.length) return false;
+    return shelfItems.every((item) => {
+      const avail = availableQty(item);
+      return avail !== null && avail <= 0;
+    });
+  }, [shelfItems]);
 
   useEffect(() => {
     if (pos.lastInvoice?.name) {
@@ -295,38 +348,54 @@ export default function POSPage() {
 
   return (
     <div className="pos-page">
-      <header className="pos-header">
-        <div className="pos-header__brand">
-          <img className="pos-header__logo" src="/logo.png" alt="" />
-          <span className="pos-header__name">Elmahdi POS</span>
-        </div>
-        <div className="pos-header__center">
-          <div className="pos-header__tools">
-            <div className="pos-view-toggle">
-              {canOperatePOS && (
-                <button type="button" className={`pos-view-toggle__btn ${viewMode === 'sell' ? 'pos-view-toggle__btn--active' : ''}`} onClick={() => setViewMode('sell')}>{t('pos.sell')}</button>
-              )}
-              <button type="button" className={`pos-view-toggle__btn ${viewMode === 'invoices' ? 'pos-view-toggle__btn--active' : ''}`} onClick={() => setViewMode('invoices')}>
-                {canOperatePOS ? t('pos.myInvoices') : t('common.invoices')}
-              </button>
-            </div>
-            {viewMode === 'sell' && canOperatePOS && (
-              <SearchInput
-                value={pos.query}
-                onChange={handleSearch}
-                placeholder={t('pos.searchPlaceholder')}
-                inputRef={pos.searchRef}
-                autoFocus
-              />
+      <header className="pos-topbar">
+        <div className="pos-topbar__brand">
+          <img className="pos-topbar__logo" src="/logo.png" alt="" />
+          <div className="pos-topbar__brand-text">
+            <span className="pos-topbar__brand-name">Elmahdi POS</span>
+            {pos.profile?.name && (
+              <span className="pos-topbar__brand-sub">{pos.profile.name}</span>
             )}
           </div>
         </div>
-        <div className="pos-header__actions">
+
+        {viewMode === 'sell' && canOperatePOS && (
+          <div className="pos-topbar__search">
+            <SearchInput
+              value={pos.query}
+              onChange={handleSearch}
+              placeholder={t('pos.searchPlaceholder')}
+              inputRef={pos.searchRef}
+              autoFocus
+            />
+          </div>
+        )}
+
+        <div className="pos-topbar__shift-pill" data-state={pos.shiftOpen ? 'open' : 'closed'}>
+          <span className="pos-topbar__shift-dot" />
+          <span className="pos-topbar__shift-text">
+            {pos.shiftOpen ? t('pos.shiftOpen') : t('pos.noShift')}
+          </span>
+        </div>
+
+        <div className="pos-topbar__actions">
+          <button
+            type="button"
+            className={`pos-topbar__view-btn ${viewMode === 'invoices' ? 'pos-topbar__view-btn--active' : ''}`}
+            onClick={() => setViewMode(viewMode === 'sell' ? 'invoices' : 'sell')}
+          >
+            <span aria-hidden>{viewMode === 'sell' ? '🧾' : '🛒'}</span>
+            <span>
+              {viewMode === 'sell'
+                ? (canOperatePOS ? t('pos.myInvoices') : t('common.invoices'))
+                : t('pos.sell')}
+            </span>
+          </button>
           <UserSessionActions
             user={user}
             compact
             links={posSessionLinks}
-            onLogout={async () => { await logout(); navigate('/login'); }}
+            onLogout={requestLogout}
           />
         </div>
       </header>
@@ -390,30 +459,55 @@ export default function POSPage() {
             ) : pos.items.length === 0 ? (
               <EmptyState icon="🔍" title={t('pos.noProductsFound')} desc={pos.shiftOpen ? t('pos.searchOrScan') : t('pos.startShiftFirst')} />
             ) : (
-              <div className={`pos-grid ${pos.loading ? 'pos-grid--loading' : ''}`}>
-                {pos.items.map((item) => (
-                  <ItemCard key={item.item_code} item={item} onAdd={pos.addToCart} disabled={sellDisabled} />
-                ))}
-              </div>
+              <>
+                {allOutOfStock && (
+                  <div className="pos-oos-banner" role="status">
+                    <span className="pos-oos-banner__icon" aria-hidden>⚠</span>
+                    <div>
+                      <p className="pos-oos-banner__title">
+                        {t('pos.allOutOfStockTitle', { defaultValue: 'All visible items are out of stock' })}
+                      </p>
+                      <p className="pos-oos-banner__desc">
+                        {t('pos.allOutOfStockDesc', { defaultValue: 'Refine your search or wait for stock to be received before continuing checkout.' })}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                <div className={`pos-grid ${pos.loading ? 'pos-grid--loading' : ''}`}>
+                  {shelfItems.map((item) => (
+                    <ItemCard key={item.item_code} item={item} onAdd={pos.addToCart} disabled={sellDisabled} />
+                  ))}
+                </div>
+              </>
             )}
           </section>
 
-          <aside className="pos-cart">
-            <div className="pos-cart__header">
-              <h2 className="pos-cart__title">{t('pos.cartTitle')}</h2>
-              <span className="pos-cart__count">{t('pos.itemsCount', { count: pos.cartCount })}</span>
+          <aside className="pos-bill">
+            <header className="pos-bill__head">
+              <div>
+                <h2 className="pos-bill__title">{t('pos.cartTitle')}</h2>
+                <p className="pos-bill__sub">{t('pos.itemsCount', { count: pos.cartCount })}</p>
+              </div>
               {pos.cartCount > 0 && (
-                <button type="button" className="pos-cart__clear" onClick={handleClearCart}>{t('common.clear')}</button>
+                <button type="button" className="pos-bill__clear" onClick={handleClearCart}>
+                  {t('common.clear')}
+                </button>
               )}
-            </div>
+            </header>
 
             {!pos.shiftOpen && (
-              <p className="pos-cart__shift-warn">{t('pos.startShiftCheckout')}</p>
+              <p className="pos-bill__shift-warn">{t('pos.startShiftCheckout')}</p>
             )}
 
-            <div className="pos-cart__customer">
-              <label className="pos-cart__customer-label" htmlFor="pos-customer">{t('pos.customerLabel')}</label>
-              <select id="pos-customer" className="pos-cart__customer-input" value={customer} onChange={(e) => setCustomer(e.target.value)} disabled={sellDisabled}>
+            <div className="pos-bill__customer">
+              <label className="pos-bill__field-label" htmlFor="pos-customer">{t('pos.customerLabel')}</label>
+              <select
+                id="pos-customer"
+                className="input pos-bill__customer-select"
+                value={customer}
+                onChange={(e) => setCustomer(e.target.value)}
+                disabled={sellDisabled}
+              >
                 <option value="Walk-in Customer">{t('pos.walkInCustomer')}</option>
                 {customers.filter((c) => c.name !== 'Walk-in Customer').map((c) => (
                   <option key={c.name} value={c.name}>{c.customer_name || c.name}</option>
@@ -421,15 +515,7 @@ export default function POSPage() {
               </select>
             </div>
 
-            <POSPaymentPanel
-              paymentModes={pos.paymentModes}
-              total={pos.cartTotal}
-              value={payment}
-              onChange={setPayment}
-              disabled={sellDisabled || !pos.cart.length}
-            />
-
-            <div className="pos-cart__items">
+            <div className="pos-bill__lines">
               {pos.cart.length === 0 ? (
                 <EmptyState icon="🛒" title={t('pos.cartEmpty')} desc={t('pos.tapOrScan')} />
               ) : (
@@ -446,7 +532,7 @@ export default function POSPage() {
             </div>
 
             {(pos.cartWarning || pos.stockIssues.length > 0) && (
-              <div className="pos-cart__warnings">
+              <div className="pos-bill__warnings">
                 {pos.cartWarning && <p>{pos.cartWarning}</p>}
                 {pos.stockIssues.map((i) => (
                   <p key={i.item_code}>{i.item_name}: {i.message}</p>
@@ -454,25 +540,49 @@ export default function POSPage() {
               </div>
             )}
 
-            <div className="pos-cart__footer">
-              <div className="pos-cart__total">
-                <span>{t('pos.total')}</span>
-                <span className="pos-cart__total-amount mono">EGP {pos.cartTotal.toFixed(2)}</span>
+            <dl className="pos-bill__totals">
+              <div className="pos-bill__totals-row">
+                <dt>{t('pos.itemsLabel', { defaultValue: 'Items' })}</dt>
+                <dd>{pos.cartCount}</dd>
               </div>
+              <div className="pos-bill__totals-row">
+                <dt>{t('pos.subtotal', { defaultValue: 'Subtotal' })}</dt>
+                <dd className="mono">EGP {pos.cartTotal.toFixed(2)}</dd>
+              </div>
+              <div className="pos-bill__totals-row pos-bill__totals-row--total">
+                <dt>{t('pos.total')}</dt>
+                <dd className="mono">EGP {pos.cartTotal.toFixed(2)}</dd>
+              </div>
+            </dl>
+
+            <div className="pos-bill__payment">
+              <p className="pos-bill__field-label">{t('pos.selectPayment', { defaultValue: 'Payment' })}</p>
+              <POSPaymentPanel
+                paymentModes={pos.paymentModes}
+                total={pos.cartTotal}
+                value={payment}
+                onChange={setPayment}
+                disabled={sellDisabled || !pos.cart.length}
+              />
+            </div>
+
+            <div className="pos-bill__cta-wrap">
               {(checkoutErr || pos.checkoutError) && (
-                <p className="pos-cart__error">{checkoutErr || pos.checkoutError}</p>
+                <p className="pos-bill__error">{checkoutErr || pos.checkoutError}</p>
               )}
               <Btn
                 variant="primary"
                 size="lg"
-                className="pos-cart__checkout-btn"
+                className="pos-bill__cta"
                 loading={pos.checkoutLoading}
                 disabled={!canOperatePOS || !pos.cart.length || sellDisabled}
                 onClick={handleCheckout}
               >
-                {canOperatePOS ? `${t('common.checkout')} · EGP ${pos.cartTotal.toFixed(2)}` : t('pos.checkoutDisabled')}
+                {canOperatePOS
+                  ? `${t('pos.processTransaction', { defaultValue: 'Process Transaction' })} · EGP ${pos.cartTotal.toFixed(2)}`
+                  : t('pos.checkoutDisabled')}
               </Btn>
-              <p className="pos-cart__shortcuts mono">{t('pos.shortcuts')}</p>
+              <p className="pos-bill__shortcuts mono">{t('pos.shortcuts')}</p>
             </div>
           </aside>
         </div>
@@ -536,6 +646,7 @@ export default function POSPage() {
         onCancel={() => setConfirmClear(false)}
         onConfirm={() => { pos.clearCart(); setConfirmClear(false); }}
       />
+      {guardModal}
     </div>
   );
 }

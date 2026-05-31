@@ -28,7 +28,7 @@
   "auth": {
     "invalidCredentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة",
     "sessionExpired": "انتهت صلاحية جلستك. يرجى تسجيل الدخول مرة أخرى.",
-    "networkError": "تعذر الاتصال بـ ERPNext. تحقق من الاتصال وتأكد أن الخادم يعمل."
+    "networkError": "تعذر الاتصال بالنظام. تحقق من الاتصال وحاول مرة أخرى."
   },
   "ui": {
     "loading": "جاري التحميل...",
@@ -96,24 +96,27 @@
     "finance": "المالية",
     "history": "السجل",
     "inventory": "المخزون",
-    "invoiceMatching": "مطابقة الفواتير",
+    "invoiceMatching": "مطابقة فواتير الموردين",
     "items": "الأصناف",
-    "ledger": "دفتر الحركة",
-    "matching": "المطابقة",
+    "ledger": "حركة المخزون",
+    "matching": "مطابقة الفواتير",
     "overview": "نظرة عامة",
     "products": "المنتجات",
     "purchaseRates": "أسعار الشراء",
-    "purchaseApprovals": "موافقات الشراء",
+    "purchaseApprovals": "اعتماد إيصالات الاستلام",
     "purchasing": "المشتريات",
-    "receive": "استلام",
-    "reconcile": "تسوية",
+    "purchasingHistory": "سجل المشتريات",
+    "posProfiles": "أجهزة نقاط البيع",
+    "approvalHistory": "سجل الموافقات",
+    "receive": "استلام البضائع",
+    "reconcile": "جرد المخزون",
     "reorder": "إعادة الطلب",
     "reports": "التقارير",
     "returns": "المرتجعات",
     "settings": "الإعدادات",
     "shifts": "الشيفتات",
     "stock": "المخزون",
-    "stockEntry": "إدخال مخزون",
+    "stockEntry": "تسوية المخزون",
     "supplierPayments": "مدفوعات الموردين",
     "suppliers": "الموردون",
     "transfer": "تحويل",
@@ -226,13 +229,13 @@
     "viewReceiptHint": "عرض الإيصال والطباعة من القائمة.",
     "walkIn": "عابر",
     "walkInCustomer": "عميل عابر",
-    "whLabel": "مخزن:"
+    "whLabel": "المخزن"
   },
   "shifts": {
     "closeShift": "إغلاق الشيفت",
     "openShift": "فتح الشيفت",
     "shiftControl": "إدارة الشيفت",
-    "subtitle": "تسوية النقدية · ERPNext POS فتح/إغلاق",
+    "subtitle": "تسوية النقدية · فتح وإغلاق الشيفت",
     "accessDenied": "وصول مرفوض",
     "noPermissionOpen": "ليست لديك صلاحية لفتح الشيفت.",
     "noPermissionClose": "ليست لديك صلاحية لإغلاق الشيفت.",
@@ -244,15 +247,15 @@
     "openingFloat": "الرصيد الافتتاحي",
     "openingCash": "النقد الافتتاحي (ج.م)",
     "modeOfPayment": "طريقة الدفع",
-    "createsOpeningEntry": "ينشئ قيد فتح POS مُرسل في ERPNext للكاشير {{cashier}}.",
+    "createsOpeningEntry": "يفتح شيفت جديد للكاشير {{cashier}}.",
     "closeSubtitle": "تسوية النقدية مقابل مبيعات ERP",
     "noOpenShift": "لا يوجد شيفت مفتوح لهذا الكاشير.",
     "shiftStatus": "حالة الشيفت",
     "cashCount": "جرد النقدية",
-    "closedSubmitted": "تم إغلاق الشيفت — {{name}} تم إرساله في ERPNext.",
+    "closedSubmitted": "تم إغلاق الشيفت — {{name}} معتمد.",
     "closingNeedsVariance": "إغلاق {{name}} محفوظ كمسودة — يحتاج موافقة المدير على الانحراف (ج.م {{variance}}).",
-    "closingNeedsManager": "إغلاق {{name}} محفوظ كمسودة — يجب على مدير المتجر إرساله في ERPNext.",
-    "closingDraftSaved": "تم حفظ مسودة الإغلاق — تحقق من ERPNext Desk."
+    "closingNeedsManager": "الشيفت {{name}} محفوظ كمسودة — يجب على المحاسب اعتماده.",
+    "closingDraftSaved": "مسودة الشيفت محفوظة. في انتظار اعتماد المحاسب."
   },
   "approvals": {
     "approveAndSubmit": "موافقة وإرسال",
@@ -302,7 +305,7 @@
     }
   },
   "inventory": {
-    "subtitle": "لقطة المخزون من ERPNext",
+    "subtitle": "لقطة المخزون الحالية",
     "searchItems": "بحث عن الأصناف",
     "allWarehouses": "كل المخازن",
     "newItem": "صنف جديد",
@@ -384,7 +387,7 @@
     },
     "reorder": {
       "title": "اقتراحات إعادة الطلب",
-      "subtitle": "الأصناف عند أو أقل من مستوى إعادة الطلب من جدول ERPNext",
+      "subtitle": "الأصناف عند أو أقل من مستوى إعادة الطلب",
       "suggestedOrder": "الطلب المقترح",
       "suggestedQty": "الكمية المقترحة",
       "load": "تحميل الاقتراحات",
@@ -392,7 +395,7 @@
     },
     "ledger": {
       "title": "دفتر حركة المخزون",
-      "subtitle": "سجل الحركة من Stock Ledger Entry",
+      "subtitle": "كل زيادة ونقص في المخزون، حسب المستودع والتاريخ",
       "filterItemCode": "فلترة بكود الصنف",
       "load": "تحميل الحركات",
       "emptyTitle": "لم يتم تحميل حركات",
@@ -421,7 +424,7 @@
     },
     "batches": {
       "title": "الدفعات والصلاحية",
-      "subtitle": "الدفعات القريبة الانتهاء والمنتهية من ERPNext",
+      "subtitle": "الدفعات القريبة الانتهاء والمنتهية",
       "alertWithin": "تنبيه خلال (أيام)",
       "loadBatches": "تحميل الدفعات",
       "empty": "لا توجد دفعات قريبة الانتهاء — اضغط تحميل الدفعات",
@@ -523,7 +526,7 @@
     },
     "employees": {
       "title": "الموظفون",
-      "subtitle": "سجلات القوى العاملة في ERPNext Employee",
+      "subtitle": "سجلات الموظفين",
       "add": "إضافة موظف",
       "addTitle": "موظف جديد",
       "editTitle": "تعديل موظف",
@@ -559,7 +562,7 @@
       "sendWelcomeEmail": "إرسال بريد ترحيب (إعادة تعيين كلمة المرور)",
       "createAccount": "إنشاء الحساب",
       "resetPassword": "إرسال بريد ترحيب",
-      "welcomeEmailSent": "تم طلب بريد الترحيب في ERPNext"
+      "welcomeEmailSent": "تم إرسال بريد الترحيب"
     },
     "departments": {
       "subtitle": "سجل الأقسام — قريباً"
@@ -641,5 +644,185 @@
       "paidPct": "نسبة الدفع",
       "status": "الحالة"
     }
+  },
+  "posProfiles": {
+    "title": "ملفات نقاط البيع",
+    "subtitle": "ربط المستودع وقائمة أسعار البيع بكل نقطة بيع",
+    "editTitle": "إدارة ملف نقطة البيع",
+    "editHint": "يطبق تغيير المستودع عند إعادة تحميل نقطة البيع. الكاشير الذي لديه شيفت مفتوح سيستمر في تسجيل العمليات على المستودع السابق حتى يفتح نقطة البيع من جديد.",
+    "active": "نشط",
+    "disabled": "موقوف",
+    "noop": "لا توجد تغييرات لحفظها.",
+    "savedSummary": "تم الحفظ: {{fields}}",
+    "error": "تعذر تحميل ملفات نقاط البيع",
+    "empty": "لا توجد ملفات نقاط بيع مهيأة",
+    "emptyDesc": "أنشئ ملفات نقاط البيع في ERPNext أولاً ثم خصص لها المستودعات هنا.",
+    "field": {
+      "warehouse": "المستودع",
+      "priceList": "قائمة أسعار البيع",
+      "disabled": "موقوف (إخفاء عن الكاشير)"
+    },
+    "col": {
+      "name": "ملف نقطة البيع",
+      "company": "الشركة",
+      "warehouse": "المستودع",
+      "priceList": "قائمة الأسعار",
+      "currency": "العملة",
+      "state": "الحالة",
+      "actions": "الإجراءات"
+    }
+  },
+  "purchHist": {
+    "title": "سجل المشتريات",
+    "titlePR": "سجل إيصالات الشراء",
+    "titlePI": "سجل فواتير الشراء",
+    "subtitle": "السجلات التشغيلية للمشتريات",
+    "kpis": "مؤشرات المشتريات",
+    "print": "طباعة",
+    "csv": "CSV",
+    "xlsx": "Excel",
+    "pdf": "PDF",
+    "error": "تعذر تحميل السجل",
+    "tabs": { "receipts": "إيصالات الشراء", "invoices": "فواتير الشراء" },
+    "kpi": {
+      "pending": "مشتريات معلقة",
+      "approved": "مشتريات معتمدة",
+      "rejected": "مشتريات مرفوضة",
+      "outstanding": "فواتير مستحقة",
+      "paid": "فواتير مدفوعة"
+    },
+    "filter": {
+      "status": "الحالة",
+      "supplier": "المورد",
+      "supplierPlaceholder": "كود المورد",
+      "from": "من",
+      "to": "إلى",
+      "name": "رقم المستند",
+      "prPlaceholder": "MAT-PRE-…",
+      "piPlaceholder": "ACC-PINV-…"
+    },
+    "col": {
+      "receipt": "إيصال الشراء",
+      "invoice": "فاتورة الشراء",
+      "supplier": "المورد",
+      "supplierCode": "الكود",
+      "total": "الإجمالي",
+      "paid": "المدفوع",
+      "outstanding": "المتبقي",
+      "status": "الحالة",
+      "payStatus": "حالة الدفع",
+      "decidedBy": "قرر بواسطة",
+      "decidedAt": "وقت القرار",
+      "created": "تاريخ الإنشاء",
+      "posting": "تاريخ الترحيل",
+      "due": "الاستحقاق",
+      "warehouse": "المستودع",
+      "phone": "الهاتف",
+      "requestedBy": "أنشأ بواسطة",
+      "notes": "ملاحظات",
+      "paymentEntry": "قيد الدفع",
+      "allocated": "المخصص"
+    },
+    "empty": {
+      "pr": "لا توجد إيصالات شراء تطابق هذه الفلاتر",
+      "pi": "لا توجد فواتير شراء تطابق هذه الفلاتر"
+    },
+    "emptyDesc": "جرب توسيع نطاق التاريخ أو إزالة فلتر الحالة.",
+    "detail": {
+      "prTitle": "إيصال شراء",
+      "piTitle": "فاتورة شراء",
+      "error": "تعذر تحميل التفاصيل",
+      "receiptInfo": "الإيصال",
+      "invoiceInfo": "الفاتورة",
+      "supplierInfo": "المورد",
+      "approval": "سجل الموافقة",
+      "payment": "حالة الدفع",
+      "items": "الأصناف",
+      "item": "الصنف",
+      "qty": "الكمية",
+      "uom": "وحدة القياس",
+      "rate": "السعر",
+      "amount": "المبلغ",
+      "total": "الإجمالي",
+      "linkedPr": "الإيصال المرتبط",
+      "linkedReceipts": "الإيصالات المرتبطة (سجل الاعتماد)",
+      "payments": "المدفوعات",
+      "audit": "سجل التدقيق"
+    }
+  },
+  "history": {
+    "title": "سجل موافقات الشراء",
+    "subtitle": "إيصالات الشراء المعتمدة والمرفوضة",
+    "kpis": "مؤشرات الموافقة",
+    "print": "طباعة",
+    "csv": "CSV",
+    "xlsx": "Excel",
+    "pdf": "PDF",
+    "error": "تعذر تحميل السجل",
+    "empty": "لا توجد قرارات تطابق هذه الفلاتر",
+    "emptyDesc": "جرب توسيع نطاق التاريخ أو إزالة فلتر المورد.",
+    "allDecisions": "كل القرارات",
+    "approved": "معتمد",
+    "rejected": "مرفوض",
+    "kpi": {
+      "approvedMonth": "معتمد هذا الشهر",
+      "rejectedMonth": "مرفوض هذا الشهر",
+      "approvedValue": "إجمالي قيمة المعتمد",
+      "rejectedValue": "إجمالي قيمة المرفوض"
+    },
+    "filter": {
+      "status": "الحالة",
+      "supplier": "المورد",
+      "supplierPlaceholder": "كود المورد",
+      "from": "من",
+      "to": "إلى",
+      "name": "رقم الإيصال",
+      "namePlaceholder": "MAT-PRE-…"
+    },
+    "col": {
+      "receipt": "إيصال الشراء",
+      "supplier": "المورد",
+      "supplierCode": "الكود",
+      "total": "الإجمالي",
+      "status": "الحالة",
+      "decidedBy": "قرر بواسطة",
+      "decidedAt": "وقت القرار",
+      "created": "تاريخ الإنشاء",
+      "posting": "تاريخ الترحيل",
+      "warehouse": "المستودع",
+      "email": "البريد",
+      "phone": "الهاتف",
+      "notes": "ملاحظات"
+    },
+    "detail": {
+      "title": "تفاصيل الشراء",
+      "error": "تعذر تحميل التفاصيل",
+      "receiptInfo": "معلومات الإيصال",
+      "supplierInfo": "معلومات المورد",
+      "decisionInfo": "القرار",
+      "items": "الأصناف",
+      "item": "الصنف",
+      "qty": "الكمية",
+      "uom": "وحدة القياس",
+      "rate": "السعر",
+      "amount": "المبلغ",
+      "total": "الإجمالي",
+      "audit": "سجل التدقيق"
+    }
+  },
+  "purchReports": {
+    "empty": {
+      "title": "لا توجد مستندات للعرض",
+      "desc": "اختر مورداً أو نطاق تاريخ ثم اضغط تحميل."
+    }
+  },
+  "logoutBlocked": {
+    "title": "أغلق الشيفت أولاً",
+    "message": "لديك شيفت مبيعات مفتوح. يرجى إغلاقه وتسوية النقدية قبل تسجيل الخروج — يجب توثيق فروق الكاش.",
+    "closeNow": "إغلاق الشيفت الآن",
+    "cancel": "البقاء مسجل الدخول"
+  },
+  "approvalsExtra": {
+    "viewHistory": "عرض سجل الموافقات"
   }
 }

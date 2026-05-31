@@ -47,6 +47,9 @@ SPA_REST_DOCTYPES: tuple[str, ...] = (
 
 PERM_FIELDS: tuple[str, ...] = ("read", "write", "create", "submit", "cancel", "delete")
 
+# Outside SPA_REST_DOCTYPES but applied by operational_permissions.apply_permission_matrix()
+FINANCE_AUXILIARY_DOCTYPES: tuple[str, ...] = ("Account",)
+
 OPERATIONAL_ERP_ROLES: tuple[str, ...] = (
 	"POS User",
 	"Sales User",
@@ -180,6 +183,8 @@ _ACCOUNTANT = {
 	"Warehouse": READ,
 	"Supplier": READ,
 	"Supplier Group": READ,
+	# AP supplier payments: validate paid_from / paid_to and list cash-bank accounts (read-only COA)
+	"Account": READ,
 	"Purchase Receipt": READ,
 	"Purchase Receipt Item": READ,
 	"Purchase Invoice": EXECUTE,
@@ -307,6 +312,9 @@ REST_USER_EXPECTATIONS: dict[str, list[tuple[str, str, bool]]] = {
 		("User", "create", False),
 	],
 	"accountant@elmahdi.com": [
+		("Account", "read", True),
+		("Account", "create", False),
+		("Account", "write", False),
 		("Payment Entry", "create", True),
 		("Payment Entry", "submit", True),
 		("Purchase Invoice", "create", True),

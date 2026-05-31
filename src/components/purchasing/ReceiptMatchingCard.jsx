@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Btn } from '../ui';
+import { Btn, Pill } from '../ui';
 import BillingStatusPill from './BillingStatusPill';
 import ApPaymentStatusPill from '../accounting/ApPaymentStatusPill';
 import InvoiceMatchSelector from './InvoiceMatchSelector';
@@ -12,6 +12,7 @@ import {
   retryAutoPayableForReceipt,
 } from '../../services/invoiceMatchingService';
 import { getUserFriendlyMessage } from '../../utils/errorHandling';
+import { useAuth } from '../../hooks/useAuth';
 import { financePath } from '../../utils/workspacePaths';
 import { openERPDesk } from '../../utils/erpLinks';
 
@@ -23,6 +24,10 @@ export default function ReceiptMatchingCard({
   onRefreshLine,
   onInvoiceCreated,
 }) {
+  const { capabilities } = useAuth();
+  // Jumping to /app/purchase-invoice bypasses the SPA matching workflow;
+  // restrict to System Manager so accountants stay in-app.
+  const canOpenInDesk = Boolean(capabilities?.canManageSystem);
   const [expanded, setExpanded] = useState(false);
   const [localErr, setLocalErr] = useState('');
   const [retrying, setRetrying] = useState(false);
@@ -117,13 +122,19 @@ export default function ReceiptMatchingCard({
         <div className="receipt-matching-card__payable">
           <span className="receipt-matching-card__label">Supplier bill (ERP)</span>
           <div className="receipt-matching-card__payable-row">
-            <button
-              type="button"
-              className="mono receipt-matching-card__invoice-link"
-              onClick={() => openERPDesk(`purchase-invoice/${row.primary_invoice}`)}
-            >
-              {row.primary_invoice}
-            </button>
+            {canOpenInDesk ? (
+              <button
+                type="button"
+                className="mono receipt-matching-card__invoice-link"
+                onClick={() => openERPDesk(`purchase-invoice/${row.primary_invoice}`)}
+              >
+                {row.primary_invoice}
+              </button>
+            ) : (
+              <span className="mono receipt-matching-card__invoice-link" aria-label="Supplier invoice (read-only)">
+                {row.primary_invoice}
+              </span>
+            )}
             {row.primary_invoice_payment_status && (
               <ApPaymentStatusPill status={row.primary_invoice_payment_status} />
             )}
@@ -239,11 +250,11 @@ export default function ReceiptMatchingCard({
                 <td>{fmtCurrency(line.rate)}</td>
                 <td>
                   {line.variance ? (
-                    <span className="billing-pill billing-pill--variance">Variance</span>
+                    <Pill tone="warning">Variance</Pill>
                   ) : line.remaining_qty > 0 ? (
-                    <span className="billing-pill billing-pill--partial">Open</span>
+                    <Pill tone="warning">Open</Pill>
                   ) : (
-                    <span className="billing-pill billing-pill--billed">Closed</span>
+                    <Pill tone="success">Closed</Pill>
                   )}
                 </td>
               </tr>

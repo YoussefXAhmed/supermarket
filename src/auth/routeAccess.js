@@ -2,6 +2,7 @@
  * Workspace route access — synchronous guards + post-login routing.
  */
 import { hasCapability } from './capabilities';
+import { buildReportPathRules } from './reportAccess';
 
 /** @typedef {import('./capabilities').Capabilities} Capabilities */
 
@@ -49,7 +50,9 @@ export const ROUTE_ACCESS = [
   { prefix: '/hr', anyOf: ['canAccessHRWorkspace'] },
   { prefix: '/manager/shifts/history', anyOf: ['canViewShiftReports'] },
   { prefix: '/manager/shifts', anyOf: ['canViewShiftReports'] },
+  { prefix: '/manager/approvals/history', anyOf: ['canViewPurchaseApprovals'] },
   { prefix: '/manager/approvals', anyOf: ['canViewApprovalsDashboard'] },
+  { prefix: '/manager/pos-profiles', anyOf: ['canManagePOSProfiles', 'canManageSystem'] },
   { prefix: '/manager/purchase-approvals', anyOf: ['canViewPurchaseApprovals'] },
   { prefix: '/manager/reports', anyOf: ['canViewReports'] },
   { prefix: '/manager', anyOf: ['canAccessManagerWorkspace'] },
@@ -67,6 +70,7 @@ export const ROUTE_ACCESS = [
   { prefix: '/purchasing/matching', anyOf: ['canAccessAccountantWorkspace'] },
   { prefix: '/purchasing/reports', anyOf: ['canAccessAccountantWorkspace'] },
   { prefix: '/purchasing/approvals', anyOf: ['canViewPurchaseApprovals'] },
+  { prefix: '/purchasing/history', anyOf: ['canViewPurchasingHistory', 'canManageSystem'] },
   { prefix: '/purchasing/receive', anyOf: ['canAccessPurchasing'] },
   { prefix: '/purchasing/suppliers', anyOf: ['canAccessPurchasing'] },
   { prefix: '/purchasing', anyOf: ['canAccessPurchasing'] },
@@ -79,7 +83,9 @@ export const ROUTE_ACCESS = [
   { prefix: '/admin/accounting/matching', anyOf: ['canManageSystem'] },
   { prefix: '/admin/accounting/payments', anyOf: ['canManageSystem'] },
   { prefix: '/admin/accounting', anyOf: ['canManageSystem'] },
+  { prefix: '/admin/approvals/history', anyOf: ['canManageSystem'] },
   { prefix: '/admin/approvals', anyOf: ['canManageSystem'] },
+  { prefix: '/admin/pos-profiles', anyOf: ['canManagePOSProfiles', 'canManageSystem'] },
   { prefix: '/admin/products', anyOf: ['canManageSystem'] },
   { prefix: '/admin/users', anyOf: ['canManageSystem'] },
   { prefix: '/admin/settings', anyOf: ['canManageSettings', 'canManageSystem'] },
@@ -94,6 +100,22 @@ export const ROUTE_ACCESS = [
   { prefix: '/admin', anyOf: ['canManageSystem'] },
 ];
 
+/**
+ * Per-report rules from reportAccess.js are merged in lazily so the
+ * module-init order doesn't matter: routeAccess and reportAccess are part
+ * of a circular import chain (capabilities.js re-exports resolveHomePath
+ * from here), and computing the merged list at top-level would trigger a
+ * TDZ on REPORT_WORKSPACE_BASES. The first call to `resolveRouteRule()`
+ * happens at navigation time — both modules are fully initialized by then.
+ */
+let _mergedRoutes = null;
+function getMergedRouteAccess() {
+  if (_mergedRoutes) return _mergedRoutes;
+  // Per-report rules first — more specific than `/<workspace>/reports`.
+  _mergedRoutes = [...buildReportPathRules(), ...ROUTE_ACCESS];
+  return _mergedRoutes;
+}
+
 export function isProtectedPath(pathname) {
   if (!pathname) return false;
   return PROTECTED_ROOTS.some(
@@ -103,7 +125,7 @@ export function isProtectedPath(pathname) {
 
 export function resolveRouteRule(pathname) {
   if (!pathname) return null;
-  return ROUTE_ACCESS.find(
+  return getMergedRouteAccess().find(
     (r) => pathname === r.prefix || pathname.startsWith(`${r.prefix}/`),
   ) || null;
 }

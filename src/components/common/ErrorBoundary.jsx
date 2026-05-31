@@ -1,6 +1,7 @@
 import { Component } from 'react';
 import { Btn } from '../ui';
 import i18n from '../../i18n';
+import { captureException } from '../../services/observability';
 
 export default class ErrorBoundary extends Component {
   constructor(props) {
@@ -16,6 +17,13 @@ export default class ErrorBoundary extends Component {
     if (import.meta.env.DEV) {
       console.error('[ErrorBoundary]', error, info);
     }
+    // Forward to Sentry/GlitchTip so we hear about field errors that
+    // would otherwise die in the user's console.
+    captureException(error, {
+      layer: 'boundary',
+      componentStack: info?.componentStack,
+      tags: { boundaryName: this.props.name || 'unnamed' },
+    });
   }
 
   handleRetry = () => {

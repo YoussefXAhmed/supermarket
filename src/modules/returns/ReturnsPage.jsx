@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { PageHeader, Btn, ApiErrorCard, PageLoading } from '../../components/ui';
+import { PageHeader, Btn, ApiErrorCard, EmptyState, PageLoading } from '../../components/ui';
 import { FormPageLayout, LayoutSection, TableRegion } from '../../components/layout/page-layouts';
 import { useAuth } from '../../hooks/useAuth';
 import {
@@ -15,9 +15,11 @@ import {
 } from '../../services/returnsService';
 import { getRefundMethods } from '../../utils/returnsValidation';
 import { getUserFriendlyMessage } from '../../utils/errorHandling';
+import { useNotify } from '../../context/NotificationContext';
 
 export default function ReturnsPage({ cashierMode = false }) {
   const navigate = useNavigate();
+  const notify = useNotify();
   const { user, canCreateReturns, canApproveReturns, canViewReturns } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -36,7 +38,6 @@ export default function ReturnsPage({ cashierMode = false }) {
   const [myInvoicesLoading, setMyInvoicesLoading] = useState(false);
   const [pending, setPending] = useState([]);
   const [err, setErr] = useState('');
-  const [msg, setMsg] = useState('');
   const [saving, setSaving] = useState(false);
   const [submittingId, setSubmittingId] = useState('');
 
@@ -55,7 +56,6 @@ export default function ReturnsPage({ cashierMode = false }) {
     }
     setLoadingSource(true);
     setErr('');
-    setMsg('');
     try {
       const ctx = await loadReturnContext(trimmed, {
         scopeToOwner: Boolean(cashierMode && ownerScope),
@@ -143,7 +143,6 @@ export default function ReturnsPage({ cashierMode = false }) {
     if (!formEnabled || saving) return;
     setSaving(true);
     setErr('');
-    setMsg('');
     try {
       const result = await createReturnDraft({
         sourceName: source.name,
@@ -154,8 +153,8 @@ export default function ReturnsPage({ cashierMode = false }) {
         canCreate: canCreateReturns,
         scopeToOwner: Boolean(cashierMode && ownerScope),
       });
-      setMsg(
-        `Draft return ${result.returnDoc.name} created. ERP refund total: ${formatErpMoney(result.erpGrandTotal, source.currency)}. Awaiting approval.`,
+      notify.success(
+        `Draft return ${result.returnDoc.name} created. Refund total: ${formatErpMoney(result.erpGrandTotal, source.currency)}. Awaiting approval.`,
       );
       await loadSource(source.name);
       if (cashierMode) await refreshMyInvoices();
@@ -171,15 +170,14 @@ export default function ReturnsPage({ cashierMode = false }) {
     if (!canApproveReturns || submittingId) return;
     setSubmittingId(returnName);
     setErr('');
-    setMsg('');
     try {
       const result = await approveAndSubmitReturn({
         returnName,
         approver: operator,
         canApprove: canApproveReturns,
       });
-      setMsg(
-        `Return ${result.returnDoc.name} submitted. Stock reversed by ERP. Refund total: ${formatErpMoney(result.erpGrandTotal, result.source?.currency)}.`,
+      notify.success(
+        `Return ${result.returnDoc.name} approved. Stock reversed. Refund total: ${formatErpMoney(result.erpGrandTotal, result.source?.currency)}.`,
       );
       await refreshPending();
       if (source?.name) await loadSource(source.name);
@@ -219,7 +217,6 @@ export default function ReturnsPage({ cashierMode = false }) {
       />
 
       {err && <ApiErrorCard message={err} onRetry={() => sourceName && loadSource(sourceName)} />}
-      {msg && <p className="inv-success">{msg}</p>}
 
       <LayoutSection
         title={cashierMode ? 'Your invoices' : 'Source invoice'}
@@ -234,7 +231,11 @@ export default function ReturnsPage({ cashierMode = false }) {
             {myInvoicesLoading ? (
               <PageLoading size={24} />
             ) : myInvoices.length === 0 ? (
-              <p className="page-header__sub">No submitted invoices found for your account.</p>
+              <EmptyState
+                icon="🧾"
+                title="No invoices yet"
+                desc="Once you submit POS invoices on this account, they appear here for return processing."
+              />
             ) : (
               <TableRegion fit className="returns-lookup">
                 <table className="data-table data-table--compact">

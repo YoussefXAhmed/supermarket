@@ -45,6 +45,7 @@ _CAPS_INVENTORY = {
 
 _CAPS_PURCHASING = {
 	"can_access_purchasing": True,
+	"can_view_purchasing_history": True,
 }
 
 _CAPS_STORE_MANAGER = {
@@ -53,6 +54,7 @@ _CAPS_STORE_MANAGER = {
 	"can_view_financial_kpis": False,
 	"can_view_purchase_approvals": True,
 	"can_view_approvals_dashboard": True,
+	"can_view_purchasing_history": True,
 	"can_approve_purchasing": True,
 	"can_approve_shift": False,
 	"can_view_shift_reports": True,
@@ -70,6 +72,7 @@ _CAPS_ACCOUNTANT = {
 	"can_access_invoice_matching": True,
 	"can_view_purchase_approvals": True,
 	"can_view_approvals_dashboard": True,
+	"can_view_purchasing_history": True,
 	"can_approve_purchasing": False,
 	"can_approve_purchasing_accountant": False,
 	"can_approve_shift": True,
@@ -102,6 +105,7 @@ _CAPS_ADMIN = {key: True for key in (
 	"can_access_invoice_matching",
 	"can_view_purchase_approvals",
 	"can_view_approvals_dashboard",
+	"can_view_purchasing_history",
 	"can_approve_purchasing",
 	"can_approve_purchasing_accountant",
 	"can_approve_shift",

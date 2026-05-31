@@ -23,7 +23,7 @@ export default function ShiftApprovalConfirmModal({
           Approve &amp; submit shift closing?
         </h2>
         <p className="shift-modal__lead">
-          This submits the linked <strong className="mono">{session.closingName}</strong> in ERPNext.
+          This approves the linked <strong className="mono">{session.closingName}</strong>.
           You cannot approve your own shift.
         </p>
 

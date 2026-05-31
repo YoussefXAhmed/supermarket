@@ -12,6 +12,7 @@ import { getCompanies, getItems } from '../../services/api';
 import { createAndSubmitPurchaseInvoice, listPurchaseInvoices, listSuppliers } from '../../services/purchasingApi';
 import { getUserFriendlyMessage } from '../../utils/errorHandling';
 import CreateInvoiceFromReceiptPanel from '../../components/purchasing/CreateInvoiceFromReceiptPanel';
+import { useNotify } from '../../context/NotificationContext';
 
 const fmt = (n) =>
   new Intl.NumberFormat('en-EG', { style: 'currency', currency: 'EGP' }).format(n || 0);
@@ -20,6 +21,7 @@ const emptyLine = () => ({ item_code: '', qty: '', rate: '' });
 
 export default function PurchaseInvoicesPage() {
   const { t } = useTranslation();
+  const notify = useNotify();
   const [searchParams] = useSearchParams();
   const [tab, setTab] = useState('list');
   const [rows, setRows] = useState([]);
@@ -32,7 +34,6 @@ export default function PurchaseInvoicesPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
-  const [msg, setMsg] = useState('');
   const submittingRef = useRef(false);
 
   const loadList = () => {
@@ -59,7 +60,6 @@ export default function PurchaseInvoicesPage() {
     if (submittingRef.current) return;
     submittingRef.current = true;
     setErr('');
-    setMsg('');
     setSaving(true);
     try {
       const result = await createAndSubmitPurchaseInvoice({
@@ -68,7 +68,7 @@ export default function PurchaseInvoicesPage() {
         lines,
         bill_no: billNo,
       });
-      setMsg(`Purchase invoice submitted: ${result.name}`);
+      notify.success(`Supplier bill approved: ${result.name}`);
       setLines([emptyLine()]);
       setTab('list');
       loadList();
@@ -212,7 +212,6 @@ export default function PurchaseInvoicesPage() {
             <Btn type="submit" variant="primary" size="md" loading={saving}>
               {t('purchasing.submitInvoice')}
             </Btn>
-            {msg && <p className="inv-success">{msg}</p>}
             {err && <ApiErrorCard message={err} />}
           </form>
         </LayoutSection>

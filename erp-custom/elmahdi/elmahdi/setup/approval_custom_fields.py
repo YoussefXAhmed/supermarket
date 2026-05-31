@@ -112,6 +112,19 @@ CUSTOM_FIELDS = [
 		"hidden": 1,
 		"no_copy": 1,
 	},
+	# POS Invoice — opening-entry attribution. Lets shift summaries and
+	# closing entries scope invoices to a specific shift even when multiple
+	# shifts share the same cashier + profile + posting_date.
+	{
+		"dt": "POS Invoice",
+		"fieldname": "pos_opening_entry",
+		"label": "POS Opening Entry",
+		"fieldtype": "Link",
+		"options": "POS Opening Entry",
+		"insert_after": "elmahdi_idempotency_key",
+		"read_only": 1,
+		"no_copy": 1,
+	},
 	# POS Closing Entry
 	{
 		"dt": "POS Closing Entry",

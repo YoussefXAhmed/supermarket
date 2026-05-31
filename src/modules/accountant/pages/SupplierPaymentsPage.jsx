@@ -21,6 +21,7 @@ import { listSuppliers } from '../../../services/purchasingApi';
 import { fmtCurrency } from '../../../utils/format';
 import { financePath } from '../../../utils/workspacePaths';
 import { getUserFriendlyMessage } from '../../../utils/errorHandling';
+import { useNotify } from '../../../context/NotificationContext';
 import { PAY_STATUS } from '../../../utils/apPaymentStatus';
 
 const STATUS_TABS = [
@@ -33,6 +34,7 @@ const STATUS_TABS = [
 
 export default function SupplierPaymentsPage() {
   const { t } = useTranslation();
+  const notify = useNotify();
   const [dashboard, setDashboard] = useState(null);
   const [invoices, setInvoices] = useState([]);
   const [payments, setPayments] = useState([]);
@@ -43,7 +45,6 @@ export default function SupplierPaymentsPage() {
   const [showPayForm, setShowPayForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [msg, setMsg] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -87,7 +88,7 @@ export default function SupplierPaymentsPage() {
 
   const onPaymentSuccess = (result) => {
     setShowPayForm(false);
-    setMsg(`Payment ${result.name} submitted — ${fmtCurrency(result.paid_amount)}`);
+    notify.success(`Supplier payment ${result.name} recorded — ${fmtCurrency(result.paid_amount)}`);
     load();
   };
 
@@ -110,12 +111,10 @@ export default function SupplierPaymentsPage() {
       />
 
       <div className="ap-workflow-banner" role="note">
-        <strong>AP lifecycle:</strong> Purchase Receipt (goods) →{' '}
-        <Link to={financePath('matching')}>Invoice matching</Link> → Purchase Invoice →{' '}
-        <strong>Supplier payment</strong> (this page). ERPNext posts GL and updates outstanding.
+        <strong>Payables lifecycle:</strong> Goods Receipt →{' '}
+        <Link to={financePath('matching')}>Match supplier bill</Link> → Supplier bill →{' '}
+        <strong>Supplier payment</strong> (this page). The system posts accounting entries and updates the bill balance.
       </div>
-
-      {msg && <p className="inv-success">{msg}</p>}
 
       {dashboard && (
         <section className="layout-grid layout-grid--kpi" aria-label="AP summary">

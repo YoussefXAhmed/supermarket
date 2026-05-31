@@ -7,7 +7,30 @@ const PROTECTED_ROOTS = [
   '/pos', '/shifts', '/inventory', '/hr', '/manager', '/finance', '/purchasing', '/admin',
 ];
 
+/**
+ * REPORT_ACCESS — mirrors src/auth/reportAccess.js. Intentionally a hand-
+ * maintained copy in this verification script: the script asserts what
+ * SHOULD be true so drift between intent and production is caught here.
+ */
+const REPORT_ACCESS = {
+  'sales-register':      { path: 'sales-register',  anyOf: ['canAccessManagerWorkspace', 'canAccessAccountantWorkspace', 'canManageSystem'] },
+  'daily-cash-register': { path: 'daily-cash',      anyOf: ['canAccessManagerWorkspace', 'canAccessAccountantWorkspace', 'canManageSystem'] },
+  'stock-balance':       { path: 'stock-balance',   anyOf: ['canAccessManagerWorkspace', 'canAccessInventory', 'canManageSystem'] },
+  'customer-ledger':     { path: 'customer-ledger', anyOf: ['canAccessAccountantWorkspace', 'canManageSystem'] },
+  'profit-and-loss':     { path: 'profit-and-loss', anyOf: ['canAccessAccountantWorkspace', 'canManageSystem'] },
+  'item-wise-sales':     { path: 'item-wise-sales', anyOf: ['canAccessManagerWorkspace', 'canAccessAccountantWorkspace', 'canManageSystem'] },
+};
+const REPORT_WORKSPACE_BASES = ['/admin/reports', '/manager/reports', '/finance/reports'];
+const REPORT_RULES = [];
+for (const base of REPORT_WORKSPACE_BASES) {
+  for (const [, def] of Object.entries(REPORT_ACCESS)) {
+    REPORT_RULES.push({ prefix: `${base}/${def.path}`, anyOf: def.anyOf });
+  }
+}
+
 const ROUTE_ACCESS = [
+  // Per-report rules first — more specific than `/<workspace>/reports`.
+  ...REPORT_RULES,
   { prefix: '/pos/returns', anyOf: ['canCreateReturns'] },
   { prefix: '/pos', anyOf: ['canOperatePOS', 'canViewPOS'] },
   { prefix: '/shifts/open', anyOf: ['canOpenShift'] },
@@ -30,10 +53,13 @@ const ROUTE_ACCESS = [
   { prefix: '/finance', anyOf: ['canAccessAccountantWorkspace'] },
   { prefix: '/purchasing/invoices', anyOf: ['canManageSystem'] },
   { prefix: '/purchasing/reports', anyOf: ['canManageSystem'] },
+  { prefix: '/purchasing/history', anyOf: ['canViewPurchasingHistory', 'canManageSystem'] },
   { prefix: '/purchasing/receive', anyOf: ['canAccessPurchasing', 'canManageSystem'] },
   { prefix: '/purchasing', anyOf: ['canAccessPurchasing', 'canManageSystem'] },
   { prefix: '/admin/invoices', anyOf: ['canManageSystem'] },
   { prefix: '/admin/approvals', anyOf: ['canManageSystem'] },
+  { prefix: '/admin/pos-profiles', anyOf: ['canManagePOSProfiles', 'canManageSystem'] },
+  { prefix: '/manager/pos-profiles', anyOf: ['canManagePOSProfiles', 'canManageSystem'] },
   { prefix: '/admin', anyOf: ['canManageSystem'] },
 ];
 
@@ -109,22 +135,29 @@ const ROLE_CAPS = {
     operationalPersona: 'inventory',
   }),
   purchasing: finalizeCapabilities({
-    canAccessPurchasing: true, operationalPersona: 'purchasing',
+    canAccessPurchasing: true, canViewPurchasingHistory: true, operationalPersona: 'purchasing',
   }),
   store_manager: finalizeCapabilities({
     canAccessManagerWorkspace: true, canViewReports: true, canApprovePurchasing: true,
+    canViewPurchaseApprovals: true, canViewPurchasingHistory: true,
+    canManagePOSProfiles: true,
     canViewApprovalsDashboard: true, canViewShiftReports: true,
     canAccessPurchasing: false, canAccessInventory: false, canViewPOS: false,
     operationalPersona: 'store_manager',
   }),
   accountant: finalizeCapabilities({
     canAccessAccountantWorkspace: true, canViewSupplierPayments: true,
+    canViewPurchasingHistory: true,
     canViewInvoices: true, canApproveShift: true, canViewApprovalsDashboard: true,
     canViewShiftReports: true, canAccessInventory: false, canInventoryTransfer: false,
     operationalPersona: 'accountant',
   }),
   hr: finalizeCapabilities({
     canAccessHRWorkspace: true, operationalPersona: 'hr',
+  }),
+  admin: finalizeCapabilities({
+    canManageSystem: true, canManageSettings: true, canViewShiftReports: true,
+    operationalPersona: 'administrator',
   }),
 };
 
@@ -214,8 +247,96 @@ console.log(`Fail-closed unregistered workspace: ${failClosedOk ? 'PASS' : 'FAIL
 const cashierAdminInvoices = canAccessPath('/admin/invoices', ROLE_CAPS.cashier);
 console.log(`Cashier /admin/invoices canAccessPath deny: ${!cashierAdminInvoices ? 'PASS' : 'FAIL'}`);
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Report-level authorization tests.
+//
+// Two layers:
+//   (1) Matrix: canAccessReport(key, caps) — asserts the REPORT_ACCESS rules.
+//       Independent of URL/workspace. Inventory clerks "can access" stock-balance
+//       per matrix even though they have no /inventory/reports route today.
+//   (2) URL pipeline: simulateSyncAccess(caps, '/<ws>/reports/<slug>') —
+//       asserts the full chain (workspace shell + per-report matrix gate).
+// ─────────────────────────────────────────────────────────────────────────────
+
+function canAccessReport(key, caps) {
+  const def = REPORT_ACCESS[key];
+  return Boolean(def && def.anyOf.some((c) => hasCapability(caps, c)));
+}
+
+const EXPECTED_MATRIX_ACCESS = {
+  cashier: [],
+  inventory: ['stock-balance'],
+  purchasing: [],
+  store_manager: ['sales-register', 'daily-cash-register', 'stock-balance', 'item-wise-sales'],
+  accountant: ['sales-register', 'daily-cash-register', 'customer-ledger', 'profit-and-loss', 'item-wise-sales'],
+  hr: [],
+  admin: ['sales-register', 'daily-cash-register', 'stock-balance', 'customer-ledger', 'profit-and-loss', 'item-wise-sales'],
+};
+
+/** Workspace each role can actually open. Roles not listed have no reports workspace. */
+const ROLE_REPORT_WORKSPACE = {
+  store_manager: '/manager/reports',
+  accountant: '/finance/reports',
+  admin: '/admin/reports',
+};
+
+console.log('\n[report matrix — canAccessReport]');
+let matrixFails = 0;
+const allReports = Object.keys(REPORT_ACCESS);
+for (const [role, expected] of Object.entries(EXPECTED_MATRIX_ACCESS)) {
+  const caps = ROLE_CAPS[role];
+  const actual = allReports.filter((k) => canAccessReport(k, caps));
+  const missing = expected.filter((k) => !actual.includes(k));
+  const extra = actual.filter((k) => !expected.includes(k));
+  const ok = missing.length === 0 && extra.length === 0;
+  console.log(`  ${role.padEnd(14)} ${ok ? 'PASS' : 'FAIL'}  matrix=[${actual.join(', ')}]`);
+  if (!ok) {
+    matrixFails += 1;
+    if (missing.length) console.log(`    missing: ${missing.join(', ')}`);
+    if (extra.length) console.log(`    extra (leak!): ${extra.join(', ')}`);
+  }
+}
+
+console.log('\n[report URLs — full pipeline (shell + matrix)]');
+let urlFails = 0;
+for (const [role, expectedReports] of Object.entries(EXPECTED_MATRIX_ACCESS)) {
+  const caps = ROLE_CAPS[role];
+  const ownBase = ROLE_REPORT_WORKSPACE[role];
+  console.log(`  [${role}]`);
+
+  for (const key of allReports) {
+    const slug = REPORT_ACCESS[key].path;
+
+    // (a) Own workspace — should allow iff report is in role's matrix list.
+    if (ownBase) {
+      const path = `${ownBase}/${slug}`;
+      const expected = expectedReports.includes(key);
+      const result = simulateSyncAccess(caps, path);
+      const ok = result.allowed === expected;
+      if (!ok) {
+        console.log(`    ${path.padEnd(45)} FAIL  expected ${expected ? 'allow' : 'deny'}, got ${result.allowed ? 'allow' : 'deny'}@${result.layer}`);
+        urlFails += 1;
+      }
+    }
+
+    // (b) Cross-workspace — should always deny on the shell gate.
+    for (const base of REPORT_WORKSPACE_BASES) {
+      if (base === ownBase) continue;
+      const path = `${base}/${slug}`;
+      const result = simulateSyncAccess(caps, path);
+      if (result.allowed) {
+        console.log(`    ${path.padEnd(45)} FAIL  cross-workspace LEAK (${result.layer})`);
+        urlFails += 1;
+      }
+    }
+  }
+}
+if (urlFails === 0) console.log('  All URL × role × report combinations match expected matrix.');
+
 console.log('\n--- Summary ---');
 console.log(`Page leaks: ${leaks.length}`);
 console.log(`Shell flashes: ${shellFlashes.length}`);
+console.log(`Report matrix fails: ${matrixFails}`);
+console.log(`Report URL fails: ${urlFails}`);
 
-process.exit(leaks.length + shellFlashes.length > 0 ? 1 : 0);
+process.exit(leaks.length + shellFlashes.length + matrixFails + urlFails > 0 ? 1 : 0);

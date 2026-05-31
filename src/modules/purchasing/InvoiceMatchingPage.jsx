@@ -170,11 +170,7 @@ export default function InvoiceMatchingPage() {
         />
       ) : (
         <LayoutSection variant="raised" flushHead>
-          {error && (
-            <p className="inv-error" role="alert" style={{ padding: '0.75rem 1rem' }}>
-              {error}
-            </p>
-          )}
+          {error && <ApiErrorCard title="Match supplier bill error" message={error} onRetry={load} />}
           <div className="invoice-matching-list">
             {filtered.map((row) => (
               <ReceiptMatchingCard

@@ -1,21 +1,22 @@
+/**
+ * Approval status pill — thin domain wrapper over the shared <Pill>
+ * primitive in components/ui. Maps approval lifecycle states to tones;
+ * visual chrome lives in components.css `.pill / .pill--*`.
+ */
+import { Pill } from '../ui';
 import { approvalStatusLabel } from '../../utils/approvalStatuses';
 
 const TONE = {
-  draft: 'status-pill--draft',
-  pending_approval: 'status-pill--pending',
-  pending_manager: 'status-pill--pending',
-  pending_accountant: 'status-pill--pending',
-  approved: 'status-pill--approved',
-  rejected: 'status-pill--rejected',
-  submitted: 'status-pill--submitted',
+  draft: 'draft',
+  pending_approval: 'pending',
+  pending_manager: 'pending',
+  pending_accountant: 'pending',
+  approved: 'approved',
+  rejected: 'rejected',
+  submitted: 'submitted',
 };
 
 export default function StatusPill({ status, label }) {
   const text = label || approvalStatusLabel(status);
-  const tone = TONE[status] || 'status-pill--draft';
-  return (
-    <span className={`status-pill ${tone}`} title={text}>
-      {text}
-    </span>
-  );
+  return <Pill tone={TONE[status] || 'default'} title={text}>{text}</Pill>;
 }

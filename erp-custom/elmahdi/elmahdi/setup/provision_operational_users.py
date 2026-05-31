@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import os
 import secrets
 import string
 
 import frappe
+from frappe import _
 from frappe.utils.password import update_password
 
 COMPANY = "Elmahdi Supermarket"
@@ -45,17 +47,45 @@ ROLE_PROFILES = {
 	"Elmahdi HR Officer": [ELMAHDI_HR_USER_ROLE],
 }
 
-# Dev/demo passwords (operational logins). Re-run reset_operational_passwords after provision.
-OPERATIONAL_PASSWORDS: dict[str, str] = {
-	"Administrator": "admin12",
-	"cashier@elmahdi.com": "pos12",
-	"inventory@elmahdi.com": "inventory12",
-	"purchasing@elmahdi.com": "purchase12",
-	"manager@elmahdi.com": "manager12",
-	"accountant@elmahdi.com": "accountant12",
-	"hr@elmahdi.com": "hr12",
-	"youssefayyman@gmail.com": "admin12",
-}
+# Operational passwords are sourced from environment variables only — never
+# committed to the repository. Each user maps to an env var named
+# `ELMAHDI_PWD_<LOCAL_PART_UPPERCASE>`; e.g. `cashier@elmahdi.com` reads from
+# `ELMAHDI_PWD_CASHIER`. When provisioning for the first time without env
+# vars, a cryptographically random password is generated and returned in the
+# result dict (printed once to whoever ran the bench command).
+#
+# `reset_operational_passwords()` is stricter: it REQUIRES the env vars to be
+# set and refuses to run on a production site unless
+# `ELMAHDI_ALLOW_PRODUCTION_RESET=1` is also set.
+
+
+def _env_key_for_email(email: str) -> str:
+	local = email.split("@", 1)[0] if "@" in email else email
+	return "ELMAHDI_PWD_" + local.upper().replace(".", "_").replace("-", "_")
+
+
+def _is_production_site() -> bool:
+	"""Best-effort check whether the current site is flagged as production."""
+	try:
+		conf = frappe.conf or {}
+		if conf.get("production") or conf.get("production_mode"):
+			return True
+		site_config = getattr(frappe.local, "site_config", {}) or {}
+		return bool(site_config.get("production") or site_config.get("production_mode"))
+	except Exception:  # noqa: BLE001 — guard must never raise
+		return False
+
+
+def _assert_password_resets_allowed() -> None:
+	"""Refuse password resets on a production site without explicit override."""
+	if _is_production_site() and not os.environ.get("ELMAHDI_ALLOW_PRODUCTION_RESET"):
+		frappe.throw(
+			_(
+				"Refusing to reset operational passwords on a production site. "
+				"Set ELMAHDI_ALLOW_PRODUCTION_RESET=1 to override (and rotate immediately after)."
+			),
+			frappe.ValidationError,
+		)
 
 USERS = [
 	{
@@ -65,6 +95,9 @@ USERS = [
 		"role_profile": "Elmahdi Cashier",
 		"warehouses": [MAIN_WH],
 		"price_list": SELLING_PL,
+		# Empty = resolve enabled POS Profile(s) for assigned warehouse(es).
+		# Also grants the profile's warehouse when it differs (e.g. register on Outer WH).
+		"pos_profiles": [],
 	},
 	{
 		"email": "inventory@elmahdi.com",
@@ -104,13 +137,6 @@ USERS = [
 		"warehouses": [],
 		"create": True,
 	},
-	{
-		"email": "youssefayyman@gmail.com",
-		"first_name": "Youssef",
-		"last_name": "Admin",
-		"role_profile": "Elmahdi Administrator",
-		"warehouses": [MAIN_WH, OUTER_WH],
-	},
 ]
 
 
@@ -120,17 +146,38 @@ def _random_password(length: int = 14) -> str:
 
 
 def _password_for_user(email: str) -> str | None:
-	return OPERATIONAL_PASSWORDS.get(email)
+	"""Return the operator-provided password from environment, or None."""
+	return os.environ.get(_env_key_for_email(email)) or None
 
 
 def reset_operational_passwords() -> list[dict]:
-	"""Set known dev passwords for operational users (idempotent)."""
+	"""Set operational passwords from environment variables.
+
+	Strict: every operational user listed in USERS must have its env var set.
+	Fails closed on production sites unless ELMAHDI_ALLOW_PRODUCTION_RESET=1.
+	"""
+	_assert_password_resets_allowed()
+
 	updated: list[dict] = []
-	for email, password in OPERATIONAL_PASSWORDS.items():
+	missing_envs: list[str] = []
+	for spec in USERS:
+		email = spec["email"]
+		password = _password_for_user(email)
+		if not password:
+			missing_envs.append(_env_key_for_email(email))
+			continue
 		if not frappe.db.exists("User", email):
 			continue
 		update_password(email, password)
 		updated.append({"email": email, "password_set": True})
+
+	if missing_envs:
+		frappe.throw(
+			_("Password env vars missing: {0}. Export each before re-running.").format(
+				", ".join(sorted(set(missing_envs)))
+			),
+			frappe.ValidationError,
+		)
 	frappe.db.commit()
 	return updated
 
@@ -178,8 +225,40 @@ def _clear_user_permissions(user: str) -> None:
 		frappe.delete_doc("User Permission", row, ignore_permissions=True, force=True)
 
 
-def _set_user_permissions(user: str, warehouses: list[str], price_list: str | None = None) -> None:
+def _resolve_pos_profiles(spec: dict) -> list[str]:
+	"""POS profiles explicitly assigned or linked to the user's warehouses."""
+	explicit = [p for p in (spec.get("pos_profiles") or []) if frappe.db.exists("POS Profile", p)]
+	if explicit:
+		return explicit
+
+	found: list[str] = []
+	for wh in spec.get("warehouses") or [MAIN_WH]:
+		name = frappe.db.get_value("POS Profile", {"disabled": 0, "warehouse": wh}, "name")
+		if name and name not in found:
+			found.append(name)
+	return found
+
+
+def _warehouses_for_pos_access(base_warehouses: list[str], pos_profiles: list[str]) -> list[str]:
+	"""Include each assigned profile's warehouse so link-field user permissions allow read."""
+	warehouses = list(dict.fromkeys(base_warehouses or []))
+	for pname in pos_profiles:
+		wh = frappe.db.get_value("POS Profile", pname, "warehouse")
+		if wh and wh not in warehouses:
+			warehouses.append(wh)
+	return warehouses
+
+
+def _set_user_permissions(
+	user: str,
+	warehouses: list[str],
+	price_list: str | None = None,
+	pos_profiles: list[str] | None = None,
+) -> None:
 	_clear_user_permissions(user)
+	pos_profiles = list(pos_profiles or [])
+	warehouses = _warehouses_for_pos_access(warehouses, pos_profiles)
+
 	frappe.get_doc(
 		{
 			"doctype": "User Permission",
@@ -190,7 +269,7 @@ def _set_user_permissions(user: str, warehouses: list[str], price_list: str | No
 		}
 	).insert(ignore_permissions=True)
 
-	for wh in warehouses or []:
+	for wh in warehouses:
 		frappe.get_doc(
 			{
 				"doctype": "User Permission",
@@ -212,6 +291,18 @@ def _set_user_permissions(user: str, warehouses: list[str], price_list: str | No
 			}
 		).insert(ignore_permissions=True)
 
+	for pname in pos_profiles:
+		frappe.get_doc(
+			{
+				"doctype": "User Permission",
+				"user": user,
+				"allow": "POS Profile",
+				"for_value": pname,
+				"apply_to_all_doctypes": 0,
+				"is_default": 1 if pname == pos_profiles[0] else 0,
+			}
+		).insert(ignore_permissions=True)
+
 
 def _provision_user(spec: dict, password: str | None) -> dict:
 	email = spec["email"]
@@ -227,6 +318,10 @@ def _provision_user(spec: dict, password: str | None) -> dict:
 
 	user.enabled = 1
 	user.role_profile_name = spec["role_profile"]
+	if spec["role_profile"] != "Elmahdi Administrator" and frappe.get_meta("User").has_field(
+		"desk_access"
+	):
+		user.desk_access = 0
 	user.desk_theme = user.desk_theme or "Dark"
 	user.language = user.language or "en"
 
@@ -237,7 +332,17 @@ def _provision_user(spec: dict, password: str | None) -> dict:
 	user.role_profile_name = spec["role_profile"]
 	user.save(ignore_permissions=True)
 
-	_set_user_permissions(email, spec.get("warehouses") or [MAIN_WH], spec.get("price_list"))
+	pos_profiles = _resolve_pos_profiles(spec)
+	if spec["role_profile"] == "Elmahdi Cashier" and not pos_profiles:
+		pos_profiles = frappe.get_all(
+			"POS Profile", filters={"disabled": 0}, pluck="name", limit_page_length=1
+		)
+	_set_user_permissions(
+		email,
+		spec.get("warehouses") or [MAIN_WH],
+		spec.get("price_list"),
+		pos_profiles=pos_profiles,
+	)
 
 	from elmahdi.setup.user_module_profiles import apply_user_modules
 

@@ -149,8 +149,8 @@ export default function CreateSupplierPaymentPanel({ onSuccess, onCancel, presel
   return (
     <form className="ap-payment-form" onSubmit={onSubmit}>
       <p className="ap-payment-form__intro">
-        Creates a real ERPNext Payment Entry. GL entries, payables, and invoice outstanding are
-        updated by ERP when submitted.
+        Creates a supplier payment. Accounting entries, supplier balance, and bill outstanding are
+        updated when approved.
       </p>
 
       <div className="ap-payment-form__grid">

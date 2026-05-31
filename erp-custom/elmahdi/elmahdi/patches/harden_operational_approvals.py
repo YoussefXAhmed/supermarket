@@ -6,6 +6,11 @@ import frappe
 
 from elmahdi.setup.approval_custom_fields import execute as install_approval_fields
 from elmahdi.setup.operational_permissions import apply_permission_matrix
+from elmahdi.setup.operational_security_hardening import (
+	_harden_desk_access,
+	grant_monitor_shift_perms,
+)
+from elmahdi.setup.fix_cashier_pos_closing_perm import grant_cashier_pos_closing_perms
 from elmahdi.setup.provision_operational_users import (
 	FORBIDDEN_ROLES_ON_OPERATIONAL_PROFILES,
 	ROLE_PROFILES,
@@ -69,7 +74,10 @@ def _normalize_users() -> None:
 
 def execute():
 	install_approval_fields()
+	grant_cashier_pos_closing_perms()
+	grant_monitor_shift_perms()
 	apply_permission_matrix()
+	_harden_desk_access()
 	_normalize_users()
 	issues = _validate_role_profiles()
 	frappe.db.commit()

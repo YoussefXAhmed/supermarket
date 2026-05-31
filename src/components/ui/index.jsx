@@ -30,6 +30,28 @@ export function Badge({ children, color = 'default' }) {
   return <span className={`badge badge--${color}`}>{children}</span>;
 }
 
+/* ── Pill ──
+   Generic status pill — single visual primitive backing the three domain
+   pills (approvals, AP payment, billing). Each domain wrapper imports
+   `Pill`, maps its own state vocabulary → tone, and delegates the chrome
+   here. Tones are aliased so domain words ('approved', 'pending', 'rejected')
+   work alongside generic ones ('success', 'warning', 'danger', 'info'). */
+const PILL_TONES = new Set([
+  'default', 'draft',
+  'pending', 'warning',
+  'approved', 'success',
+  'rejected', 'danger',
+  'submitted', 'info',
+]);
+export function Pill({ tone = 'default', title, children, className = '' }) {
+  const safe = PILL_TONES.has(tone) ? tone : 'default';
+  return (
+    <span className={`pill pill--${safe} ${className}`.trim()} title={title}>
+      {children}
+    </span>
+  );
+}
+
 /* ── Card ── */
 export function Card({ children, className = '', ...props }) {
   return <div className={`card ${className}`} {...props}>{children}</div>;

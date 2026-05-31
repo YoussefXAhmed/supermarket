@@ -159,13 +159,26 @@ export default function ApprovalsDashboardPage() {
   const showActionNotes = (showPurchaseSection && canExecutePurchase)
     || (showShiftSection && canExecuteShiftApproval);
 
+  const historyHref = workspace === 'admin' ? '/admin/approvals/history' : '/manager/approvals/history';
+  const showHistoryLink = (workspace === 'manager' || workspace === 'admin')
+    && Boolean(capabilities?.canViewPurchaseApprovals || capabilities?.canManageSystem);
+
   return (
     <DashboardLayout>
       <PageHeader
         title={t('approvals.dashboardTitle')}
         subtitle={t('approvals.dashboardSubtitle')}
         dense
-        actions={<Btn variant="ghost" size="sm" onClick={reload}>{t('common.refresh')}</Btn>}
+        actions={(
+          <>
+            {showHistoryLink && (
+              <Link to={historyHref} className="page-header__link">
+                {t('approvals.viewHistory', { defaultValue: 'View approval history' })}
+              </Link>
+            )}
+            <Btn variant="ghost" size="sm" onClick={reload}>{t('common.refresh')}</Btn>
+          </>
+        )}
       />
 
       <section className="layout-grid layout-grid--kpi" aria-label={t('approvals.approvalCounts')}>

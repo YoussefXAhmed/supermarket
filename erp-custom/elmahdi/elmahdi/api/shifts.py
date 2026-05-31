@@ -40,7 +40,7 @@ def _submit_opening_doc(doc):
     return native_submit(doc)
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def open_pos_shift(
     pos_profile,
     company,
@@ -93,7 +93,7 @@ def open_pos_shift(
     }
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def submit_pos_opening_entry(name):
     """Submit a draft POS Opening Entry if valid (native submit)."""
     if not name:
@@ -104,7 +104,7 @@ def submit_pos_opening_entry(name):
     return {"name": doc.name, "docstatus": doc.docstatus, "status": doc.status}
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def repair_draft_opening_entries(dry_run=1):
     """
     Find draft POS Opening Entries (docstatus=0) and submit when valid.
@@ -257,7 +257,7 @@ def get_shift_summary(pos_opening_entry):
     }
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def prepare_closing_entry(pos_opening_entry, actual_cash, notes=None, payment_counts=None):
     """
     Build a POS Closing Entry (draft) with payment_reconciliation rows.
@@ -288,6 +288,34 @@ def prepare_closing_entry(pos_opening_entry, actual_cash, notes=None, payment_co
     closing.posting_date = today()
     if opening.user:
         closing.user = opening.user
+
+    # Roll-up shift revenue onto the parent doc directly. We intentionally do
+    # NOT append rows to `pos_transactions` — our pipeline consolidates each
+    # POS Invoice at sale time (see elmahdi.api.erp_submit.consolidate_pos_invoice),
+    # so by the time the shift closes every invoice already has its
+    # `consolidated_invoice` field set. ERPNext's standard validate_pos_invoices()
+    # rejects already-consolidated rows ("Row #1: POS Invoice is already
+    # consolidated"). The parent Currency/Float fields are not recomputed from
+    # child rows during validate, so setting them here is safe and gives the
+    # Daily Cash Register report a real "Shift revenue" figure.
+    invoice_rows = frappe.get_all(
+        "POS Invoice",
+        filters=_opening_filters(opening),
+        fields=["name", "grand_total", "net_total"],
+    )
+    invoice_names = [row.name for row in invoice_rows]
+    total_qty = 0.0
+    if invoice_names:
+        qty_rows = frappe.get_all(
+            "POS Invoice Item",
+            filters={"parent": ["in", invoice_names], "parenttype": "POS Invoice"},
+            fields=["qty"],
+        )
+        total_qty = sum(flt(q.qty) for q in qty_rows)
+
+    closing.grand_total = sum(flt(r.grand_total) for r in invoice_rows)
+    closing.net_total = sum(flt(r.net_total) for r in invoice_rows)
+    closing.total_quantity = total_qty
 
     opening_by_mode = summary.get("opening_by_mode") or {}
     payment_totals = summary.get("payment_totals") or {}

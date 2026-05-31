@@ -4,19 +4,21 @@ import { useTranslation } from 'react-i18next';
 import { PageHeader, PageLoading, ApiErrorCard, StatCard, Btn, PartialDataBanner } from '../../components/ui';
 import { useAuth } from '../../hooks/useAuth';
 import { hasCapability } from '../../auth/capabilities';
-import { canExecutePurchasingFinance } from '../../auth/navigationConfig';
+import { canAccessPurchasingAdminFinance, canShowPurchasingFinanceGuidance } from '../../auth/navigationConfig';
 import { DashboardLayout, LayoutSection, TableRegion } from '../../components/layout/page-layouts';
 import { getPurchasingAnalytics } from '../../services/purchasingService';
 import { getUserFriendlyMessage } from '../../utils/errorHandling';
 import { useOperationalRefresh } from '../../services/operationalRefresh';
 import { fmtCurrencyCompact } from '../../utils/format';
 import { financePath, purchasingPath } from '../../utils/workspacePaths';
+import AccessibleLink from '../../components/auth/AccessibleLink';
 
 export default function PurchasingDashboardPage() {
   const { t } = useTranslation();
   const { capabilities } = useAuth();
   const showApprovals = hasCapability(capabilities, 'canViewPurchaseApprovals');
-  const showFinanceActions = canExecutePurchasingFinance(capabilities);
+  const showAdminFinance = canAccessPurchasingAdminFinance(capabilities);
+  const showFinanceGuidance = canShowPurchasingFinanceGuidance(capabilities);
   const [data, setData] = useState(null);
   const [warnings, setWarnings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -74,7 +76,7 @@ export default function PurchasingDashboardPage() {
       <section className="layout-grid layout-grid--kpi" aria-label="Key metrics">
         <StatCard label={t('nav.suppliers')} value={data.supplierCount} icon="🏭" color="blue" compact />
         <StatCard label={t('purchasing.totalPurchases')} value={fmtCurrencyCompact(data.totalPurchases)} icon="💰" color="accent" compact />
-        {showFinanceActions && (
+        {showAdminFinance && (
           <StatCard label={t('finance.outstanding')} value={fmtCurrencyCompact(data.totalOutstanding)} icon="📋" color="red" compact />
         )}
         <StatCard label={t('purchasing.thisMonth')} value={fmtCurrencyCompact(data.monthPurchases)} icon="📅" color="green" compact />
@@ -93,10 +95,12 @@ export default function PurchasingDashboardPage() {
             {showApprovals && (
               <Link to={purchasingPath('approvals')} className="btn btn--ghost btn--sm">{t('nav.approvals')}</Link>
             )}
-            {showFinanceActions && (
+            {showAdminFinance && (
               <>
-                <Link to={purchasingPath('invoices')} className="btn btn--ghost btn--sm">{t('purchasing.newInvoice')}</Link>
-                <Link to={financePath('matching')} className="btn btn--ghost btn--sm">{t('nav.matching')}</Link>
+                <AccessibleLink to={purchasingPath('invoices')} className="btn btn--ghost btn--sm">{t('purchasing.newInvoice')}</AccessibleLink>
+                {showFinanceGuidance && (
+                  <AccessibleLink to={financePath('matching')} className="btn btn--ghost btn--sm">{t('nav.matching')}</AccessibleLink>
+                )}
               </>
             )}
             <Link to={purchasingPath('suppliers')} className="btn btn--ghost btn--sm">{t('nav.suppliers')}</Link>
@@ -110,8 +114,8 @@ export default function PurchasingDashboardPage() {
         variant="raised"
         fit={sparseTable}
         actions={
-          showFinanceActions ? (
-            <Link to={purchasingPath('reports')} className="btn btn--ghost btn--sm">{t('purchasing.fullReport')}</Link>
+          showAdminFinance ? (
+            <AccessibleLink to={purchasingPath('reports')} className="btn btn--ghost btn--sm">{t('purchasing.fullReport')}</AccessibleLink>
           ) : null
         }
       >
@@ -126,7 +130,7 @@ export default function PurchasingDashboardPage() {
                     <th scope="col">{t('nav.suppliers')}</th>
                     <th scope="col" className="num">{t('purchasing.table.inv')}</th>
                     <th scope="col" className="num">{t('finance.table.total')}</th>
-                    {showFinanceActions && <th scope="col" className="num">{t('finance.outstanding')}</th>}
+                    {showAdminFinance && <th scope="col" className="num">{t('finance.outstanding')}</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -139,7 +143,7 @@ export default function PurchasingDashboardPage() {
                       </td>
                       <td className="num mono">{row.count}</td>
                       <td className="num mono">{fmtCurrencyCompact(row.total)}</td>
-                      {showFinanceActions && (
+                      {showAdminFinance && (
                         <td className="num mono">{fmtCurrencyCompact(row.outstanding)}</td>
                       )}
                     </tr>

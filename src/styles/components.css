@@ -97,6 +97,37 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
 .badge--blue    { background: var(--blue-bg); color: var(--blue); }
 .badge--amber   { background: var(--accent-glow); color: var(--accent); }
 
+/* ── Pill (shared status pill primitive) ──
+   Single visual layer backing the 3 domain pills (approvals StatusPill,
+   accounting ApPaymentStatusPill, purchasing BillingStatusPill). Domain
+   words and generic words share tone styling via paired selectors. */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 99px;
+  font-size: var(--font-2xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.pill--default,
+.pill--draft       { background: var(--bg-4);     color: var(--text-2); }
+.pill--pending,
+.pill--warning     { background: var(--amber-bg); color: var(--amber); }
+.pill--approved,
+.pill--success     { background: var(--green-bg); color: var(--green); }
+.pill--rejected,
+.pill--danger      { background: var(--red-bg);   color: var(--red); }
+.pill--submitted,
+.pill--info        { background: var(--blue-bg);  color: var(--blue); }
+.pill__hint {
+  opacity: 0.85;
+  font-weight: 500;
+}
+
 /* ── Cards ── */
 .card {
   background: var(--bg-2); border: 1px solid var(--border);
@@ -171,7 +202,17 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
 }
 .page-header__title { font-size: 1.4rem; font-weight: 700; color: var(--text); }
 .page-header__sub   { font-size: 0.8rem; color: var(--text-2); margin-top: 2px; }
-.page-header__actions { display: flex; gap: 8px; align-items: center; }
+.page-header__actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.page-header__link {
+  font-size: var(--font-sm);
+  color: var(--accent);
+  text-decoration: none;
+  padding: 6px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.page-header__link:hover { background: var(--bg-3); color: var(--text); }
 
 /* ── Tables ── */
 .table-wrap {
@@ -237,6 +278,226 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* ── data-table alias: forward-compat name used in newer pages.
+   Inherits the .table look so PurchaseApprovalHistory, PurchasingHistory,
+   POSProfiles, and Returns all render identically. ── */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--bg-2);
+}
+.data-table thead th {
+  background: var(--bg-3);
+  padding: 10px 16px;
+  text-align: left;
+  font-size: var(--font-xs);
+  font-weight: 600;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.data-table td {
+  padding: 12px 16px;
+  font-size: 0.85rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  vertical-align: middle;
+}
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tbody tr:nth-child(even) td { background: rgba(255, 255, 255, 0.012); }
+.data-table tbody tr:hover td { background: var(--bg-3); }
+.data-table th.num,
+.data-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.data-table td.mono,
+.data-table th.mono { font-family: 'DM Mono', monospace; font-variant-numeric: tabular-nums; }
+.data-table tfoot td {
+  padding: 12px 16px;
+  font-size: 0.85rem;
+  background: var(--bg-3);
+  border-top: 1px solid var(--border);
+}
+.data-table--compact th { padding: 7px 12px; }
+.data-table--compact td { padding: 8px 12px; font-size: var(--font-sm); }
+.data-table--clickable tbody tr { cursor: pointer; }
+.data-table--clickable tbody tr:focus-within td { background: var(--bg-3); }
+.data-table__row--clickable { cursor: pointer; }
+.data-table__row--clickable:hover td { background: var(--bg-3); }
+
+/* ── data-table--fill: forces one designated column (marked with
+   `className="fill-col"` on its <th> + <td>) to absorb leftover horizontal
+   width so dense list pages with few columns don't leave dead space on the
+   right. Used by Purchasing History, Purchase Approval History, POS Profiles
+   where the "Supplier" or "Warehouse" column is the natural wide target. ── */
+.data-table--fill { width: 100%; table-layout: auto; }
+.data-table--fill .fill-col { width: 100%; }
+.data-table--fill .fill-col,
+.data-table--fill td.fill-col {
+  white-space: normal;
+  word-break: break-word;
+}
+
+/* Standalone numeric alignment + muted mono — when not under .table/.data-table */
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+.mono--muted { color: var(--text-3, var(--text-2)); opacity: 0.7; font-size: var(--font-xs); }
+
+/* ── Filter bar — horizontal row of label+input filters above a table.
+   Used by Purchase Approval History, Purchasing History. ── */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+}
+.filter-bar__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 140px;
+}
+.filter-bar__field > span {
+  font-size: var(--font-xs);
+  color: var(--text-2);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.filter-bar__field--grow { flex: 1 1 220px; }
+
+/* ── Tab bar — horizontal tabs above a panel. Used by Purchasing History. ── */
+.tab-bar {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: -1px;
+}
+.tab-bar__tab {
+  padding: 10px 16px;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--text-2);
+  font-size: var(--font-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.tab-bar__tab:hover { color: var(--text); }
+.tab-bar__tab--active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* ── Inline key/value list used in drill-down modals (PurchasingHistory,
+   PurchaseApprovalHistory). The .kv-stack class in admin.css is for vertical
+   pairs; this is the inline two-column dl variant. ── */
+.kv {
+  display: grid;
+  grid-template-columns: minmax(110px, max-content) 1fr;
+  column-gap: 16px;
+  row-gap: 6px;
+  margin: 0;
+}
+.kv dt {
+  font-size: var(--font-xs);
+  color: var(--text-2);
+  font-weight: 500;
+}
+.kv dd {
+  margin: 0;
+  font-size: var(--font-sm);
+  color: var(--text);
+  word-break: break-word;
+}
+
+/* ── Form field — checkbox variant (default is column for labelled inputs). ── */
+.form-field--checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.form-field--checkbox > span {
+  font-size: var(--font-sm);
+  color: var(--text);
+}
+
+/* ── Drill-down detail modal layout (Purchase Approval History,
+   Purchasing History). ── */
+.purchase-history-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.purchase-history-detail__meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+.purchase-history-detail__meta > div {
+  background: var(--bg-3);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+}
+.purchase-history-detail__meta h3 {
+  margin: 0 0 8px;
+  font-size: var(--font-xs);
+  font-weight: 600;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.purchase-history-detail h3 {
+  margin: 0 0 8px;
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: var(--text);
+}
+.purchase-history-detail__events {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.purchase-history-detail__events li {
+  background: var(--bg-3);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  font-size: var(--font-sm);
+}
+.purchase-history-detail__events li p {
+  margin: 6px 0 0;
+  color: var(--text-2);
+  font-size: var(--font-xs);
+}
+.purchase-history-detail__notes {
+  white-space: pre-wrap;
+}
+
+/* ── POS Profile editor layout. ── */
+.pos-profile-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.pos-profile-edit__hint {
+  margin: 0;
+  font-size: var(--font-xs);
+  color: var(--text-2);
+  background: var(--bg-3);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  line-height: 1.5;
 }
 
 /* ── Empty State ── */

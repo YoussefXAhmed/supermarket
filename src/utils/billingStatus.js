@@ -19,12 +19,13 @@ const LABELS = {
   [BILLING_STATUS.VARIANCE_DETECTED]: 'Variance detected',
 };
 
+/** Generic Pill tones — keys consumed by the shared <Pill> primitive. */
 const TONES = {
-  [BILLING_STATUS.UNBILLED]: 'billing-pill--unbilled',
-  [BILLING_STATUS.PARTIALLY_BILLED]: 'billing-pill--partial',
-  [BILLING_STATUS.FULLY_BILLED]: 'billing-pill--billed',
-  [BILLING_STATUS.OVERBILLED]: 'billing-pill--over',
-  [BILLING_STATUS.VARIANCE_DETECTED]: 'billing-pill--variance',
+  [BILLING_STATUS.UNBILLED]: 'default',
+  [BILLING_STATUS.PARTIALLY_BILLED]: 'warning',
+  [BILLING_STATUS.FULLY_BILLED]: 'success',
+  [BILLING_STATUS.OVERBILLED]: 'danger',
+  [BILLING_STATUS.VARIANCE_DETECTED]: 'warning',
 };
 
 /** Normalize legacy ERP / SPA labels to canonical status keys. */

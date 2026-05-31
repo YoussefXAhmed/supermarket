@@ -153,11 +153,11 @@ export default function ShiftHistoryPage() {
   return (
     <TablePageLayout className="page-layout--list-page shift-history-page">
       <PageHeader
-        title={ownOnly ? 'My shifts' : 'Shift history'}
+        title={ownOnly ? 'My shifts' : 'Shift Records'}
         subtitle={
           ownOnly
-            ? 'Your shift sessions from POS Opening & Closing entries'
-            : 'Shift sessions · POS Opening & Closing entries from ERPNext'
+            ? 'Your shift records — openings and closings'
+            : 'Shift records · openings and closings'
         }
         dense
         actions={
@@ -215,8 +215,8 @@ export default function ShiftHistoryPage() {
               title="Pending approval"
               subtitle={
                 canExecuteShiftApproval
-                  ? 'Draft closings awaiting accountant submit in ERPNext'
-                  : 'Draft closings awaiting accountant review'
+                  ? 'Draft shift closings awaiting accountant approval'
+                  : 'Draft shift closings awaiting accountant review'
               }
             >
               <div className="shift-session-list">

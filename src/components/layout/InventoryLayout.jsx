@@ -2,6 +2,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useMemo } from 'react';
 import { useAuth } from '../../hooks/useAuth';
+import { useGuardedLogout } from '../../hooks/useGuardedLogout';
 import { getInventoryNavItems, getInventorySessionLinks } from '../../auth/navigationConfig';
 import UserSessionActions from './UserSessionActions';
 import ErrorBoundary from '../common/ErrorBoundary';
@@ -9,8 +10,9 @@ import { RoleBadge } from '../ui';
 
 export default function InventoryLayout() {
   const { t } = useTranslation();
-  const { user, logout, capabilities } = useAuth();
+  const { user, capabilities } = useAuth();
   const navigate = useNavigate();
+  const { requestLogout, guardModal } = useGuardedLogout();
 
   const visibleNav = useMemo(() => getInventoryNavItems(capabilities), [capabilities]);
   const sessionLinks = useMemo(
@@ -44,16 +46,14 @@ export default function InventoryLayout() {
             user={user}
             compact
             links={sessionLinks}
-            onLogout={async () => {
-              await logout();
-              navigate('/login', { replace: true });
-            }}
+            onLogout={requestLogout}
           />
         </div>
 
         <ErrorBoundary>
           <Outlet />
         </ErrorBoundary>
+        {guardModal}
       </div>
     </main>
   );

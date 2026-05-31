@@ -11,6 +11,7 @@ import frappe
 from frappe.permissions import add_permission, update_permission_property
 
 from elmahdi.setup.rest_resource_policy import (
+	FINANCE_AUXILIARY_DOCTYPES,
 	PERM_FIELDS,
 	REST_ROLE_LAYERS,
 	SPA_REST_DOCTYPES,
@@ -34,7 +35,7 @@ def _merged_role_matrix() -> dict[str, dict[str, dict[str, int]]]:
 	out: dict[str, dict[str, dict[str, int]]] = {}
 	for role, layers in REST_ROLE_LAYERS.items():
 		role_matrix: dict[str, dict[str, int]] = {}
-		for doctype in SPA_REST_DOCTYPES:
+		for doctype in SPA_REST_DOCTYPES + FINANCE_AUXILIARY_DOCTYPES:
 			perms = layers.get(doctype) or dict.fromkeys(PERM_FIELDS, 0)
 			role_matrix[doctype] = {k: int(perms.get(k, 0)) for k in PERM_FIELDS}
 		for doctype, perms in layers.items():

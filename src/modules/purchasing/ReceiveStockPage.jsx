@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { PageHeader, Btn, ApiErrorCard } from '../../components/ui';
 import StatusPill from '../../components/approvals/StatusPill';
@@ -15,8 +15,9 @@ import { listWarehouses } from '../../services/inventoryApi';
 import { getItems } from '../../services/api';
 import { getCompanies } from '../../services/api';
 import { getUserFriendlyMessage } from '../../utils/errorHandling';
-import { canExecutePurchasingFinance } from '../../auth/navigationConfig';
+import { canAccessPurchasingAdminFinance, canShowPurchasingFinanceGuidance } from '../../auth/navigationConfig';
 import { approvalsHubPath, financePath, purchasingPath } from '../../utils/workspacePaths';
+import AccessibleLink from '../../components/auth/AccessibleLink';
 import {
   approvalLevelLabel,
   evaluatePurchaseApproval,
@@ -24,6 +25,7 @@ import {
   submitButtonLabel,
 } from '../../utils/purchasingApproval';
 import { fmtCurrency } from '../../utils/format';
+import { useNotify } from '../../context/NotificationContext';
 
 const emptyLine = () => ({
   item_code: '',
@@ -37,8 +39,10 @@ const emptyLine = () => ({
 
 export default function ReceiveStockPage() {
   const { t } = useTranslation();
+  const notify = useNotify();
   const { capabilities } = useAuth();
-  const showFinanceActions = canExecutePurchasingFinance(capabilities);
+  const showAdminFinance = canAccessPurchasingAdminFinance(capabilities);
+  const showFinanceGuidance = canShowPurchasingFinanceGuidance(capabilities);
   const [searchParams] = useSearchParams();
   const [suppliers, setSuppliers] = useState([]);
   const [warehouses, setWarehouses] = useState([]);
@@ -48,7 +52,6 @@ export default function ReceiveStockPage() {
   const [warehouse, setWarehouse] = useState('');
   const [lines, setLines] = useState([emptyLine()]);
   const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
   const [lastReceipt, setLastReceipt] = useState(null);
   const submittingRef = useRef(false);
@@ -146,7 +149,6 @@ export default function ReceiveStockPage() {
     if (submittingRef.current) return;
     submittingRef.current = true;
     setErr('');
-    setMsg('');
     setSaving(true);
     try {
       const payloadLines = lines.map((l) => ({
@@ -166,9 +168,9 @@ export default function ReceiveStockPage() {
       });
       setLastReceipt(result);
       if (result.submitted) {
-        setMsg(`Received & submitted: ${result.name} — stock updated in warehouse.`);
+        notify.success(`Goods received & approved: ${result.name} — stock updated.`);
       } else {
-        setMsg(pendingReceiptMessage(result));
+        notify.info(pendingReceiptMessage(result));
       }
       setLines([emptyLine()]);
     } catch (e2) {
@@ -206,23 +208,23 @@ export default function ReceiveStockPage() {
               {pendingReceiptMessage(lastReceipt)}
             </p>
             <p className="page-header__sub" style={{ marginTop: 8 }}>
-              {showFinanceActions && (
+              {showAdminFinance && (
                 <>
                   {t('purchasing.trackStatusIn')}{' '}
-                  <Link to={purchasingPath('reports')}>{t('purchasing.purchaseHistory')}</Link>
+                  <AccessibleLink to={purchasingPath('reports')}>{t('purchasing.purchaseHistory')}</AccessibleLink>
                   {capabilities.canViewApprovalsDashboard ? (
                     <>
                       {' '}
-                      {t('common.or')} <Link to={approvalsHubPath(capabilities)}>{t('nav.approvals')}</Link>
+                      {t('common.or')} <AccessibleLink to={approvalsHubPath(capabilities)}>{t('nav.approvals')}</AccessibleLink>
                     </>
                   ) : null}
                   .
                 </>
               )}
-              {!showFinanceActions && capabilities.canViewApprovalsDashboard && (
+              {!showAdminFinance && capabilities.canViewApprovalsDashboard && (
                 <>
                   {t('purchasing.trackStatusIn')}{' '}
-                  <Link to={approvalsHubPath(capabilities)}>{t('nav.approvals')}</Link>.
+                  <AccessibleLink to={approvalsHubPath(capabilities)}>{t('nav.approvals')}</AccessibleLink>.
                 </>
               )}
             </p>
@@ -246,10 +248,10 @@ export default function ReceiveStockPage() {
               ))}
             </select>
           </label>
-          {showFinanceActions && (
+          {showFinanceGuidance && (
             <p className="page-header__sub" style={{ marginBottom: 12 }}>
               After manager approval, supplier payables are created automatically. Use{' '}
-              <Link to={financePath('matching')}>Invoice matching</Link> only for variance or partial billing.
+              <AccessibleLink to={financePath('matching')}>Invoice matching</AccessibleLink> only for variance or partial billing.
             </p>
           )}
 
@@ -345,7 +347,6 @@ export default function ReceiveStockPage() {
           <Btn type="button" variant="ghost" size="sm" onClick={() => setLines((p) => [...p, emptyLine()])}>+ {t('purchasing.addLine')}</Btn>
           <Btn type="submit" variant="primary" size="md" loading={saving}>{submitLabel}</Btn>
         </form>
-        {msg && <p className="inv-success">{msg}</p>}
         {err && <ApiErrorCard title={t('purchasing.receiveFailed')} message={err} />}
       </LayoutSection>
     </FormPageLayout>

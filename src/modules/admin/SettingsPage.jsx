@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ApiErrorCard, Badge, PageHeader, PageLoading } from '../../components/ui';
+import { ApiErrorCard, Badge, EmptyState, PageHeader, PageLoading } from '../../components/ui';
 import { AdminPageLayout, LayoutSection } from '../../components/layout/page-layouts';
 import { ERP_BASE_URL } from '../../config/erp';
 import { useAuth } from '../../hooks/useAuth';
@@ -8,7 +8,11 @@ import { getERPDeskUrl } from '../../utils/erpLinks';
 import { getUserFriendlyMessage } from '../../utils/errorHandling';
 
 export default function SettingsPage() {
-  const { user, roles } = useAuth();
+  const { user, roles, capabilities } = useAuth();
+  // Desk shortcuts bypass SPA validation/audit; show them only to system
+  // managers (break-glass access). Cashiers / inventory clerks / accountants
+  // who land here see Profile + Company Details only — no path back to /app.
+  const canEnterDesk = Boolean(capabilities?.canManageSystem);
   const [company, setCompany] = useState(null);
   const [companyLoading, setCompanyLoading] = useState(true);
   const [companyError, setCompanyError] = useState('');
@@ -60,46 +64,50 @@ export default function SettingsPage() {
           </div>
         </LayoutSection>
 
-        <LayoutSection variant="raised" title="ERPNext Connection">
+        <LayoutSection variant="raised" title="System Connection">
           <div className="kv-stack">
             <Row label="Base URL" value={ERP_BASE_URL} />
             <Row label="Auth" value="Cookie-based (withCredentials)" />
             <Row label="Protocol" value="Frappe REST API v2" />
           </div>
-          <div className="panel">
-            <a
-              href={getERPDeskUrl()}
-              target="_blank"
-              rel="noreferrer"
-              className="btn btn--ghost btn--sm"
-            >
-              Open ERPNext ↗
-            </a>
-          </div>
-        </LayoutSection>
-
-        <LayoutSection variant="raised" title="Quick Links">
-          <div className="quick-links">
-            {[
-              ['Item List', '/app/item'],
-              ['POS Profile', '/app/pos-profile'],
-              ['Price List', '/app/price-list'],
-              ['Warehouse', '/app/warehouse'],
-              ['User Management', '/app/user'],
-            ].map(([label, path]) => (
+          {canEnterDesk && (
+            <div className="panel">
               <a
-                key={path}
-                href={getERPDeskUrl(path.replace(/^\/app/, ''))}
+                href={getERPDeskUrl()}
                 target="_blank"
                 rel="noreferrer"
-                className="quick-link-row"
+                className="btn btn--ghost btn--sm"
               >
-                {label}
-                <span className="quick-link-row__arrow">↗</span>
+                Open admin console ↗
               </a>
-            ))}
-          </div>
+            </div>
+          )}
         </LayoutSection>
+
+        {canEnterDesk && (
+          <LayoutSection variant="raised" title="Quick Links">
+            <div className="quick-links">
+              {[
+                ['Item List', '/app/item'],
+                ['POS Profile', '/app/pos-profile'],
+                ['Price List', '/app/price-list'],
+                ['Warehouse', '/app/warehouse'],
+                ['User Management', '/app/user'],
+              ].map(([label, path]) => (
+                <a
+                  key={path}
+                  href={getERPDeskUrl(path.replace(/^\/app/, ''))}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="quick-link-row"
+                >
+                  {label}
+                  <span className="quick-link-row__arrow">↗</span>
+                </a>
+              ))}
+            </div>
+          </LayoutSection>
+        )}
 
         <LayoutSection variant="raised" title="Company Details">
           {companyLoading ? (
@@ -107,7 +115,11 @@ export default function SettingsPage() {
           ) : companyError ? (
             <ApiErrorCard title="Company details unavailable" message={companyError} onRetry={loadCompany} />
           ) : !company ? (
-            <p className="page-header__sub">No company found.</p>
+            <EmptyState
+              icon="🏢"
+              title="No company configured"
+              desc="Configure your Company in the admin console, then return here to manage its details."
+            />
           ) : (
             <div className="kv-stack">
               <Row label="Company" value={company.company_name || company.name} />

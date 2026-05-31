@@ -77,6 +77,8 @@ const CAPABILITY_DEFAULTS = {
   canApprovePurchasingAccountant: false,
   canExecutePurchaseApproval: false,
   canViewPurchaseApprovals: false,
+  canViewPurchasingHistory: false,
+  canManagePOSProfiles: false,
   canViewApprovalsDashboard: false,
   canAccessAccountantWorkspace: false,
   canViewSupplierPayments: false,

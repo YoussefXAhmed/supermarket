@@ -45,6 +45,7 @@ export const ADMIN_NAV = [
   { to: '/admin/products', labelKey: 'nav.products', icon: '🛒' },
   { to: '/admin/customers', labelKey: 'nav.customers', icon: '👥' },
   { to: '/admin/warehouses', labelKey: 'nav.warehouses', icon: '🏬' },
+  { to: '/admin/pos-profiles', labelKey: 'nav.posProfiles', icon: '🖥️', cap: 'canManagePOSProfiles' },
   { to: '/admin/approvals', labelKey: 'nav.approvals', icon: '✓' },
   { to: '/admin/reports', labelKey: 'nav.reports', icon: '📊' },
   { to: '/admin/activity', labelKey: 'nav.activity', icon: '📋' },
@@ -63,6 +64,13 @@ export function getAdminNavItems(capabilities) {
 export const MANAGER_NAV = [
   { to: '/manager', labelKey: 'nav.dashboard', icon: '◈', exact: true },
   { to: '/manager/approvals', labelKey: 'nav.approvals', icon: '✓', cap: 'canViewApprovalsDashboard' },
+  { to: '/manager/pos-profiles', labelKey: 'nav.posProfiles', icon: '🖥️', cap: 'canManagePOSProfiles' },
+  {
+    to: '/manager/approvals/history',
+    labelKey: 'nav.approvalHistory',
+    icon: '📜',
+    cap: 'canViewPurchaseApprovals',
+  },
   {
     to: '/manager/purchase-approvals',
     labelKey: 'nav.purchaseApprovals',
@@ -165,6 +173,12 @@ const PURCHASING_SHELL_OFFICER = [
   { to: '/purchasing', labelKey: 'nav.overview', icon: '◈', exact: true },
   { to: '/purchasing/suppliers', labelKey: 'nav.suppliers', icon: '🏭' },
   { to: '/purchasing/receive', labelKey: 'nav.receive', icon: '📥' },
+  {
+    to: '/purchasing/history',
+    labelKey: 'nav.purchasingHistory',
+    icon: '📜',
+    cap: 'canViewPurchasingHistory',
+  },
 ];
 
 /** @type {NavItem[]} */
@@ -268,6 +282,27 @@ export function canManageItemMaster(capabilities) {
 /** @param {import('./capabilities').Capabilities} capabilities */
 export function canExecutePurchasingFinance(capabilities) {
   return hasCapability(capabilities, 'canAccessAccountantWorkspace');
+}
+
+/**
+ * Finance surfaces hosted under the purchasing workspace — accountants get
+ * these too (AP reconciliation), admins via canManageSystem. Used by
+ * PurchasingDashboardPage and ReceiveStockPage to conditionally render the
+ * supplier-finance widgets.
+ * @param {import('./capabilities').Capabilities} capabilities
+ */
+export function canAccessPurchasingAdminFinance(capabilities) {
+  return hasCapability(capabilities, 'canAccessAccountantWorkspace')
+    || hasCapability(capabilities, 'canManageSystem');
+}
+
+/**
+ * Cross-workspace finance guidance on purchasing flows (invoice matching).
+ * Shown to roles that work with supplier invoices.
+ * @param {import('./capabilities').Capabilities} capabilities
+ */
+export function canShowPurchasingFinanceGuidance(capabilities) {
+  return hasCapability(capabilities, 'canAccessInvoiceMatching');
 }
 
 /** @param {import('./capabilities').Capabilities} capabilities */

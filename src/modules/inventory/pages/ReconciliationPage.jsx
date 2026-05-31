@@ -5,6 +5,7 @@ import { getItems } from '../../../services/api';
 import { createAndSubmitStockReconciliation, listWarehouses } from '../../../services/inventoryApi';
 import { getSellableStock } from '../../../services/stockService';
 import { getUserFriendlyMessage } from '../../../utils/errorHandling';
+import { useNotify } from '../../../context/NotificationContext';
 
 const PURPOSES = [
   { value: 'Stock Reconciliation', label: 'Inventory count / correction' },
@@ -12,13 +13,13 @@ const PURPOSES = [
 ];
 
 export default function ReconciliationPage() {
+  const notify = useNotify();
   const [warehouses, setWarehouses] = useState([]);
   const [items, setItems] = useState([]);
   const [warehouse, setWarehouse] = useState('');
   const [purpose, setPurpose] = useState('Stock Reconciliation');
   const [lines, setLines] = useState([{ item_code: '', qty: '', current_qty: null }]);
   const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
 
   useEffect(() => {
@@ -47,7 +48,6 @@ export default function ReconciliationPage() {
   const onSubmit = async (e) => {
     e.preventDefault();
     setErr('');
-    setMsg('');
     const wh = warehouses.find((w) => w.name === warehouse);
     if (!wh) {
       setErr('Select a warehouse');
@@ -71,7 +71,7 @@ export default function ReconciliationPage() {
           qty: Number(l.qty),
         })),
       });
-      setMsg(`Reconciliation submitted: ${name}`);
+      notify.success(`Stock count approved: ${name}`);
       setLines([{ item_code: '', qty: '', current_qty: null }]);
     } catch (e2) {
       setErr(getUserFriendlyMessage(e2));
@@ -82,7 +82,7 @@ export default function ReconciliationPage() {
 
   return (
     <FormPageLayout>
-      <PageHeader title="Stock Reconciliation" subtitle="Damaged goods, counts, and manual stock corrections" dense />
+      <PageHeader title="Stock Count" subtitle="Damaged goods, counts, and manual corrections" dense />
       <LayoutSection variant="raised" flushHead>
         <form className="inv-form form-region" onSubmit={onSubmit}>
           <label>
@@ -127,9 +127,8 @@ export default function ReconciliationPage() {
           ))}
           <datalist id="recon-items">{items.map((it) => <option key={it.item_code} value={it.item_code} />)}</datalist>
           <Btn type="button" variant="ghost" size="sm" onClick={addLine}>+ Add line</Btn>
-          <Btn type="submit" variant="primary" size="md" loading={saving}>Submit reconciliation</Btn>
+          <Btn type="submit" variant="primary" size="md" loading={saving}>Submit count</Btn>
         </form>
-        {msg && <p className="inv-success">{msg}</p>}
         {err && <ApiErrorCard message={err} />}
       </LayoutSection>
     </FormPageLayout>

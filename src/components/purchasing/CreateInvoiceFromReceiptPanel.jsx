@@ -128,9 +128,14 @@ export default function CreateInvoiceFromReceiptPanel({ onSuccess }) {
               : ''}
           </p>
           <div className="pi-from-receipt__success-actions">
-            <Btn variant="primary" size="sm" onClick={() => openERPDesk(`purchase-invoice/${success.name}`)}>
-              Open invoice
-            </Btn>
+            {/* "Open invoice" jumps to ERPNext Desk; restrict to System Manager
+                so finance users stay in the SPA matching workflow instead of
+                editing the invoice doc directly. */}
+            {capabilities?.canManageSystem && (
+              <Btn variant="primary" size="sm" onClick={() => openERPDesk(`purchase-invoice/${success.name}`)}>
+                Open invoice
+              </Btn>
+            )}
             <Btn variant="ghost" size="sm" onClick={() => setSuccess(null)}>
               Dismiss
             </Btn>

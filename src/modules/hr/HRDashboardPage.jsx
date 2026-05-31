@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   ApiErrorCard,
@@ -10,6 +9,9 @@ import {
 } from '../../components/ui';
 import { DashboardLayout, LayoutSection } from '../../components/layout/page-layouts';
 import { RoleBadge } from '../../components/ui';
+import { useAuth } from '../../hooks/useAuth';
+import { hasCapability } from '../../auth/capabilities';
+import AccessibleLink from '../../components/auth/AccessibleLink';
 import { getWorkforceSnapshot } from '../../services/hrEmployeeApi';
 import { computeWorkforceStats } from '../../utils/hrEmployees';
 import { getUserFriendlyMessage } from '../../utils/errorHandling';
@@ -35,6 +37,9 @@ function CountBarChart({ data = [], height = 140 }) {
 
 export default function HRDashboardPage() {
   const { t } = useTranslation();
+  const { capabilities } = useAuth();
+  const canViewEmployees = hasCapability(capabilities, 'canViewEmployees');
+  const canManageUsers = hasCapability(capabilities, 'canManageOperationalUsers');
   const [employees, setEmployees] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -112,16 +117,20 @@ export default function HRDashboardPage() {
 
           <LayoutSection title={t('hr.dashboard.quickLinks')} variant="raised">
             <div className="accountant-links">
-              <Link to="/hr/employees" className="accountant-links__card">
-                <span className="accountant-links__icon">👥</span>
-                <span className="accountant-links__label">{t('nav.employees')}</span>
-                <span className="accountant-links__desc">{t('hr.dashboard.employeesDesc')}</span>
-              </Link>
-              <Link to="/hr/users" className="accountant-links__card">
-                <span className="accountant-links__icon">🧑‍💼</span>
-                <span className="accountant-links__label">{t('nav.systemUsers')}</span>
-                <span className="accountant-links__desc">{t('hr.dashboard.usersDesc')}</span>
-              </Link>
+              {canViewEmployees && (
+                <AccessibleLink to="/hr/employees" className="accountant-links__card">
+                  <span className="accountant-links__icon">👥</span>
+                  <span className="accountant-links__label">{t('nav.employees')}</span>
+                  <span className="accountant-links__desc">{t('hr.dashboard.employeesDesc')}</span>
+                </AccessibleLink>
+              )}
+              {canManageUsers && (
+                <AccessibleLink to="/hr/users" className="accountant-links__card">
+                  <span className="accountant-links__icon">🧑‍💼</span>
+                  <span className="accountant-links__label">{t('nav.systemUsers')}</span>
+                  <span className="accountant-links__desc">{t('hr.dashboard.usersDesc')}</span>
+                </AccessibleLink>
+              )}
             </div>
           </LayoutSection>
         </>

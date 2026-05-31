@@ -329,7 +329,7 @@ def before_submit_purchase_receipt(doc, method=None):
     assert_may_submit_purchase_receipt_direct()
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def create_purchase_receipt_workflow(
     supplier,
     company,
@@ -538,7 +538,7 @@ def _serialize_approval_row(doc, audit, level, status=""):
     }
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def approve_purchase_receipt(name, action="approve", notes=""):
     if action not in ("approve", "reject"):
         frappe.throw(_("Invalid action."), frappe.ValidationError)

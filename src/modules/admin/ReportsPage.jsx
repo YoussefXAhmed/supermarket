@@ -1,45 +1,58 @@
-import { PageHeader } from '../../components/ui';
+/**
+ * Reports launcher — role-filtered.
+ *
+ * Cards come from the central REPORT_ACCESS matrix in src/auth/reportAccess.js,
+ * filtered by `canAccessReport()` against the current user's capabilities. A
+ * store manager sees the 4 operational reports; an accountant sees the 5
+ * financial reports; an administrator sees all 6.
+ *
+ * Path links use React Router relative navigation, so the same component
+ * works under /admin/reports, /manager/reports, and /finance/reports.
+ */
+import { Link } from 'react-router-dom';
+import { useMemo } from 'react';
+import { EmptyState, PageHeader } from '../../components/ui';
 import { DashboardLayout, LayoutSection } from '../../components/layout/page-layouts';
-import { getERPQueryReportUrl } from '../../utils/erpLinks';
-
-const REPORTS = [
-  { name: 'Sales Register', desc: 'Detailed sales transactions with item-level breakdowns.', icon: '📊' },
-  { name: 'Stock Balance', desc: 'Current stock levels across all warehouses.', icon: '📦' },
-  { name: 'Customer Ledger', desc: 'Account payable / receivable per customer.', icon: '👥' },
-  { name: 'Profit & Loss', desc: 'Income, cost of goods, and net profit summary.', icon: '💹' },
-  { name: 'Item-wise Sales', desc: 'Top-selling products ranked by revenue.', icon: '🏆' },
-  { name: 'Daily Cash Register', desc: 'POS daily totals broken down by payment method.', icon: '💳' },
-];
+import { getAccessibleReports } from '../../auth/reportAccess';
+import { useAuth } from '../../hooks/useAuth';
 
 export default function ReportsPage() {
+  const { capabilities } = useAuth();
+  const reports = useMemo(() => getAccessibleReports(capabilities), [capabilities]);
+
   return (
     <DashboardLayout>
       <PageHeader
         title="Reports"
-        subtitle="ERPNext standard reports — opens in ERPNext portal"
+        subtitle="Operational and financial reports — filtered to your role."
         dense
       />
-      <LayoutSection variant="raised" flushHead>
-        <div className="reports-grid">
-          {REPORTS.map((r) => (
-            <div key={r.name} className="report-card">
-              <span className="report-card__icon">{r.icon}</span>
-              <div>
-                <p className="report-card__name">{r.name}</p>
-                <p className="report-card__desc">{r.desc}</p>
+      {reports.length === 0 ? (
+        <LayoutSection variant="raised" flushHead>
+          <EmptyState
+            icon="📊"
+            title="No reports available"
+            desc="Your role doesn't have access to any reports yet. Speak to a system administrator if you think this is wrong."
+          />
+        </LayoutSection>
+      ) : (
+        <LayoutSection variant="raised" flushHead>
+          <div className="reports-grid">
+            {reports.map((r) => (
+              <div key={r.key} className="report-card">
+                <span className="report-card__icon">{r.icon}</span>
+                <div>
+                  <p className="report-card__name">{r.label}</p>
+                  <p className="report-card__desc">{r.description}</p>
+                </div>
+                <Link to={r.path} className="btn btn--primary btn--sm report-card__action">
+                  Open →
+                </Link>
               </div>
-              <a
-                href={getERPQueryReportUrl(r.name)}
-                target="_blank"
-                rel="noreferrer"
-                className="btn btn--ghost btn--sm report-card__action"
-              >
-                Open ↗
-              </a>
-            </div>
-          ))}
-        </div>
-      </LayoutSection>
+            ))}
+          </div>
+        </LayoutSection>
+      )}
     </DashboardLayout>
   );
 }

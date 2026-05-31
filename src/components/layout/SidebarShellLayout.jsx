@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../hooks/useAuth';
+import { useGuardedLogout } from '../../hooks/useGuardedLogout';
+import { canAccessPath } from '../../auth/routeAccess';
 import UserSessionActions from './UserSessionActions';
 import ErrorBoundary from '../common/ErrorBoundary';
 import { RoleBadge, UserAvatar } from '../ui';
@@ -13,15 +15,19 @@ export default function SidebarShellLayout({
   footerLinks = [],
 }) {
   const { t } = useTranslation();
-  const { user, logout } = useAuth();
+  const { user, capabilities } = useAuth();
   const navigate = useNavigate();
+  const { requestLogout, guardModal } = useGuardedLogout();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
-  };
+  const visibleNavItems = useMemo(
+    () => navItems.filter((item) => {
+      if (!item.to.startsWith('/')) return true;
+      return canAccessPath(item.to, capabilities);
+    }),
+    [navItems, capabilities],
+  );
 
   const sessionLinks = footerLinks.map((link) => ({
     label: t(link.labelKey),
@@ -48,7 +54,7 @@ export default function SidebarShellLayout({
         </div>
 
         <nav className="sidebar__nav">
-          {navItems.map((item) => (
+          {visibleNavItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -69,7 +75,7 @@ export default function SidebarShellLayout({
               <UserAvatar user={user} size="md" className="sidebar__avatar" />
             </div>
           ) : (
-            <UserSessionActions user={user} compact links={sessionLinks} onLogout={handleLogout} />
+            <UserSessionActions user={user} compact links={sessionLinks} onLogout={requestLogout} />
           )}
         </div>
       </aside>
@@ -81,6 +87,7 @@ export default function SidebarShellLayout({
           </ErrorBoundary>
         </div>
       </main>
+      {guardModal}
     </div>
   );
 }

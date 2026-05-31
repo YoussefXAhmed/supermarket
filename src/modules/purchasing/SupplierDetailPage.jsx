@@ -8,6 +8,7 @@ import { getUserFriendlyMessage } from '../../utils/errorHandling';
 import { canExecutePurchasingFinance } from '../../auth/navigationConfig';
 import { useAuth } from '../../hooks/useAuth';
 import { purchasingPath } from '../../utils/workspacePaths';
+import { useNotify } from '../../context/NotificationContext';
 
 const fmt = (n) =>
   new Intl.NumberFormat('en-EG', {
@@ -19,6 +20,7 @@ const fmt = (n) =>
 export default function SupplierDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const notify = useNotify();
   const { capabilities } = useAuth();
   const showFinanceActions = canExecutePurchasingFinance(capabilities);
   const isNew = id === 'new';
@@ -39,7 +41,6 @@ export default function SupplierDetailPage() {
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [msg, setMsg] = useState('');
 
   useEffect(() => {
     if (isNew) {
@@ -78,11 +79,10 @@ export default function SupplierDetailPage() {
     e.preventDefault();
     setSaving(true);
     setError('');
-    setMsg('');
     try {
       const { saveSupplier } = await import('../../services/purchasingApi');
       const saved = await saveSupplier({ name: isNew ? null : id, ...form });
-      setMsg(isNew ? `Created: ${saved?.name}` : 'Supplier updated');
+      notify.success(isNew ? `Supplier created: ${saved?.name}` : 'Supplier updated');
       if (isNew && saved?.name) {
         navigate(purchasingPath(`suppliers/${encodeURIComponent(saved.name)}`), { replace: true });
       }
@@ -220,7 +220,6 @@ export default function SupplierDetailPage() {
             {isNew ? 'Create supplier' : 'Save changes'}
           </Btn>
         </form>
-        {msg && <p className="inv-success">{msg}</p>}
         {error && <ApiErrorCard message={error} />}
       </LayoutSection>
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import AccessibleLink from '../../components/auth/AccessibleLink';
 import { useTranslation } from 'react-i18next';
 import {
   ApiErrorCard,
@@ -536,7 +536,7 @@ export default function EmployeesPage() {
               </div>
             </form>
             <p className="page-header__sub">
-              <Link to="/hr/users">{t('nav.systemUsers')}</Link>
+              <AccessibleLink to="/hr/users">{t('nav.systemUsers')}</AccessibleLink>
             </p>
           </div>
         </div>

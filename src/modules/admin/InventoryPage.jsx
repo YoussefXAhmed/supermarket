@@ -61,7 +61,7 @@ export default function InventoryPage() {
     <TablePageLayout tableConstrain={sparse} className={layoutClass}>
       <PageHeader
         title="Inventory"
-        subtitle="Live stock levels from ERPNext Bin"
+        subtitle="Live stock levels by warehouse"
         dense
       />
 
@@ -89,7 +89,7 @@ export default function InventoryPage() {
           desc={
             filter.trim()
               ? 'Try a different filter.'
-              : 'Make sure your Bin records are populated in ERPNext'
+              : 'Receive goods first so stock appears here'
           }
         />
       ) : (

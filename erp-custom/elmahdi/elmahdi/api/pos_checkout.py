@@ -185,7 +185,7 @@ def _resolve_idempotent_pos_invoice(company: str, key: str):
 	return _submit_and_consolidate(doc)
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def create_and_submit_pos_invoice(payload):
 	"""
 	Create POS Invoice, insert(), submit(), then consolidate it immediately so
@@ -243,7 +243,7 @@ def create_and_submit_pos_invoice(payload):
 			frappe.cache().delete_value(cache_key)
 
 
-@frappe.whitelist()
+@frappe.whitelist(methods=["POST"])
 def submit_pos_invoice(name):
 	"""Submit an existing draft POS sale invoice (retry / recovery)."""
 	from elmahdi.api.spa_authorization import assert_may_operate_pos

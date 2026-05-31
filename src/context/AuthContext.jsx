@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { probeLoggedInUser, logout as apiLogout } from '../services/api';
+import { probeLoggedInUser, logout as apiLogout, clearCsrfToken } from '../services/api';
+import { setObservabilityUser } from '../services/observability';
 import {
   canAccessPurchasing,
   homePathFromCapabilities,
@@ -60,6 +61,12 @@ export function AuthProvider({ children }) {
         setUser(userData);
         setRoles(roleList);
         setCapabilities(caps);
+        // Bind identity so any exception captured after this point is
+        // attributed to the right user in the observability backend.
+        setObservabilityUser({
+          id: userData?.name || userData?.email,
+          username: userData?.full_name,
+        });
         return {
           user: userData,
           roles: roleList,
@@ -118,6 +125,12 @@ export function AuthProvider({ children }) {
     } catch {
       /* ignore */
     }
+    // Drop the cached CSRF token so a subsequent re-login (potentially as a
+    // different user) starts fresh and binds to the new session.
+    clearCsrfToken();
+    // Clear the observability user binding so post-logout errors aren't
+    // attributed to the previous user.
+    setObservabilityUser(null);
     setUser(null);
     setRoles([]);
     setCapabilities(EMPTY_CAPABILITIES);
