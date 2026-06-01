@@ -37,7 +37,6 @@ export const ROUTE_ACCESS = [
   { prefix: '/inventory/analytics', anyOf: ['canInventoryAnalytics'] },
   { prefix: '/inventory/transfer', anyOf: ['canInventoryTransfer', 'canInventoryIssueTransfer'] },
   { prefix: '/inventory/reconciliation', anyOf: ['canInventoryReconcile'] },
-  { prefix: '/inventory/stock-entry', anyOf: ['canAccessInventory'] },
   { prefix: '/inventory/warehouses', anyOf: ['canAccessInventory'] },
   { prefix: '/inventory/alerts', anyOf: ['canAccessInventory'] },
   { prefix: '/inventory/reorder', anyOf: ['canAccessInventory'] },

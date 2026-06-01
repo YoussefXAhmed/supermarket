@@ -49,11 +49,12 @@
   font-size: 0.95rem;
   touch-action: manipulation;
 }
-.pos-header__tools .search-wrap .input:focus,
-.pos-header__tools .search-wrap input:focus,
-.pos-header__tools .search-input:focus {
+.pos-header__tools .search-wrap .input:focus-visible,
+.pos-header__tools .search-wrap input:focus-visible,
+.pos-header__tools .search-input:focus-visible {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(245,166,35,0.15);
+  outline: none;
 }
 .pos-view-toggle {
   display: inline-flex;
@@ -104,103 +105,63 @@
   align-content: start;
 }
 
-/* ── Item Card — image-dominant, prominent price, clear OOS overlay ── */
+/* ── Item Card — clean: image, name, stock text, price + add ── */
 .item-card {
-  background: var(--bg-2); border: 1px solid var(--border);
-  border-radius: var(--radius-lg); overflow: hidden;
-  cursor: pointer; text-align: start;
-  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
-  display: flex; flex-direction: column;
+  background: #1c2030;
+  border: 1px solid #2d3346;
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  text-align: start;
+  transition: border-color 0.12s ease, transform 0.12s ease;
+  display: flex;
+  flex-direction: column;
   height: 100%;
-  min-height: 0;
   touch-action: manipulation;
-  position: relative;
   padding: 0;
 }
 @media (hover: hover) and (pointer: fine) {
   .item-card:not(:disabled):hover {
     border-color: var(--accent);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 18px rgba(0,0,0,0.28);
+    transform: translateY(-1px);
   }
 }
 .item-card:focus-visible {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(245,166,35,0.25);
+  box-shadow: 0 0 0 2px rgba(245,166,35,0.3);
 }
-.item-card:active:not(:disabled) {
-  transform: translateY(0);
-  filter: brightness(0.97);
-}
+.item-card:active:not(:disabled) { transform: translateY(0); }
 .item-card:disabled { cursor: not-allowed; }
 
-/* Image: dominates the card */
 .item-card__img {
   aspect-ratio: 1 / 1;
-  background: var(--bg-3);
-  display: flex; align-items: center; justify-content: center;
-  overflow: hidden;
-  position: relative;
-}
-.item-card__img img {
-  width: 100%; height: 100%; object-fit: cover;
-  transition: transform 0.2s ease;
-}
-.item-card:not(:disabled):hover .item-card__img img { transform: scale(1.03); }
-.item-card__placeholder { font-size: 2.4rem; opacity: 0.35; }
-
-/* Stock badge — top-right overlay on the image so it's always visible */
-.item-card__badge {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  padding: 3px 8px;
-  border-radius: 999px;
-  font-size: 0.68rem;
-  font-weight: 600;
-  background: rgba(15,17,23,0.78);
-  backdrop-filter: blur(4px);
-  letter-spacing: 0.01em;
-  white-space: nowrap;
-}
-.item-card__badge.item-card__stock--ok  { color: var(--green); }
-.item-card__badge.item-card__stock--low { color: var(--amber); }
-.item-card__badge.item-card__stock--out { color: var(--red); background: rgba(239,68,68,0.18); border: 1px solid rgba(239,68,68,0.4); }
-
-/* Out-of-stock: greyscale image + diagonal overlay label */
-.item-card--out .item-card__img img { filter: grayscale(1) brightness(0.55); }
-.item-card--out .item-card__img { background: var(--bg-4); }
-.item-card--out .item-card__name { color: var(--text-2); }
-.item-card--out .item-card__price { color: var(--text-2); text-decoration: line-through; text-decoration-color: var(--red); }
-.item-card__overlay {
-  position: absolute;
-  inset: 0;
+  background: #e8ecf4;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--red);
-  background: rgba(15,17,23,0.5);
-  pointer-events: none;
+  overflow: hidden;
 }
+.item-card__img img {
+  width: 100%; height: 100%; object-fit: cover;
+}
+.item-card__placeholder { font-size: 2.2rem; opacity: 0.5; color: #5a6478; }
 
-/* Low-stock subtle warning border */
-.item-card--low { border-color: rgba(245,158,11,0.45); }
+.item-card--out .item-card__img { opacity: 0.55; }
+.item-card--out .item-card__name { color: var(--text-2); }
+.item-card--out .item-card__price { color: var(--text-2); text-decoration: line-through; }
 
 .item-card__body {
-  padding: 10px 12px 12px;
+  padding: 8px 10px 10px;
   display: flex;
   flex-direction: column;
   gap: 4px;
   flex: 1;
+  min-height: 0;
 }
 .item-card__name {
-  font-size: 0.88rem;
-  font-weight: 700;
+  font-size: 0.82rem;
+  font-weight: 600;
   color: var(--text);
   margin: 0;
   line-height: 1.3;
@@ -208,46 +169,49 @@
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
-  min-height: 2.3em;
 }
+.item-card__stock {
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  line-height: 1;
+}
+.item-card__stock.item-card__stock--ok  { color: var(--green); }
+.item-card__stock.item-card__stock--low { color: var(--amber); }
+.item-card__stock.item-card__stock--out { color: var(--red); font-weight: 600; }
+
 .item-card__foot {
   margin-top: auto;
-  padding-top: 8px;
+  padding-top: 4px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
 }
 .item-card__price {
-  font-size: 1.05rem;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--accent);
   letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
 }
-.item-card__code {
-  font-size: 0.68rem;
-  color: var(--text-3);
-  font-family: 'DM Mono', monospace;
-  letter-spacing: 0.01em;
-  margin-bottom: 2px;
-}
 .item-card__add {
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: #0f1117;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
   background: var(--accent);
-  padding: 6px 12px;
+  color: #0f1117;
   border-radius: 999px;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  transition: filter 0.15s ease, transform 0.15s ease;
-  box-shadow: 0 2px 8px rgba(245,166,35,0.25);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+  transition: filter 0.12s ease, transform 0.12s ease;
+  flex-shrink: 0;
 }
 .item-card:not(:disabled):hover .item-card__add {
-  filter: brightness(1.06);
-  transform: scale(1.04);
+  filter: brightness(1.08);
+  transform: scale(1.08);
 }
 
 /* ── Cart ── */
@@ -281,7 +245,7 @@
   min-height: 42px;
   transition: border-color var(--transition);
 }
-.pos-cart__customer-input:focus { border-color: var(--accent); }
+.pos-cart__customer-input:focus-visible { border-color: var(--accent); outline: none; }
 
 .pos-cart__items  {
   flex: 1;
@@ -447,7 +411,7 @@
 
 /* ── Receipt Modal ── */
 .modal-overlay {
-  position: fixed; inset: 0; z-index: 200;
+  position: fixed; inset: 0; z-index: var(--z-modal);
   background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
   display: flex; align-items: center; justify-content: center;
 }
@@ -1366,11 +1330,12 @@
   min-height: 38px;
   font-size: 0.86rem;
 }
-.pos-topbar__search .input:focus,
-.pos-topbar__search .search-wrap input:focus,
-.pos-topbar__search .search-input:focus {
+.pos-topbar__search .input:focus-visible,
+.pos-topbar__search .search-wrap input:focus-visible,
+.pos-topbar__search .search-input:focus-visible {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(245,166,35,0.16);
+  outline: none;
 }
 
 .pos-topbar__shift-pill {
@@ -1649,3 +1614,293 @@
 /* ── Hide the legacy view-toggle when topbar is present ────────────── */
 .pos-topbar + .pos-header,
 .pos-page > .pos-header { display: none; }
+
+/* ══════════════════════════════════════════════════════════════
+   LAYOUT REFINEMENT — cashier-screen pass
+   • Higher product density (6-10/row at 1440-1920p)
+   • Slimmer cart chrome so total+payment+CTA fit without scroll
+   • Stronger surface contrast
+   • Compact segmented control (replaces header view-btn)
+   • Smaller no-shift strip
+══════════════════════════════════════════════════════════════ */
+
+/* Page bg gets darker for stronger card pop */
+.pos-page { background: #07090f; }
+
+/* Products area: slimmer padding, denser grid */
+.pos-products {
+  padding: 12px 14px;
+  background: #07090f;
+}
+.pos-grid {
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+}
+@media (min-width: 1280px) { .pos-grid { grid-template-columns: repeat(auto-fill, minmax(125px, 1fr)); gap: 8px; } }
+@media (min-width: 1440px) { .pos-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; } }
+@media (min-width: 1600px) { .pos-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; } }
+@media (min-width: 1920px) { .pos-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; } }
+
+/* Bill panel column slightly wider on ultrawide, fixed-narrow elsewhere */
+.pos-body {
+  grid-template-columns: 1fr 340px;
+}
+@media (min-width: 1600px) { .pos-body { grid-template-columns: 1fr 360px; } }
+@media (min-width: 1920px) { .pos-body { grid-template-columns: 1fr 380px; } }
+
+/* ── Segmented control near products area (replaces header view-btn) ── */
+.pos-segctrl {
+  display: inline-flex;
+  margin-bottom: 10px;
+  padding: 3px;
+  background: #11141d;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  gap: 2px;
+}
+.pos-segctrl__btn {
+  appearance: none;
+  background: transparent;
+  border: none;
+  color: var(--text-2);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  min-height: 32px;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.pos-segctrl__btn:hover { color: var(--text); }
+.pos-segctrl__btn--active {
+  background: var(--accent);
+  color: #0f1117;
+}
+
+/* ── No-shift strip — slimmer (~40px row, was ~52px) ── */
+.pos-shift-strip {
+  margin: 8px 14px 0;
+  padding: 7px 14px;
+  border-radius: 10px;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  font-size: 0.82rem;
+}
+.pos-shift-strip__icon {
+  width: 24px; height: 24px;
+  font-size: 0.85rem;
+}
+.pos-shift-strip__msg { font-size: 0.82rem; }
+.pos-shift-strip__hint { color: var(--text-3); }
+.pos-shift-strip__actions .btn { min-height: 30px; padding-block: 4px; font-size: 0.78rem; }
+
+/* ── Bill panel — tighter chrome ───────────────────────────────── */
+.pos-bill {
+  background: #14182240;
+  background: #131724;
+  border-left: 1px solid #1f2638;
+}
+
+.pos-bill__head {
+  padding: 10px 14px 8px;
+  background: #161b29;
+}
+.pos-bill__title { font-size: 0.9rem; }
+.pos-bill__sub { font-size: 0.7rem; }
+.pos-bill__clear {
+  font-size: 0.7rem;
+  padding: 4px 8px;
+}
+
+.pos-bill__customer {
+  padding: 8px 14px;
+  border-bottom: 1px solid #1f2638;
+}
+.pos-bill__field-label {
+  font-size: 0.62rem;
+  margin: 0 0 4px;
+}
+.pos-bill__customer-select {
+  min-height: 32px;
+  font-size: 0.82rem;
+}
+
+.pos-bill__lines {
+  padding: 8px 12px;
+  gap: 4px;
+}
+
+.pos-bill__totals {
+  padding: 8px 14px 4px;
+  gap: 4px;
+}
+.pos-bill__totals-row dt { font-size: 0.74rem; }
+.pos-bill__totals-row dd { font-size: 0.82rem; }
+
+.pos-bill__totals-row--total {
+  margin-top: 6px;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, rgba(245,166,35,0.2), rgba(245,166,35,0.07));
+  border: 1px solid rgba(245,166,35,0.45);
+  border-radius: 10px;
+}
+.pos-bill__totals-row--total dt {
+  font-size: 0.72rem;
+}
+.pos-bill__totals-row--total dd {
+  font-size: 1.55rem;
+}
+
+.pos-bill__payment {
+  padding: 8px 14px 4px;
+}
+.pos-bill__payment .pos-bill__field-label { display: none; }
+
+.pos-bill__cta-wrap {
+  padding: 10px 14px 12px;
+  background: #131724;
+  border-top: 1px solid #1f2638;
+}
+.pos-bill__cta {
+  padding-block: 12px;
+  font-size: 0.92rem;
+  border-radius: 10px;
+}
+.pos-bill__shortcuts {
+  font-size: 0.62rem;
+  margin: 6px 0 0;
+}
+
+/* ── Top bar — slimmer (40px logo tile reduced, search trimmed) ── */
+.pos-topbar {
+  min-height: 52px;
+  padding: 8px 14px;
+  gap: 12px;
+}
+.pos-topbar__logo { width: 26px; height: 26px; }
+.pos-topbar__brand-name { font-size: 0.86rem; }
+.pos-topbar__brand-sub { font-size: 0.68rem; }
+.pos-topbar__search { flex: 0 1 380px; min-width: 180px; }
+.pos-topbar__search .input,
+.pos-topbar__search .search-input,
+.pos-topbar__search .search-wrap input { min-height: 34px; font-size: 0.84rem; }
+.pos-topbar__shift-pill {
+  padding: 4px 10px;
+  font-size: 0.72rem;
+}
+.pos-topbar__shift-dot { width: 6px; height: 6px; }
+
+/* ── Payment chips tightening (inside .pos-bill__payment) ── */
+.pos-bill__payment .pos-payment__tabs { gap: 4px; }
+.pos-bill__payment .pos-payment__tab {
+  flex: 1;
+  min-height: 34px;
+  font-size: 0.78rem;
+  padding-inline: 8px;
+}
+
+/* ── Surface separation between products + bill ── */
+.pos-body { background: #07090f; }
+.pos-bill { box-shadow: -1px 0 0 #1f2638; }
+
+/* Cart row tightening — used inside .pos-bill__lines */
+.pos-bill__lines .cart-row {
+  padding: 7px 10px;
+  gap: 6px;
+  background: #1a1f2e;
+  border: 1px solid #232a3d;
+  border-radius: 8px;
+}
+.pos-bill__lines .cart-row__name { font-size: 0.82rem; }
+.pos-bill__lines .cart-row__rate { font-size: 0.7rem; }
+.pos-bill__lines .cart-row__total { font-size: 0.85rem; }
+.pos-bill__lines .cart-row__qty-btn { min-width: 26px; min-height: 26px; }
+.pos-bill__lines .cart-row__qty-input { width: 36px; }
+
+/* Sell / My invoices segmented control bar — always visible, slim row */
+.pos-segctrl-bar {
+  padding: 8px 14px 0;
+  flex-shrink: 0;
+  background: #07090f;
+}
+.pos-segctrl-bar .pos-segctrl { margin-bottom: 0; }
+
+/* Opening-balance modal body */
+.pos-shift-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.pos-shift-modal__hint {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-2);
+  line-height: 1.45;
+  background: var(--bg-3);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+}
+.pos-shift-modal .form-field { gap: 6px; }
+.pos-shift-modal .form-field__label {
+  font-size: 0.72rem;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+.pos-shift-modal .input { min-height: 40px; }
+
+/* ── Skeleton loading for product grid ── */
+.item-card--skeleton {
+  pointer-events: none;
+  cursor: default;
+  background: #161b29;
+  border-color: #1f2638;
+}
+.item-card__img--skeleton {
+  background: linear-gradient(90deg, #1f2638 0%, #2a3346 50%, #1f2638 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+.skeleton-line {
+  height: 10px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #1f2638 0%, #2a3346 50%, #1f2638 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+.skeleton-line--lg { height: 12px; width: 80%; margin-top: 2px; }
+.skeleton-line--sm { height: 10px; width: 50%; margin-top: 6px; }
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+
+/* ── Empty states inside POS sections get a bit more breathing room ── */
+.pos-products .empty-state { padding: 48px 24px; }
+
+/* ── Cart empty-state pop ── */
+.pos-bill__lines .empty-state {
+  padding: 32px 16px;
+  background: rgba(255,255,255,0.015);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+  margin: 8px 0;
+}
+
+/* ── Consistent button sizing across POS surface ── */
+.pos-shift-strip__actions .btn,
+.pos-topbar__view-btn,
+.pos-segctrl__btn {
+  min-height: 32px;
+}
+.pos-bill__cta { min-height: 48px; }
+
+/* ── Cart spacing fine-tune ── */
+.pos-bill__customer { padding-top: 12px; padding-bottom: 12px; }
+.pos-bill__lines .empty-state .empty-state__icon { font-size: 1.6rem; }
+.pos-bill__lines .empty-state .empty-state__title { font-size: 0.92rem; }
+.pos-bill__lines .empty-state .empty-state__desc { font-size: 0.78rem; }
+
+/* ── My Invoices view consistency with cart panel ── */
+.pos-invoices-page { background: #07090f; padding: 16px; }

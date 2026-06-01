@@ -1,0 +1,52 @@
+{
+  "EG-0001": {
+    "source": "unsplash",
+    "credit": "https://unsplash.com/photos/water-bottle",
+    "note": "Mineral water bottle stock photo"
+  },
+  "EG-0002": {
+    "source": "openfoodfacts",
+    "barcode": "4062139017416",
+    "product": "Pepsi 330ml Can"
+  },
+  "EG-0003": {
+    "source": "openfoodfacts",
+    "barcode": "5449000098153",
+    "product": "Coca-Cola 1.5L"
+  },
+  "EG-0004": {
+    "source": "unsplash",
+    "credit": "https://unsplash.com/photos/sunflower-oil",
+    "note": "Cooking oil bottle stock photo"
+  },
+  "EG-0005": {
+    "source": "openfoodfacts",
+    "barcode": "5000157024671",
+    "product": "Heinz Beanz"
+  },
+  "EG-0006": {
+    "source": "openfoodfacts",
+    "barcode": "20240059",
+    "product": "Organic Vine Tomatoes"
+  },
+  "EG-0007": {
+    "source": "openfoodfacts",
+    "barcode": "20239756",
+    "product": "Fresh Cucumber"
+  },
+  "EG-0008": {
+    "source": "openfoodfacts",
+    "barcode": "4084500821507",
+    "product": "Head & Shoulders Shampoo"
+  },
+  "EG-0009": {
+    "source": "openbeautyfacts",
+    "barcode": "8718951684843",
+    "product": "Colgate Total"
+  },
+  "EG-0010": {
+    "source": "openfoodfacts",
+    "barcode": "8445290303080",
+    "product": "Nescafé Classic 200g"
+  }
+}

@@ -49,8 +49,22 @@ export default function ReceiveStockPage() {
   const [items, setItems] = useState([]);
   const [company, setCompany] = useState('');
   const [supplier, setSupplier] = useState(searchParams.get('supplier') || '');
-  const [warehouse, setWarehouse] = useState('');
-  const [lines, setLines] = useState([emptyLine()]);
+  const [warehouse, setWarehouse] = useState(searchParams.get('warehouse') || '');
+  // Prefill from reorder-page deep link (?item=X&qty=Y&warehouse=Z)
+  const initialLines = (() => {
+    const itemParam = searchParams.get('item');
+    const qtyParam = searchParams.get('qty');
+    if (itemParam) {
+      return [{
+        ...emptyLine(),
+        item_code: itemParam,
+        qty: qtyParam || '',
+        warehouse: searchParams.get('warehouse') || '',
+      }];
+    }
+    return [emptyLine()];
+  })();
+  const [lines, setLines] = useState(initialLines);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const [lastReceipt, setLastReceipt] = useState(null);

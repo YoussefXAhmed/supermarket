@@ -104,7 +104,13 @@ ul { list-style: none; }
   --z-dropdown:   500;
   --z-modal:      1000;
   --z-popover:    2000;
-  --z-toast:      10000;
+  --z-toast:      5000;
+  /* Toast container placement — overridable per layout if a workspace needs
+     a different offset. Defaults clear all standard headers (POS 52, others
+     up to 68) with breathing room. */
+  --toast-offset-top:   80px;
+  --toast-offset-right: 20px;
+  --toast-max-width:    400px;
 }
 
 /* Honor users with reduced-motion preference */
@@ -124,4 +130,10 @@ ul { list-style: none; }
 
 /* ── Utilities ── */
 .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mono { font-family: 'DM Mono', monospace; }
+/* Document IDs / codes — never wrap. Document numbers like MAT-PRE-2026-00027
+   should always render on one line. */
+.mono {
+  font-family: 'DM Mono', monospace;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}

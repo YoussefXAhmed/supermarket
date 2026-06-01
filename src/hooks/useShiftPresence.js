@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { resolveActivePOSProfile } from '../services/posApi';
 import { getOpenPOSOpeningEntry } from '../services/shiftsApi';
 import { useAuth } from './useAuth';
+import { onShiftChanged } from '../utils/shiftRealtime';
 
 /**
  * Shared "is there a live POS shift for me?" hook.
@@ -14,7 +15,7 @@ import { useAuth } from './useAuth';
  * that fires once when a previously-open shift disappears — used by POSPage to
  * warn the cashier their shift was closed from ERPNext.
  */
-export function useShiftPresence({ enabled = true, intervalMs = 30000 } = {}) {
+export function useShiftPresence({ enabled = true, intervalMs = 8000 } = {}) {
   const { user, capabilities } = useAuth();
   const [activeShift, setActiveShift] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -70,10 +71,12 @@ export function useShiftPresence({ enabled = true, intervalMs = 30000 } = {}) {
     };
     window.addEventListener('focus', onFocus);
     document.addEventListener('visibilitychange', onVisibility);
+    const unsubBroadcast = onShiftChanged(() => fetchOnce());
     return () => {
       clearInterval(id);
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVisibility);
+      unsubBroadcast();
     };
   }, [canCheck, fetchOnce, intervalMs]);
 

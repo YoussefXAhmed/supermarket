@@ -26,9 +26,13 @@
     "deskUser": "Desk User"
   },
   "auth": {
-    "invalidCredentials": "Incorrect email or password",
-    "sessionExpired": "Your session may have expired. Please sign in again.",
-    "networkError": "Cannot reach the system. Check your connection and try again."
+    "unauthorized": {
+      "title": "Access not allowed",
+      "routeMessage": "This page is not available for your role. Use the button below to return to your workspace.",
+      "workspaceMessage": "This workspace is not available for your role. Use the button below to return to your assigned area.",
+      "goHome": "Go to my workspace",
+      "goBack": "Go back"
+    }
   },
   "ui": {
     "loading": "Loading...",
@@ -69,21 +73,19 @@
     "selector": {
       "suggested": "Suggested",
       "score": "score"
+    },
+    "confirm": {
+      "cancel": "Cancel",
+      "confirm": "Confirm"
+    },
+    "modal": {
+      "close": "Close"
     }
   },
   "language": {
     "label": "Language",
     "english": "English",
     "arabic": "العربية"
-  },
-  "auth": {
-    "unauthorized": {
-      "title": "Access not allowed",
-      "routeMessage": "This page is not available for your role. Use the button below to return to your workspace.",
-      "workspaceMessage": "This workspace is not available for your role. Use the button below to return to your assigned area.",
-      "goHome": "Go to my workspace",
-      "goBack": "Go back"
-    }
   },
   "nav": {
     "activity": "Activity",
@@ -116,7 +118,6 @@
     "settings": "Settings",
     "shifts": "Shifts",
     "stock": "Stock",
-    "stockEntry": "Stock adjustment",
     "supplierPayments": "Supplier payments",
     "suppliers": "Suppliers",
     "transfer": "Transfer",
@@ -156,7 +157,8 @@
     "quickActions": "Quick actions",
     "quickActionsSubtitle": "Jump to core modules",
     "adminQuickActionsSubtitle": "System setup and oversight",
-    "salesCountHint": "{{count}} invoices"
+    "salesCountHint": "{{count}} invoices",
+    "noTrend": "No trend data"
   },
   "pos": {
     "avgOrder": "Avg order",
@@ -229,7 +231,19 @@
     "viewReceiptHint": "View receipt and print from the list.",
     "walkIn": "Walk-in",
     "walkInCustomer": "Walk-in Customer",
-    "whLabel": "Warehouse"
+    "whLabel": "Warehouse",
+    "allOutOfStockDesc": "Refine your search or wait for stock to be received before continuing checkout.",
+    "allOutOfStockTitle": "All visible items are out of stock",
+    "clearCart": "Clear cart",
+    "clearCartTitle": "Clear cart?",
+    "itemsLabel": "Items",
+    "noShiftHint": "Open your drawer to start selling",
+    "noShiftTitle": "No shift open",
+    "openingBalanceHint": "Enter the cash in the drawer at the start of your shift. This is reconciled at close.",
+    "processTransaction": "Process Transaction",
+    "selectPayment": "Payment",
+    "shiftClosedExternally": "Your shift was closed elsewhere. Open a new shift to continue selling.",
+    "subtotal": "Subtotal"
   },
   "shifts": {
     "closeShift": "Close shift",
@@ -302,7 +316,8 @@
       "entered": "Entered",
       "varPct": "Var %",
       "amount": "Amount"
-    }
+    },
+    "viewHistory": "View approval history"
   },
   "inventory": {
     "subtitle": "Current stock snapshot",
@@ -347,19 +362,12 @@
       "qty": "Qty"
     },
     "stockEntry": {
-      "title": "Stock Adjustment",
-      "subtitle": "Create and approve stock movements",
-      "entryType": "Entry Type",
       "item": "Item",
       "itemCode": "Item Code",
       "qty": "Qty",
       "quantity": "Quantity",
       "sourceWarehouse": "Source Warehouse",
-      "targetWarehouse": "Target Warehouse",
-      "selectSource": "Select source",
-      "selectTarget": "Select target",
-      "createSubmit": "Create & Submit",
-      "failed": "Stock entry failed"
+      "targetWarehouse": "Target Warehouse"
     },
     "transfer": {
       "title": "Stock Transfer",
@@ -383,7 +391,17 @@
       "maxQtyThreshold": "Max qty threshold",
       "load": "Load alerts",
       "none": "No alerts",
-      "adjustFilters": "Adjust filters and load."
+      "adjustFilters": "Adjust filters and load.",
+      "colAlert": "Alert Level",
+      "colCurrent": "Current Qty",
+      "colItem": "Item",
+      "colStatus": "Status",
+      "noneDesc": "Set alert thresholds on items from their detail page to monitor low stock.",
+      "noneTitle": "No items below alert level",
+      "statusAlert": "Below alert level",
+      "statusOut": "Out of stock",
+      "statusReorder": "At reorder level",
+      "subtitleItemLevel": "Items at or below their item-level alert threshold"
     },
     "reorder": {
       "title": "Reorder suggestions",
@@ -391,7 +409,13 @@
       "suggestedOrder": "Suggested Order",
       "suggestedQty": "Suggested qty",
       "load": "Load suggestions",
-      "empty": "Load to see reorder suggestions"
+      "empty": "Load to see reorder suggestions",
+      "colReorder": "Reorder Level",
+      "colSuggested": "Suggested Qty",
+      "createRequest": "Create Purchase Request",
+      "noneDesc": "Items will appear here when their stock drops to or below their reorder level.",
+      "noneTitle": "Nothing to reorder",
+      "subtitleItemLevel": "Items at or below their item-level reorder threshold"
     },
     "ledger": {
       "title": "Stock Movement History",
@@ -454,6 +478,16 @@
       "movementTimeline": "Movement timeline",
       "expiry": "Expiry",
       "loadError": "Failed to load item details"
+    },
+    "thresholds": {
+      "alert": "Alert Level",
+      "noChanges": "No changes to save.",
+      "qty": "Reorder Quantity",
+      "readOnly": "Store Manager or Administrator can edit these thresholds.",
+      "reorder": "Reorder Level",
+      "saved": "Inventory thresholds saved.",
+      "subtitle": "Item-level alert + reorder levels. Used by the Alerts and Reorder pages.",
+      "title": "Inventory thresholds"
     }
   },
   "purchasing": {
@@ -591,7 +625,13 @@
     "date": "Date",
     "totalLabel": "Total",
     "outstandingLabel": "Outstanding",
-    "status": "Status",
+    "status": {
+      "all": "All",
+      "overdue": "Overdue",
+      "unpaid": "Unpaid",
+      "partial": "Partial",
+      "paid": "Paid"
+    },
     "loadInvoicesError": "Failed to load invoices",
     "purchaseApprovals": "Goods receipt approvals",
     "shiftApprovals": "Shift approvals",
@@ -625,13 +665,6 @@
       "noInvoicesDesc": "No purchase invoices match this filter.",
       "noPayments": "No payments",
       "noPaymentsDesc": "Submitted supplier payments will appear here."
-    },
-    "status": {
-      "all": "All",
-      "overdue": "Overdue",
-      "unpaid": "Unpaid",
-      "partial": "Partial",
-      "paid": "Paid"
     },
     "aging": {
       "current": "Current"
@@ -683,7 +716,10 @@
     "xlsx": "Excel",
     "pdf": "PDF",
     "error": "Could not load history",
-    "tabs": { "receipts": "Goods Receipts", "invoices": "Supplier Bills" },
+    "tabs": {
+      "receipts": "Goods Receipts",
+      "invoices": "Supplier Bills"
+    },
     "kpi": {
       "pending": "Pending purchases",
       "approved": "Approved purchases",
@@ -824,5 +860,15 @@
   },
   "approvalsExtra": {
     "viewHistory": "View approval history"
+  },
+  "notifications": {
+    "empty": "No notifications yet",
+    "markAllRead": "Mark all read",
+    "title": "Notifications"
+  },
+  "reports": {
+    "filters": {
+      "dateRange": "Date range"
+    }
   }
 }

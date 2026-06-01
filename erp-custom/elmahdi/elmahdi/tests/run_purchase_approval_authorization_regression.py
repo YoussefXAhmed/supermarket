@@ -71,7 +71,7 @@ def _create_draft_pr_as_purchasing():
 
 	wh = frappe.db.get_value("Warehouse", {"company": COMPANY, "is_group": 0}, "name")
 	supplier = frappe.db.get_value("Supplier", {}, "name")
-	item = frappe.db.get_value("Item", {"disabled": 0, "is_stock_item": 1}, "name")
+	item = frappe.db.get_value("Item", {"disabled": 0, "is_stock_item": 1, "has_batch_no": 0, "has_serial_no": 0}, "name")
 	rate = flt(get_expected_buying_rate(item)) or flt(frappe.db.get_value("Item", item, "standard_rate")) or 10.0
 	result = create_purchase_receipt_workflow(
 		supplier=supplier,

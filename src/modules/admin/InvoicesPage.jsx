@@ -54,7 +54,7 @@ export default function InvoicesPage() {
       render: v => <span className="mono" style={{ color: v > 0 ? 'var(--red)' : 'var(--text-3)' }}>{fmt(v)}</span>
     },
     {
-      key: 'status', label: t('finance.status'),
+      key: 'status', label: t('finance.table.status'),
       render: v => <Badge color={STATUS_COLOR[v] || 'default'}>{v}</Badge>
     },
   ];

@@ -357,6 +357,12 @@ def prepare_closing_entry(pos_opening_entry, actual_cash, notes=None, payment_co
             update_modified=False,
         )
 
+    try:
+        from elmahdi.api.notifications import notify_shift_close_pending
+        notify_shift_close_pending(closing.name, opening.user or frappe.session.user)
+    except Exception:
+        pass
+
     return {
         "name": closing.name,
         "docstatus": closing.docstatus,

@@ -1,17 +1,28 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ApiErrorCard, Badge, Btn, EmptyState, PageHeader, PageLoading, Table } from '../../../components/ui';
-import { TablePageLayout, LayoutSection, TableRegion } from '../../../components/layout/page-layouts';
-import { getReorderSuggestions, getWarehousesList } from '../../../services/inventoryService';
+import { ApiErrorCard, Btn, EmptyState, PageHeader, PageLoading, Pill } from '../../../components/ui';
+import { TablePageLayout, LayoutSection } from '../../../components/layout/page-layouts';
+import { getWarehousesList } from '../../../services/inventoryService';
+import { listLowStockItems } from '../../../services/inventoryThresholdsApi';
 import { getUserFriendlyMessage } from '../../../utils/errorHandling';
-import { useInventoryCapabilities } from '../../../hooks/useInventoryCapabilities';
-import api from '../../../services/api';
+import { fmtNumber } from '../../../utils/format';
+
+function statusTone(status) {
+  if (status === 'out') return 'danger';
+  if (status === 'alert') return 'warning';
+  if (status === 'reorder') return 'info';
+  return 'default';
+}
+
+function statusLabel(status, t) {
+  if (status === 'out') return t('inventory.alerts.statusOut', { defaultValue: 'Out of stock' });
+  if (status === 'alert') return t('inventory.alerts.statusAlert', { defaultValue: 'Below alert level' });
+  if (status === 'reorder') return t('inventory.alerts.statusReorder', { defaultValue: 'At reorder level' });
+  return status;
+}
 
 export default function AlertsPage() {
   const { t } = useTranslation();
-  const { canInventoryViewValuation } = useInventoryCapabilities();
-  const [tab, setTab] = useState('low');
-  const [threshold, setThreshold] = useState(10);
   const [warehouse, setWarehouse] = useState('all');
   const [warehouses, setWarehouses] = useState([]);
   const [rows, setRows] = useState([]);
@@ -22,143 +33,86 @@ export default function AlertsPage() {
     getWarehousesList().then(setWarehouses).catch(() => {});
   }, []);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      if (tab === 'reorder') {
-        const suggestions = await getReorderSuggestions({
-          warehouse: warehouse === 'all' ? undefined : warehouse,
-        });
-        setRows(
-          suggestions.map((r) => ({
-            item_code: r.item_code,
-            warehouse: r.warehouse || '—',
-            actual_qty: r.qty,
-            reorder_level: r.reorder_level,
-            suggested_qty: r.suggested_qty,
-          })),
-        );
-      } else {
-        // Centralized sellable stock threshold (never infer client-side).
-        const res = await api.get('/api/method/elmahdi.api.stock.list_sellable_bins', {
-          params: {
-            ...(warehouse !== 'all' ? { warehouse } : {}),
-            max_sellable_qty: Number(threshold),
-            limit: 800,
-          },
-        });
-        setRows(res?.data?.message || []);
-      }
+      const res = await listLowStockItems(warehouse === 'all' ? '' : warehouse);
+      setRows(res.rows || []);
     } catch (e) {
       setRows([]);
       setError(getUserFriendlyMessage(e));
     } finally {
       setLoading(false);
     }
-  };
+  }, [warehouse]);
 
-  const columns =
-    tab === 'reorder'
-      ? [
-          { key: 'item_code', label: t('inventory.stockEntry.item'), render: (v) => <span className="mono">{v}</span> },
-          { key: 'warehouse', label: t('inventory.table.warehouse') },
-          {
-            key: 'actual_qty',
-            label: t('inventory.table.onHand'),
-            render: (v) => <Badge color="amber">{Number(v || 0).toFixed(2)}</Badge>,
-          },
-          { key: 'reorder_level', label: t('inventory.table.reorderAt'), render: (v) => <span className="mono">{v}</span> },
-          { key: 'suggested_qty', label: t('inventory.table.orderQty'), render: (v) => <strong>{v}</strong> },
-        ]
-      : [
-          { key: 'item_code', label: t('inventory.stockEntry.item'), render: (v) => <span className="mono">{v}</span> },
-          { key: 'warehouse', label: t('inventory.table.warehouse') },
-          {
-            key: 'sellable_qty',
-            label: t('inventory.table.sellable'),
-            render: (v) => (
-              <Badge color={Number(v || 0) <= 0 ? 'red' : 'amber'}>
-                {Number(v || 0).toFixed(2)}
-              </Badge>
-            ),
-          },
-          ...(canInventoryViewValuation
-            ? [
-                {
-                  key: 'valuation_rate',
-                  label: t('inventory.table.valuation'),
-                  render: (v) => `EGP ${Number(v || 0).toFixed(2)}`,
-                },
-              ]
-            : []),
-        ];
-
-  const sparse = rows.length > 0 && rows.length <= 8;
+  useEffect(() => { load(); }, [load]);
 
   return (
-    <TablePageLayout className="page-layout--list-page" tableConstrain={sparse}>
-      <PageHeader title={t('inventory.alerts.title')} subtitle={t('inventory.alerts.subtitle')} dense />
+    <TablePageLayout>
+      <PageHeader
+        title={t('inventory.alerts.title')}
+        subtitle={t('inventory.alerts.subtitleItemLevel', {
+          defaultValue: 'Items at or below their item-level alert threshold',
+        })}
+        dense
+        actions={<Btn variant="ghost" size="sm" onClick={load} disabled={loading}>{t('common.refresh')}</Btn>}
+      />
 
       <LayoutSection variant="flat" flushHead>
-        <div className="toolbar">
-          <div className="pos-view-toggle">
-            <button
-              type="button"
-              className={`pos-view-toggle__btn ${tab === 'low' ? 'pos-view-toggle__btn--active' : ''}`}
-              onClick={() => setTab('low')}
-            >
-              {t('inventory.alerts.lowStock')}
-            </button>
-            <button
-              type="button"
-              className={`pos-view-toggle__btn ${tab === 'reorder' ? 'pos-view-toggle__btn--active' : ''}`}
-              onClick={() => setTab('reorder')}
-            >
-              {t('inventory.alerts.reorderLevel')}
-            </button>
-          </div>
-          <div className="toolbar__group">
-            <select
-              className="input toolbar__input-fixed"
-              value={warehouse}
-              onChange={(e) => setWarehouse(e.target.value)}
-            >
+        <div className="filter-bar">
+          <label className="filter-bar__field">
+            <span>{t('inventory.table.warehouse')}</span>
+            <select className="input" value={warehouse} onChange={(e) => setWarehouse(e.target.value)}>
               <option value="all">{t('inventory.allWarehouses')}</option>
               {warehouses.map((w) => (
-                <option key={w.name} value={w.name}>
-                  {w.warehouse_name || w.name}
-                </option>
+                <option key={w.name} value={w.name}>{w.warehouse_name || w.name}</option>
               ))}
             </select>
-            {tab === 'low' && (
-              <input
-                className="input toolbar__input-xs"
-                type="number"
-                min="0"
-                value={threshold}
-                onChange={(e) => setThreshold(e.target.value)}
-                title={t('inventory.alerts.maxQtyThreshold')}
-              />
-            )}
-            <Btn variant="ghost" size="sm" onClick={load}>
-              {t('inventory.alerts.load')}
-            </Btn>
-          </div>
+          </label>
         </div>
       </LayoutSection>
 
-      {loading ? (
-        <PageLoading size={26} />
-      ) : error ? (
-        <ApiErrorCard message={error} onRetry={load} />
-      ) : rows.length === 0 ? (
-        <EmptyState icon="🚨" title={t('inventory.alerts.none')} desc={t('inventory.alerts.adjustFilters')} />
-      ) : (
-        <LayoutSection variant="raised" flushHead fit={sparse}>
-          <TableRegion fit={sparse}>
-            <Table columns={columns} data={rows} compact />
-          </TableRegion>
+      {loading && <PageLoading size={26} />}
+      {!loading && error && <ApiErrorCard message={error} onRetry={load} />}
+      {!loading && !error && (
+        <LayoutSection variant="raised">
+          {rows.length === 0 ? (
+            <EmptyState
+              icon="✓"
+              title={t('inventory.alerts.noneTitle', { defaultValue: 'No items below alert level' })}
+              desc={t('inventory.alerts.noneDesc', {
+                defaultValue: 'Set alert thresholds on items from their detail page to monitor low stock.',
+              })}
+            />
+          ) : (
+            <table className="data-table data-table--fill">
+              <thead>
+                <tr>
+                  <th>{t('inventory.alerts.colItem', { defaultValue: 'Item' })}</th>
+                  <th>{t('inventory.table.warehouse')}</th>
+                  <th className="num">{t('inventory.alerts.colCurrent', { defaultValue: 'Current Qty' })}</th>
+                  <th className="num">{t('inventory.alerts.colAlert', { defaultValue: 'Alert Level' })}</th>
+                  <th>{t('inventory.alerts.colStatus', { defaultValue: 'Status' })}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={`${row.item_code}-${row.warehouse}`}>
+                    <td className="fill-col">
+                      <div>{row.item_name}</div>
+                      <div className="mono mono--muted">{row.item_code}</div>
+                    </td>
+                    <td>{row.warehouse}</td>
+                    <td className="num">{fmtNumber(row.actual_qty)} {row.stock_uom}</td>
+                    <td className="num">{fmtNumber(row.alert_level)}</td>
+                    <td><Pill tone={statusTone(row.status)}>{statusLabel(row.status, t)}</Pill></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </LayoutSection>
       )}
     </TablePageLayout>

@@ -26,9 +26,13 @@
     "deskUser": "مستخدم مكتب"
   },
   "auth": {
-    "invalidCredentials": "البريد الإلكتروني أو كلمة المرور غير صحيحة",
-    "sessionExpired": "انتهت صلاحية جلستك. يرجى تسجيل الدخول مرة أخرى.",
-    "networkError": "تعذر الاتصال بالنظام. تحقق من الاتصال وحاول مرة أخرى."
+    "unauthorized": {
+      "title": "غير مسموح بالوصول",
+      "routeMessage": "هذه الصفحة غير متاحة لدورك. استخدم الزر أدناه للعودة إلى مساحة عملك.",
+      "workspaceMessage": "مساحة العمل هذه غير متاحة لدورك. استخدم الزر أدناه للعودة إلى منطقتك المخصصة.",
+      "goHome": "الذهاب إلى مساحة عملي",
+      "goBack": "رجوع"
+    }
   },
   "ui": {
     "loading": "جاري التحميل...",
@@ -69,21 +73,19 @@
     "selector": {
       "suggested": "مقترح",
       "score": "درجة"
+    },
+    "confirm": {
+      "cancel": "إلغاء",
+      "confirm": "تأكيد"
+    },
+    "modal": {
+      "close": "إغلاق"
     }
   },
   "language": {
     "label": "اللغة",
     "english": "English",
     "arabic": "العربية"
-  },
-  "auth": {
-    "unauthorized": {
-      "title": "غير مسموح بالوصول",
-      "routeMessage": "هذه الصفحة غير متاحة لدورك. استخدم الزر أدناه للعودة إلى مساحة عملك.",
-      "workspaceMessage": "مساحة العمل هذه غير متاحة لدورك. استخدم الزر أدناه للعودة إلى منطقتك المخصصة.",
-      "goHome": "الذهاب إلى مساحة عملي",
-      "goBack": "رجوع"
-    }
   },
   "nav": {
     "activity": "النشاط",
@@ -116,7 +118,6 @@
     "settings": "الإعدادات",
     "shifts": "الشيفتات",
     "stock": "المخزون",
-    "stockEntry": "تسوية المخزون",
     "supplierPayments": "مدفوعات الموردين",
     "suppliers": "الموردون",
     "transfer": "تحويل",
@@ -156,7 +157,8 @@
     "quickActions": "إجراءات سريعة",
     "quickActionsSubtitle": "الانتقال للوحدات الأساسية",
     "adminQuickActionsSubtitle": "إعداد النظام والإشراف",
-    "salesCountHint": "{{count}} فاتورة"
+    "salesCountHint": "{{count}} فاتورة",
+    "noTrend": "لا توجد بيانات اتجاه"
   },
   "pos": {
     "avgOrder": "متوسط الطلب",
@@ -229,7 +231,19 @@
     "viewReceiptHint": "عرض الإيصال والطباعة من القائمة.",
     "walkIn": "عابر",
     "walkInCustomer": "عميل عابر",
-    "whLabel": "المخزن"
+    "whLabel": "المخزن",
+    "allOutOfStockDesc": "نقّح بحثك أو انتظر استلام المخزون قبل متابعة البيع.",
+    "allOutOfStockTitle": "جميع الأصناف الظاهرة غير متوفرة",
+    "clearCart": "مسح السلة",
+    "clearCartTitle": "مسح السلة؟",
+    "itemsLabel": "الأصناف",
+    "noShiftHint": "افتح الدرج لبدء البيع",
+    "noShiftTitle": "لا يوجد شيفت مفتوح",
+    "openingBalanceHint": "أدخل النقد الموجود في الدرج عند بداية شيفتك. تتم تسويته عند الإغلاق.",
+    "processTransaction": "إتمام الدفع",
+    "selectPayment": "الدفع",
+    "shiftClosedExternally": "تم إغلاق شيفتك من جهاز آخر. افتح شيفتاً جديداً لمتابعة البيع.",
+    "subtotal": "المجموع الفرعي"
   },
   "shifts": {
     "closeShift": "إغلاق الشيفت",
@@ -302,7 +316,8 @@
       "entered": "المُدخل",
       "varPct": "الانحراف %",
       "amount": "المبلغ"
-    }
+    },
+    "viewHistory": "عرض سجل الموافقات"
   },
   "inventory": {
     "subtitle": "لقطة المخزون الحالية",
@@ -347,19 +362,12 @@
       "qty": "الكمية"
     },
     "stockEntry": {
-      "title": "إدخال مخزون",
-      "subtitle": "إنشاء وإرسال حركات المخزون",
-      "entryType": "نوع الإدخال",
       "item": "الصنف",
       "itemCode": "كود الصنف",
       "qty": "الكمية",
       "quantity": "الكمية",
       "sourceWarehouse": "مخزن المصدر",
-      "targetWarehouse": "مخزن الهدف",
-      "selectSource": "اختر المصدر",
-      "selectTarget": "اختر الهدف",
-      "createSubmit": "إنشاء وإرسال",
-      "failed": "فشل إدخال المخزون"
+      "targetWarehouse": "مخزن الهدف"
     },
     "transfer": {
       "title": "تحويل مخزون",
@@ -383,7 +391,17 @@
       "maxQtyThreshold": "أقصى حد للكمية",
       "load": "تحميل التنبيهات",
       "none": "لا توجد تنبيهات",
-      "adjustFilters": "عدّل الفلاتر ثم حمّل النتائج."
+      "adjustFilters": "عدّل الفلاتر ثم حمّل النتائج.",
+      "colAlert": "مستوى التنبيه",
+      "colCurrent": "الكمية الحالية",
+      "colItem": "الصنف",
+      "colStatus": "الحالة",
+      "noneDesc": "حدّد عتبات التنبيه على الأصناف من صفحة تفاصيل الصنف لمراقبة انخفاض المخزون.",
+      "noneTitle": "لا توجد أصناف تحت مستوى التنبيه",
+      "statusAlert": "تحت مستوى التنبيه",
+      "statusOut": "نفاد المخزون",
+      "statusReorder": "عند مستوى إعادة الطلب",
+      "subtitleItemLevel": "الأصناف عند أو أقل من عتبة التنبيه على مستوى الصنف"
     },
     "reorder": {
       "title": "اقتراحات إعادة الطلب",
@@ -391,7 +409,13 @@
       "suggestedOrder": "الطلب المقترح",
       "suggestedQty": "الكمية المقترحة",
       "load": "تحميل الاقتراحات",
-      "empty": "حمّل النتائج لرؤية اقتراحات إعادة الطلب"
+      "empty": "حمّل النتائج لرؤية اقتراحات إعادة الطلب",
+      "colReorder": "مستوى إعادة الطلب",
+      "colSuggested": "الكمية المقترحة",
+      "createRequest": "إنشاء طلب شراء",
+      "noneDesc": "ستظهر الأصناف هنا عندما ينخفض مخزونها إلى أو تحت مستوى إعادة الطلب.",
+      "noneTitle": "لا شيء لإعادة الطلب",
+      "subtitleItemLevel": "الأصناف عند أو أقل من عتبة إعادة الطلب على مستوى الصنف"
     },
     "ledger": {
       "title": "دفتر حركة المخزون",
@@ -454,6 +478,16 @@
       "movementTimeline": "تسلسل الحركة",
       "expiry": "تاريخ الانتهاء",
       "loadError": "فشل تحميل تفاصيل الصنف"
+    },
+    "thresholds": {
+      "alert": "مستوى التنبيه",
+      "noChanges": "لا توجد تغييرات للحفظ.",
+      "qty": "كمية إعادة الطلب",
+      "readOnly": "يستطيع مدير المتجر أو المسؤول تعديل هذه العتبات.",
+      "reorder": "مستوى إعادة الطلب",
+      "saved": "تم حفظ عتبات المخزون.",
+      "subtitle": "عتبات التنبيه وإعادة الطلب على مستوى الصنف. تُستخدم في صفحات التنبيهات وإعادة الطلب.",
+      "title": "عتبات المخزون"
     }
   },
   "purchasing": {
@@ -591,7 +625,13 @@
     "date": "التاريخ",
     "totalLabel": "الإجمالي",
     "outstandingLabel": "المتبقي",
-    "status": "الحالة",
+    "status": {
+      "all": "الكل",
+      "overdue": "متأخر",
+      "unpaid": "غير مدفوع",
+      "partial": "جزئي",
+      "paid": "مدفوع"
+    },
     "loadInvoicesError": "فشل تحميل الفواتير",
     "purchaseApprovals": "موافقات الشراء",
     "shiftApprovals": "موافقات الشيفت",
@@ -625,13 +665,6 @@
       "noInvoicesDesc": "لا توجد فواتير شراء تطابق هذا الفلتر.",
       "noPayments": "لا توجد مدفوعات",
       "noPaymentsDesc": "ستظهر مدفوعات الموردين المرسلة هنا."
-    },
-    "status": {
-      "all": "الكل",
-      "overdue": "متأخر",
-      "unpaid": "غير مدفوع",
-      "partial": "جزئي",
-      "paid": "مدفوع"
     },
     "aging": {
       "current": "حالي"
@@ -683,7 +716,10 @@
     "xlsx": "Excel",
     "pdf": "PDF",
     "error": "تعذر تحميل السجل",
-    "tabs": { "receipts": "إيصالات الشراء", "invoices": "فواتير الشراء" },
+    "tabs": {
+      "receipts": "إيصالات الشراء",
+      "invoices": "فواتير الشراء"
+    },
     "kpi": {
       "pending": "مشتريات معلقة",
       "approved": "مشتريات معتمدة",
@@ -824,5 +860,15 @@
   },
   "approvalsExtra": {
     "viewHistory": "عرض سجل الموافقات"
+  },
+  "notifications": {
+    "empty": "لا توجد إشعارات بعد",
+    "markAllRead": "تعليم الكل كمقروء",
+    "title": "الإشعارات"
+  },
+  "reports": {
+    "filters": {
+      "dateRange": "النطاق الزمني"
+    }
   }
 }

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { login, logout as apiLogout } from '../../services/api';
+import { logActivity, ActivityType } from '../../services/activityLogService';
 import { useAuth } from '../../hooks/useAuth';
 import { getLoginErrorMessage } from '../../utils/errorHandling';
 import { Btn } from '../../components/ui';
@@ -45,6 +46,12 @@ export default function LoginPage() {
       }
 
       if (authState.user && authState.homePath && authState.homePath !== '/login') {
+        logActivity({
+          type: ActivityType.SYSTEM,
+          action: 'login',
+          user: authState.user?.email || authState.user?.name || usr,
+          detail: { home: authState.homePath, persona: authState.capabilities?.operationalPersona },
+        });
         navigate(authState.homePath, { replace: true });
       } else if (authState.reason === 'roles-unreadable') {
         setErr(

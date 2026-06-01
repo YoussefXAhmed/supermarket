@@ -42,32 +42,25 @@ function ItemCard({ item, onAdd, disabled }) {
   const img = getERPImageUrl(item.image);
   const stock = stockLabel(item, t);
   const out = stock?.className === 'item-card__stock--out';
-  const low = stock?.className === 'item-card__stock--low';
   return (
     <button
       type="button"
-      className={`item-card ${out ? 'item-card--out' : ''} ${low ? 'item-card--low' : ''}`}
+      className={`item-card ${out ? 'item-card--out' : ''}`}
       onClick={() => onAdd(item)}
       disabled={disabled || out}
     >
       <div className="item-card__img">
         {img ? <img src={img} alt={item.item_name} /> : <span className="item-card__placeholder">🛒</span>}
-        {stock && (
-          <span className={`item-card__badge ${stock.className}`}>{stock.text}</span>
-        )}
-        {out && (
-          <span className="item-card__overlay" aria-hidden>
-            {t('pos.outOfStock')}
-          </span>
-        )}
       </div>
       <div className="item-card__body">
         <p className="item-card__name" title={item.item_name}>{item.item_name}</p>
-        <span className="item-card__code mono">{item.item_code}</span>
+        {stock && (
+          <span className={`item-card__stock ${stock.className}`}>{stock.text}</span>
+        )}
         <div className="item-card__foot">
           <span className="item-card__price">EGP {(item.standard_rate || 0).toFixed(2)}</span>
           {!out && (
-            <span className="item-card__add" aria-hidden>+ {t('pos.add', { defaultValue: 'Add' })}</span>
+            <span className="item-card__add" aria-hidden>+</span>
           )}
         </div>
       </div>
@@ -379,18 +372,6 @@ export default function POSPage() {
         </div>
 
         <div className="pos-topbar__actions">
-          <button
-            type="button"
-            className={`pos-topbar__view-btn ${viewMode === 'invoices' ? 'pos-topbar__view-btn--active' : ''}`}
-            onClick={() => setViewMode(viewMode === 'sell' ? 'invoices' : 'sell')}
-          >
-            <span aria-hidden>{viewMode === 'sell' ? '🧾' : '🛒'}</span>
-            <span>
-              {viewMode === 'sell'
-                ? (canOperatePOS ? t('pos.myInvoices') : t('common.invoices'))
-                : t('pos.sell')}
-            </span>
-          </button>
           <UserSessionActions
             user={user}
             compact
@@ -448,6 +429,31 @@ export default function POSPage() {
         </div>
       )}
 
+      {canOperatePOS && (
+        <div className="pos-segctrl-bar">
+          <div className="pos-segctrl" role="tablist" aria-label="View">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={viewMode === 'sell'}
+              className={`pos-segctrl__btn ${viewMode === 'sell' ? 'pos-segctrl__btn--active' : ''}`}
+              onClick={() => setViewMode('sell')}
+            >
+              {t('pos.sell')}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={viewMode === 'invoices'}
+              className={`pos-segctrl__btn ${viewMode === 'invoices' ? 'pos-segctrl__btn--active' : ''}`}
+              onClick={() => setViewMode('invoices')}
+            >
+              {t('pos.myInvoices')}
+            </button>
+          </div>
+        </div>
+      )}
+
       {viewMode === 'sell' ? (
         <div className="pos-body">
           <section className="pos-products">
@@ -455,9 +461,23 @@ export default function POSPage() {
               <ApiErrorCard title={t('pos.couldNotLoadProducts')} message={pos.productsError} onRetry={() => pos.loadItems(pos.query)} />
             )}
             {pos.loading && !pos.items.length ? (
-              <PageLoading size={28} className="pos-loading" />
+              <div className="pos-grid" aria-busy="true">
+                {Array.from({ length: 12 }).map((_, i) => (
+                  <div key={i} className="item-card item-card--skeleton" aria-hidden>
+                    <div className="item-card__img item-card__img--skeleton" />
+                    <div className="item-card__body">
+                      <div className="skeleton-line skeleton-line--lg" />
+                      <div className="skeleton-line skeleton-line--sm" />
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : pos.items.length === 0 ? (
-              <EmptyState icon="🔍" title={t('pos.noProductsFound')} desc={pos.shiftOpen ? t('pos.searchOrScan') : t('pos.startShiftFirst')} />
+              <EmptyState
+                icon="🔍"
+                title={t('pos.noProductsFound')}
+                desc={pos.shiftOpen ? t('pos.searchOrScan') : t('pos.startShiftFirst')}
+              />
             ) : (
               <>
                 {allOutOfStock && (

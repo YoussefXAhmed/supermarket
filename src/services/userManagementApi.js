@@ -11,6 +11,7 @@ import {
   updateUser,
 } from './api';
 import { getTemplateById, validateProvisioningInput } from '../auth/operationalUserTemplates';
+import { logActivity, ActivityType } from './activityLogService';
 
 export { getPriceLists } from './api';
 export { listWarehouses as listWarehousesForProvisioning } from './inventoryApi';
@@ -99,6 +100,12 @@ export async function provisionOperationalUser(payload) {
       await updateUser(username, { send_welcome_email: 1 });
     }
 
+    logActivity({
+      type: ActivityType.USER,
+      action: 'user_provisioned',
+      detail: { username, role_profile: template.roleProfileName, template: template.id },
+    });
+
     return {
       username,
       role_profile_name: template.roleProfileName,
@@ -134,6 +141,11 @@ function formatProvisionError(e, username) {
  */
 export async function disableOperationalUser(username) {
   await setUserEnabled(username, false);
+  logActivity({
+    type: ActivityType.USER,
+    action: 'user_disabled',
+    detail: { username },
+  });
 }
 
 export async function enableOperationalUser(username) {

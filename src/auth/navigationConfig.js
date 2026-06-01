@@ -127,7 +127,6 @@ export function getHRNavItems(capabilities) {
 const INVENTORY_NAV_CLERK = [
   { to: '/inventory', labelKey: 'nav.overview', icon: '◈', exact: true },
   { to: '/inventory/warehouses', labelKey: 'nav.warehouses', icon: '🏬' },
-  { to: '/inventory/stock-entry', labelKey: 'nav.stockEntry', icon: '📥' },
   { to: '/inventory/transfer', labelKey: 'nav.transfer', icon: '🔁', cap: 'canInventoryIssueTransfer' },
   { to: '/inventory/alerts', labelKey: 'nav.alerts', icon: '⚠' },
   { to: '/inventory/reorder', labelKey: 'nav.reorder', icon: '🛒' },

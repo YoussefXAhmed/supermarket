@@ -1,5 +1,6 @@
 import { UserAvatar } from '../ui';
 import LanguageSwitcher from '../common/LanguageSwitcher';
+import NotificationBell from '../notifications/NotificationBell';
 import { useTranslation } from 'react-i18next';
 
 export default function UserSessionActions({
@@ -19,6 +20,7 @@ export default function UserSessionActions({
       </span>
 
       <div className="session-actions__buttons">
+        <NotificationBell />
         <LanguageSwitcher className="session-actions__language" />
         {links.map((link) => (
           <button

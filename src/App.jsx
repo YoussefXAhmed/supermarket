@@ -39,7 +39,6 @@ const SettingsPage = lazy(() => import('./modules/admin/SettingsPage'));
 const ActivityLogPage = lazy(() => import('./modules/admin/ActivityLogPage'));
 const InventoryDashboardPage = lazy(() => import('./modules/inventory/InventoryPage'));
 const WarehousesPage = lazy(() => import('./modules/inventory/pages/WarehousesPage'));
-const StockEntryPage = lazy(() => import('./modules/inventory/pages/StockEntryPage'));
 const StockLedgerPage = lazy(() => import('./modules/inventory/pages/StockLedgerPage'));
 const ItemDetailsPage = lazy(() => import('./modules/inventory/pages/ItemDetailsPage'));
 const InventoryAlertsPage = lazy(() => import('./modules/inventory/pages/AlertsPage'));
@@ -180,7 +179,6 @@ export default function App() {
           >
             <Route index element={<LazyPage><InventoryDashboardPage /></LazyPage>} />
             <Route path="warehouses" element={<LazyPage><WarehousesPage /></LazyPage>} />
-            <Route path="stock-entry" element={<LazyPage><StockEntryPage /></LazyPage>} />
             <Route
               path="transfer"
               element={(

@@ -43,6 +43,7 @@ import {
   ShiftValidationError,
 } from '../utils/shiftValidation';
 import { logActivity, ActivityType } from './activityLogService';
+import { publishShiftChanged } from '../utils/shiftRealtime';
 
 const AUDIT_PREFIX = 'Elmahdi-Shift-Audit';
 
@@ -313,6 +314,7 @@ export async function openShift({
     }
   }
 
+  publishShiftChanged('opened', { opening: name, posProfile });
   logActivity({
     type: ActivityType.SHIFT,
     action: 'shift_opened',
@@ -391,28 +393,18 @@ export async function closeShift({
 
   if (!closingName) throw new Error('Failed to create POS Closing Entry');
 
+  // Segregation of duties — the same user must not close + approve. Even if
+  // an Administrator has the approval capability, they must go through the
+  // accountant queue. This protects against shift-close self-approval.
+  // Auto-approval here was a P1 audit finding; closing always lands as
+  // draft and waits for the accountant.
   const needsVarianceApproval = varianceResult.severity === 'approval_required';
-  const needsManagerSubmit = !canSubmitClosing;
+  const needsManagerSubmit = true;
 
-  if (canSubmitClosing && !needsVarianceApproval) {
-    try {
-      await approvePOSClosingEntryOnServer({
-        name: closingName,
-        notes: notes || 'Shift close finalized by manager',
-      });
-      submitted = true;
-    } catch (e) {
-      return {
-        closing: await loadClosing(closingName),
-        variance: varianceResult,
-        submitted: false,
-        needsVarianceApproval,
-        needsManagerSubmit: true,
-        message: e.message,
-      };
-    }
-  }
-
+  publishShiftChanged(submitted ? 'closed' : 'close_draft', {
+    opening: openingEntryName,
+    closing: closingName,
+  });
   logActivity({
     type: ActivityType.SHIFT,
     action: submitted ? 'shift_closed' : 'shift_close_draft',
@@ -467,6 +459,7 @@ export async function approveShiftClosing({
     notes: notes || closing.audit?.notes || '',
   });
 
+  publishShiftChanged('approved', { closing: closingEntryName });
   logActivity({
     type: ActivityType.SHIFT,
     action: 'shift_close_approved',
@@ -503,6 +496,7 @@ export async function rejectShiftClosing({
     reason: reason || closing.audit?.notes || '',
   });
 
+  publishShiftChanged('rejected', { closing: closingEntryName });
   logActivity({
     type: ActivityType.SHIFT,
     action: 'shift_close_rejected',

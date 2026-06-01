@@ -125,6 +125,36 @@ CUSTOM_FIELDS = [
 		"read_only": 1,
 		"no_copy": 1,
 	},
+	# Item — SPA-managed inventory thresholds. Item-level, single value across
+	# all warehouses. Complements the per-warehouse Item Reorder child table
+	# without duplicating stock data.
+	{
+		"dt": "Item",
+		"fieldname": "elmahdi_alert_level",
+		"label": "Low Stock Alert Level",
+		"fieldtype": "Float",
+		"insert_after": "stock_uom",
+		"default": "0",
+		"description": "Total qty across all warehouses at or below this triggers a low-stock alert in the SPA.",
+	},
+	{
+		"dt": "Item",
+		"fieldname": "elmahdi_reorder_level",
+		"label": "Reorder Level",
+		"fieldtype": "Float",
+		"insert_after": "elmahdi_alert_level",
+		"default": "0",
+		"description": "Total qty at or below this surfaces the item on the Reorder list.",
+	},
+	{
+		"dt": "Item",
+		"fieldname": "elmahdi_reorder_qty",
+		"label": "Suggested Reorder Quantity",
+		"fieldtype": "Float",
+		"insert_after": "elmahdi_reorder_level",
+		"default": "0",
+		"description": "Pre-fills the Receive Goods form when restocking from the Reorder page.",
+	},
 	# POS Closing Entry
 	{
 		"dt": "POS Closing Entry",

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Btn, Badge } from '../ui';
+import { Btn, Badge, Modal } from '../ui';
 
 function prettyWarehouse(raw) {
   if (!raw) return '';
@@ -37,41 +37,62 @@ export default function POSShiftBar({
 
   const warehouse = prettyWarehouse(profile?.warehouse);
 
-  // ── Compact no-shift CTA strip ──────────────────────────────────────
+  // ── Compact no-shift CTA strip + opening modal ──────────────────────
   if (!shiftOpen && !readOnly) {
     return (
-      <div className="pos-shift-strip" role="status" aria-live="polite">
-        <div className="pos-shift-strip__main">
-          <span className="pos-shift-strip__icon" aria-hidden>⏱</span>
-          <span className="pos-shift-strip__msg">
-            <strong>{t('pos.noShiftTitle', { defaultValue: 'No shift open' })}</strong>
-            <span className="pos-shift-strip__hint">
-              {' · '}{t('pos.noShiftHint', { defaultValue: 'Open your drawer to start selling' })}
-              {warehouse && (
-                <span className="pos-shift-strip__wh"> · {t('pos.whLabel')} <strong>{warehouse}</strong></span>
-              )}
+      <>
+        <div className="pos-shift-strip" role="status" aria-live="polite">
+          <div className="pos-shift-strip__main">
+            <span className="pos-shift-strip__icon" aria-hidden>⏱</span>
+            <span className="pos-shift-strip__msg">
+              <strong>{t('pos.noShiftTitle', { defaultValue: 'No shift open' })}</strong>
+              <span className="pos-shift-strip__hint">
+                {' · '}{t('pos.noShiftHint', { defaultValue: 'Open your drawer to start selling' })}
+                {warehouse && (
+                  <span className="pos-shift-strip__wh"> · {t('pos.whLabel')} <strong>{warehouse}</strong></span>
+                )}
+              </span>
             </span>
-          </span>
-          {shiftError && <span className="pos-shift-strip__error">{shiftError}</span>}
-        </div>
-        <div className="pos-shift-strip__actions">
-          {!showStart && (
+            {shiftError && <span className="pos-shift-strip__error">{shiftError}</span>}
+          </div>
+          <div className="pos-shift-strip__actions">
             <Btn variant="primary" size="sm" loading={shiftLoading} onClick={() => setShowStart(true)}>
               {t('pos.startShift')}
             </Btn>
-          )}
-          <Btn variant="ghost" size="sm" onClick={onRefresh} disabled={shiftLoading}>
-            {t('common.refresh')}
-          </Btn>
+            <Btn variant="ghost" size="sm" onClick={onRefresh} disabled={shiftLoading}>
+              {t('common.refresh')}
+            </Btn>
+          </div>
         </div>
 
-        {showStart && (
-          <div className="pos-shift-strip__form">
-            <label className="pos-shift-strip__field">
-              <span>{t('pos.openingAmountLabel')}</span>
+        <Modal
+          open={showStart}
+          onClose={() => setShowStart(false)}
+          title={t('pos.openingBalance')}
+          size="sm"
+          footer={(
+            <>
+              <Btn variant="ghost" size="md" onClick={() => setShowStart(false)} disabled={shiftLoading}>
+                {t('common.cancel')}
+              </Btn>
+              <Btn variant="primary" size="md" loading={shiftLoading} onClick={handleStart}>
+                {t('pos.confirmOpenShift')}
+              </Btn>
+            </>
+          )}
+        >
+          <div className="pos-shift-modal">
+            <p className="pos-shift-modal__hint">
+              {t('pos.openingBalanceHint', {
+                defaultValue: 'Enter the cash in the drawer at the start of your shift. This is reconciled at close.',
+              })}
+            </p>
+            <label className="form-field">
+              <span className="form-field__label">{t('pos.openingAmountLabel')}</span>
               <input
                 className="input"
                 type="number"
+                inputMode="decimal"
                 min="0"
                 step="0.01"
                 value={openingAmount}
@@ -79,22 +100,21 @@ export default function POSShiftBar({
                 autoFocus
               />
             </label>
-            <label className="pos-shift-strip__field">
-              <span>{t('pos.modeLabel')}</span>
-              <select className="input" value={openingMode} onChange={(e) => setOpeningMode(e.target.value)}>
+            <label className="form-field">
+              <span className="form-field__label">{t('pos.modeLabel')}</span>
+              <select
+                className="input"
+                value={openingMode}
+                onChange={(e) => setOpeningMode(e.target.value)}
+              >
                 <option value="Cash">{t('pos.cash')}</option>
                 <option value="Card">{t('pos.card')}</option>
               </select>
             </label>
-            <div className="pos-shift-strip__form-actions">
-              <Btn variant="primary" size="sm" loading={shiftLoading} onClick={handleStart}>
-                {t('pos.confirmOpenShift')}
-              </Btn>
-              <Btn variant="ghost" size="sm" onClick={() => setShowStart(false)}>{t('common.cancel')}</Btn>
-            </div>
+            {shiftError && <p className="inv-error">{shiftError}</p>}
           </div>
-        )}
-      </div>
+        </Modal>
+      </>
     );
   }
 

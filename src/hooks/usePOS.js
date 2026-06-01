@@ -23,6 +23,7 @@ import {
   normalizeERPError,
 } from '../utils/errorHandling';
 import { invalidateStockCache, STOCK_INVALIDATE_EVENT } from '../utils/stockCache';
+import { onShiftChanged } from '../utils/shiftRealtime';
 import { getPOSProfileWarehouse } from '../services/stockService';
 
 export function usePOS(user) {
@@ -129,21 +130,24 @@ export function usePOS(user) {
     }
   }, [user?.name, refreshMetrics]);
 
-  // Poll the active shift and revalidate when the tab regains focus so the
-  // cashier's view stays in sync with ERPNext without manual refresh.
+  // Poll the active shift and revalidate when the tab regains focus or when
+  // another tab broadcasts a shift change. 8s poll + BroadcastChannel give
+  // near-instant cross-tab sync without server-pushed websockets.
   useEffect(() => {
     if (!profile?.name) return undefined;
-    const id = setInterval(() => { refreshShift(); }, 30000);
+    const id = setInterval(() => { refreshShift(); }, 8000);
     const onFocus = () => { refreshShift(); };
     const onVisibility = () => {
       if (document.visibilityState === 'visible') refreshShift();
     };
     window.addEventListener('focus', onFocus);
     document.addEventListener('visibilitychange', onVisibility);
+    const unsubBroadcast = onShiftChanged(() => { refreshShift(); });
     return () => {
       clearInterval(id);
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVisibility);
+      unsubBroadcast();
     };
   }, [profile?.name, refreshShift]);
 

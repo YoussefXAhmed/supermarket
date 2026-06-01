@@ -123,6 +123,13 @@ def approve_pos_closing_entry(name, notes=""):
 		doc.flags.ignore_permissions = prev_doc_ignore
 		frappe.flags.elmahdi_pos_closing_approval_submit = False
 
+	try:
+		from elmahdi.api.notifications import notify_shift_close_decision
+		cashier = frappe.db.get_value("POS Opening Entry", doc.pos_opening_entry, "user") if doc.pos_opening_entry else None
+		notify_shift_close_decision(doc.name, cashier or doc.owner, "approved", notes)
+	except Exception:
+		pass
+
 	return {"name": doc.name, "docstatus": doc.docstatus, "status": "submitted"}
 
 
@@ -143,6 +150,13 @@ def reject_pos_closing_entry(name, notes=""):
 		doc.save(ignore_permissions=True)
 	finally:
 		frappe.flags.elmahdi_pos_closing_skip_pending = False
+
+	try:
+		from elmahdi.api.notifications import notify_shift_close_decision
+		cashier = frappe.db.get_value("POS Opening Entry", doc.pos_opening_entry, "user") if doc.pos_opening_entry else None
+		notify_shift_close_decision(doc.name, cashier or doc.owner, "rejected", notes)
+	except Exception:
+		pass
 
 	return {"name": doc.name, "docstatus": doc.docstatus, "status": "rejected"}
 

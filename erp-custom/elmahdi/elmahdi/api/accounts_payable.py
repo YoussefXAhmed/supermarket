@@ -605,10 +605,16 @@ def create_supplier_payment(
 	remarks=None,
 	allocations=None,
 	submit=1,
+	idempotency_key=None,
 ):
 	"""
 	Create ERPNext Payment Entry (Pay) against Purchase Invoice(s) and submit.
 	allocations: JSON list of {invoice, amount}
+
+	idempotency_key: optional client-supplied key. If a Payment Entry was
+	already created for the same key within the last 24h, that entry is
+	returned instead of creating a duplicate. Protects against double-clicks
+	and network retries.
 	"""
 	_require_payment_create()
 	company = company or _default_company()
@@ -616,6 +622,20 @@ def create_supplier_payment(
 		frappe.throw(_("Supplier is required."), frappe.ValidationError)
 	if not paid_from:
 		frappe.throw(_("Payment account (cash/bank) is required."), frappe.ValidationError)
+
+	# Idempotency check — return existing payment if key matches a recent entry.
+	if idempotency_key:
+		cached_key = f"elmahdi:supplier_payment:{frappe.session.user}:{idempotency_key}"
+		existing = frappe.cache().get_value(cached_key)
+		if existing:
+			if frappe.db.exists("Payment Entry", existing):
+				pe_existing = frappe.get_doc("Payment Entry", existing)
+				return {
+					"name": pe_existing.name,
+					"docstatus": pe_existing.docstatus,
+					"paid_amount": flt(pe_existing.paid_amount),
+					"idempotent_replay": True,
+				}
 
 	if not frappe.db.exists("Account", paid_from):
 		frappe.throw(_("Payment account {0} not found.").format(paid_from), frappe.DoesNotExistError)
@@ -731,6 +751,24 @@ def create_supplier_payment(
 				}
 		except Exception:
 			continue
+
+	# Cache idempotency key after successful creation (24h TTL).
+	if idempotency_key:
+		try:
+			frappe.cache().set_value(
+				f"elmahdi:supplier_payment:{frappe.session.user}:{idempotency_key}",
+				pe.name,
+				expires_in_sec=24 * 3600,
+			)
+		except Exception:
+			pass
+
+	try:
+		from elmahdi.api.notifications import notify_supplier_payment
+		notify_supplier_payment(pe.name, supplier, flt(pe.paid_amount), frappe.session.user)
+	except Exception:
+		pass
+
 	return {
 		"name": pe.name,
 		"docstatus": pe.docstatus,

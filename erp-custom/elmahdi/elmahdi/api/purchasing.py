@@ -443,6 +443,13 @@ def create_purchase_receipt_workflow(
                     title=f"Auto PI after low-variance PR {doc.name}",
                 )
 
+    if not submitted:
+        try:
+            from elmahdi.api.notifications import notify_purchase_pending
+            notify_purchase_pending(doc.name, doc.supplier or "")
+        except Exception:
+            pass
+
     return {
         "name": doc.name,
         "docstatus": doc.docstatus,
@@ -571,6 +578,11 @@ def approve_purchase_receipt(name, action="approve", notes=""):
             doc.purchase_rate_audit = json.dumps(audit, default=str)
         _set_approval_fields(doc, pending=False, level=level, audit_dict=audit)
         doc.save(ignore_permissions=True)
+        try:
+            from elmahdi.api.notifications import notify_purchase_decision
+            notify_purchase_decision(doc.name, doc.owner, "rejected", notes)
+        except Exception:
+            pass
         return {"name": doc.name, "status": STATUS_REJECTED, "approval_status": STATUS_REJECTED}
 
     validate_purchase_receipt(doc)
@@ -635,6 +647,12 @@ def approve_purchase_receipt(name, action="approve", notes=""):
             title=f"Auto PI after PR approval {doc.name}",
         )
         pi_result = {"error": str(exc)[:200]}
+
+    try:
+        from elmahdi.api.notifications import notify_purchase_decision
+        notify_purchase_decision(doc.name, doc.owner, "approved", notes)
+    except Exception:
+        pass
 
     return {
         "name": doc.name,

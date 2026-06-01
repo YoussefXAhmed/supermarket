@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Badge, Table } from '../ui';
 import { getERPDeskUrl } from '../../utils/erpLinks';
@@ -14,8 +13,20 @@ export default function InventoryProductsTable({
       key: 'item_name',
       label: t('inventory.table.product'),
       render: (v, row) => (
-        <div>
-          <p style={{ fontWeight: 600 }}>{v || row.item_code}</p>
+        <div style={{ maxWidth: 280, minWidth: 0 }}>
+          <p
+            style={{
+              fontWeight: 600,
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              lineHeight: 1.3,
+            }}
+            title={v || row.item_code}
+          >
+            {v || row.item_code}
+          </p>
           <p className="mono" style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>{row.item_code}</p>
         </div>
       ),
@@ -70,12 +81,6 @@ export default function InventoryProductsTable({
               {t('common.edit')}
             </a>
           )}
-          <Link
-            className="btn btn--ghost btn--sm"
-            to={`/inventory/stock-entry?item=${encodeURIComponent(row.item_code)}`}
-          >
-            {t('nav.stockEntry')}
-          </Link>
         </div>
       ),
     },
