@@ -16,7 +16,8 @@
     "save": "Save",
     "select": "Select",
     "view": "View",
-    "submit": "Submit"
+    "submit": "Submit",
+    "back": "Back"
   },
   "roles": {
     "administrator": "Administrator",
@@ -870,5 +871,39 @@
     "filters": {
       "dateRange": "Date range"
     }
+  },
+  "itemEdit": {
+    "title": "Edit item",
+    "disabled": "Disabled",
+    "readOnlyHint": "Read-only view — only Administrator and Store Manager can edit items.",
+    "basics": "Item details",
+    "itemName": "Item name",
+    "itemCode": "Item code",
+    "barcode": "Barcode",
+    "itemGroup": "Item group",
+    "brand": "Brand",
+    "uom": "Unit of measure",
+    "country": "Country of origin",
+    "description": "Description",
+    "pricing": "Pricing",
+    "buyingPrice": "Buying price (EGP)",
+    "sellingPrice": "Selling price (EGP)",
+    "margin": "Margin",
+    "tracking": "Batch & expiry tracking",
+    "hasBatch": "Track by batch (enables production + expiry date per batch)",
+    "shelfLife": "Shelf life (days)",
+    "thresholds": "Low-stock thresholds",
+    "thresholdsSub": "Alert fires when stock ≤ alert level. Reorder suggestion uses the reorder level + quantity.",
+    "status": "Status",
+    "disable": "Disable this item (hides from POS, alerts, and inventory listings)",
+    "saved": "Item saved.",
+    "imageSaved": "Image updated.",
+    "replaceImage": "Replace image",
+    "uploadImage": "Upload image",
+    "backToList": "Back to inventory",
+    "productInfo": "Product information",
+    "productInfoSub": "Editable by Administrator and Store Manager.",
+    "pricingSub": "Editable by Administrator only.",
+    "pricingAdminOnly": "Only administrators can modify pricing."
   }
 }

@@ -115,7 +115,7 @@ const STORE_MANAGER = inv({
   canAccessAdminWorkspace: false,
   canViewSuppliers: false,
   canAccessInvoiceMatching: false,
-  canAccessInventory: false,
+  canAccessInventory: true,
   canInventoryOperate: false,
   canInventoryReceipt: false,
   canInventoryTransfer: false,

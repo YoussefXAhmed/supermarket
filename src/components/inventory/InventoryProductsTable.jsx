@@ -1,6 +1,6 @@
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Badge, Table } from '../ui';
-import { getERPDeskUrl } from '../../utils/erpLinks';
 
 export default function InventoryProductsTable({
   rows,
@@ -71,16 +71,12 @@ export default function InventoryProductsTable({
       label: t('ui.table.actions'),
       render: (_, row) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {canManageItemMaster && (
-            <a
-              className="btn btn--ghost btn--sm"
-              href={getERPDeskUrl(`item/${encodeURIComponent(row.item_code)}`)}
-              target="_blank"
-              rel="noreferrer"
-            >
-              {t('common.edit')}
-            </a>
-          )}
+          <Link
+            className="btn btn--ghost btn--sm"
+            to={`/inventory/items/${encodeURIComponent(row.item_code)}`}
+          >
+            {canManageItemMaster ? t('common.edit') : t('common.view')}
+          </Link>
         </div>
       ),
     },

@@ -895,17 +895,14 @@ input[type="time"].input { color-scheme: dark; }
   border: 2px solid var(--bg-2);
 }
 .notif-bell__panel {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  width: min(360px, calc(100vw - 24px));
-  max-height: 480px;
+  /* Position is set inline (portal'd to body via fixed coords),
+     so the panel can escape the sidebar's overflow:hidden clip. */
   background: var(--bg-2);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-lg);
   box-shadow: 0 12px 32px rgba(0,0,0,0.4);
   display: flex; flex-direction: column;
-  z-index: var(--z-dropdown);
+  z-index: var(--z-popover);
   overflow: hidden;
 }
 .notif-bell__head {

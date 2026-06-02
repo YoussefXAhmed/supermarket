@@ -50,6 +50,7 @@ _CAPS_PURCHASING = {
 
 _CAPS_STORE_MANAGER = {
 	"can_access_admin_workspace": True,
+	"can_access_inventory": True,
 	"can_view_operational_kpis": True,
 	"can_view_financial_kpis": False,
 	"can_view_purchase_approvals": True,

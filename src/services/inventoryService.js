@@ -62,10 +62,15 @@ function rowFromBin(bin, itemByCode) {
   };
 }
 
-/** One table row per ERP Bin (item + warehouse); no cross-warehouse aggregation. */
+/** One table row per ERP Bin (item + warehouse); no cross-warehouse aggregation.
+ *
+ * Items with NO Bin yet (newly created, never stocked) get a synthetic
+ * qty=0 row so they remain visible in the inventory list — otherwise the
+ * page looks empty after onboarding a fresh catalog. */
 export function buildPerWarehouseRows(bins, items) {
   const itemByCode = new Map(items.map((i) => [i.item_code, i]));
   const seen = new Set();
+  const itemsWithBin = new Set();
   const rows = [];
 
   for (const bin of bins) {
@@ -73,8 +78,27 @@ export function buildPerWarehouseRows(bins, items) {
     const key = `${bin.item_code}|${wh}`;
     if (!bin.item_code || seen.has(key)) continue;
     seen.add(key);
+    itemsWithBin.add(bin.item_code);
     const row = rowFromBin(bin, itemByCode);
     if (row) rows.push(row);
+  }
+
+  for (const item of items) {
+    const code = item.item_code;
+    if (!code || itemsWithBin.has(code)) continue;
+    if (item.is_stock_item === 0 || item.disabled === 1) continue;
+    rows.push({
+      row_key: `${code}|`,
+      item_code: code,
+      item_name: item.item_name || code,
+      qty: 0,
+      price: toNum(item.standard_rate),
+      value: 0,
+      warehouse: '',
+      warehouse_label: '',
+      reorder_level: 0,
+      needs_reorder: false,
+    });
   }
 
   rows.sort((a, b) => b.value - a.value || a.item_code.localeCompare(b.item_code));

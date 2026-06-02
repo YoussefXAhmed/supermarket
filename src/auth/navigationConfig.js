@@ -79,6 +79,7 @@ export const MANAGER_NAV = [
   },
   { to: '/manager/reports', labelKey: 'nav.reports', icon: '📊', cap: 'canViewReports' },
   { to: '/manager/shifts/history', labelKey: 'nav.shifts', icon: '◷', cap: 'canViewShiftReports' },
+  { to: '/inventory', labelKey: 'nav.inventory', icon: '📦', cap: 'canAccessInventory' },
 ];
 
 /** @param {import('./capabilities').Capabilities} capabilities */
@@ -127,6 +128,7 @@ export function getHRNavItems(capabilities) {
 const INVENTORY_NAV_CLERK = [
   { to: '/inventory', labelKey: 'nav.overview', icon: '◈', exact: true },
   { to: '/inventory/warehouses', labelKey: 'nav.warehouses', icon: '🏬' },
+  { to: '/inventory/items', labelKey: 'nav.items', icon: '📦' },
   { to: '/inventory/transfer', labelKey: 'nav.transfer', icon: '🔁', cap: 'canInventoryIssueTransfer' },
   { to: '/inventory/alerts', labelKey: 'nav.alerts', icon: '⚠' },
   { to: '/inventory/reorder', labelKey: 'nav.reorder', icon: '🛒' },
@@ -136,7 +138,6 @@ const INVENTORY_NAV_CLERK = [
 /** @type {NavItem[]} */
 const INVENTORY_NAV_FULL = [
   ...INVENTORY_NAV_CLERK,
-  { to: '/inventory/items', labelKey: 'nav.items', icon: '📦', cap: 'canInventoryManage' },
   { to: '/inventory/batches', labelKey: 'nav.batches', icon: '🧪', cap: 'canInventoryManage' },
   { to: '/inventory/reconciliation', labelKey: 'nav.reconcile', icon: '⚖', cap: 'canInventoryReconcile' },
   { to: '/inventory/analytics', labelKey: 'nav.analytics', icon: '📈', cap: 'canInventoryAnalytics' },
@@ -274,8 +275,31 @@ export function isStrictOperationalPersona(capabilities) {
 
 /** @param {import('./capabilities').Capabilities} capabilities */
 export function canManageItemMaster(capabilities) {
-  return hasCapability(capabilities, 'canInventoryManage')
-    || (hasCapability(capabilities, 'canManageSystem') && resolveNavPersona(capabilities) === 'administrator');
+  return canEditItemMaster(capabilities);
+}
+
+/**
+ * Can edit item details (name, group, brand, barcode, image, thresholds,
+ * batch tracking, enable/disable) — Administrator + Store Manager.
+ *
+ * Pricing fields are split out and require `canEditItemPricing`.
+ * @param {import('./capabilities').Capabilities} capabilities
+ */
+export function canEditItemMaster(capabilities) {
+  if (hasCapability(capabilities, 'canManageSystem')) return true;
+  const persona = resolveNavPersona(capabilities);
+  if (persona === 'administrator') return true;
+  if (persona === 'store_manager') return true;
+  return false;
+}
+
+/**
+ * Can change buying / selling price on an item — Administrator ONLY.
+ * @param {import('./capabilities').Capabilities} capabilities
+ */
+export function canEditItemPricing(capabilities) {
+  if (hasCapability(capabilities, 'canManageSystem')) return true;
+  return resolveNavPersona(capabilities) === 'administrator';
 }
 
 /** @param {import('./capabilities').Capabilities} capabilities */

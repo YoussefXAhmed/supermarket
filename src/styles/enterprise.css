@@ -39,7 +39,10 @@
 .toast-stack {
   position: fixed;
   top: var(--toast-offset-top);
-  right: var(--toast-offset-right);
+  /* Logical end so the stack flips correctly under RTL — physically
+     `right` in LTR (sidebar on left → no overlap); physically `left`
+     in RTL (sidebar on right → no overlap). */
+  inset-inline-end: var(--toast-offset-right);
   z-index: var(--z-toast);
   display: flex;
   flex-direction: column;
@@ -55,8 +58,8 @@
   .toast-stack {
     top: auto;
     bottom: 16px;
-    left: 16px;
-    right: 16px;
+    inset-inline-start: 16px;
+    inset-inline-end: 16px;
     width: auto;
     max-width: none;
     flex-direction: column-reverse;

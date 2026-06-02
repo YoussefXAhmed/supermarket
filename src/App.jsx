@@ -41,6 +41,7 @@ const InventoryDashboardPage = lazy(() => import('./modules/inventory/InventoryP
 const WarehousesPage = lazy(() => import('./modules/inventory/pages/WarehousesPage'));
 const StockLedgerPage = lazy(() => import('./modules/inventory/pages/StockLedgerPage'));
 const ItemDetailsPage = lazy(() => import('./modules/inventory/pages/ItemDetailsPage'));
+const ItemEditPage = lazy(() => import('./modules/inventory/pages/ItemEditPage'));
 const InventoryAlertsPage = lazy(() => import('./modules/inventory/pages/AlertsPage'));
 const InventoryReportsPage = lazy(() => import('./modules/inventory/pages/ReportsPage'));
 const StockTransferPage = lazy(() => import('./modules/inventory/pages/StockTransferPage'));
@@ -197,8 +198,13 @@ export default function App() {
             />
             <Route path="ledger" element={<LazyPage><StockLedgerPage /></LazyPage>} />
             <Route path="items" element={(
-              <CapabilityRoute cap="canInventoryManage">
+              <CapabilityRoute anyOf={['canAccessInventory', 'canManageSystem']}>
                 <LazyPage><ItemDetailsPage /></LazyPage>
+              </CapabilityRoute>
+            )} />
+            <Route path="items/:itemCode" element={(
+              <CapabilityRoute anyOf={['canAccessInventory', 'canManageSystem']}>
+                <LazyPage><ItemEditPage /></LazyPage>
               </CapabilityRoute>
             )} />
             <Route path="alerts" element={<LazyPage><InventoryAlertsPage /></LazyPage>} />

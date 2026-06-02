@@ -90,9 +90,15 @@ export const listItemsForInventory = (params = {}) =>
         'standard_rate',
         'valuation_rate',
         'has_batch_no',
+        'is_stock_item',
         'reorder_levels',
+        'image',
       ]),
-      filters: JSON.stringify([['disabled', '=', 0], ...(params.extraFilters || [])]),
+      filters: JSON.stringify([
+        ['disabled', '=', 0],
+        ['is_stock_item', '=', 1],
+        ...(params.extraFilters || []),
+      ]),
       limit_page_length: params.limit || 500,
     },
   });
