@@ -1,0 +1,132 @@
+{%- from "elmahdi/templates/print_macros/print_master.html" import
+    render_header, render_audit_block, render_signatures, fmt_money
+-%}
+{%- include "elmahdi/templates/print_macros/print_styles.html" -%}
+
+{%- set info = elmahdi.print_helpers.print_context(doc) -%}
+{%- set status =
+    'Paid'      if doc.status == 'Paid' else
+    'Cancelled' if doc.docstatus == 2 else
+    'Submitted' if doc.docstatus == 1 else 'Draft'
+-%}
+{%- set tone =
+    'green' if status == 'Paid'      else
+    'amber' if status == 'Submitted' else
+    'red'   if status == 'Cancelled' else 'grey'
+-%}
+
+<div dir="{{ 'rtl' if info.lang == 'ar' else 'ltr' }}" lang="{{ info.lang }}">
+
+  {{ render_header(
+       doc, info,
+       title=('قسيمة راتب' if info.lang == 'ar' else 'Payslip'),
+       status_text=status, status_tone=tone,
+       date_field=doc.posting_date
+  ) }}
+
+  {{ render_audit_block(doc, info) }}
+
+  <section class="epf-section">
+    <h3 class="epf-section__title">
+      {{ 'بيانات الموظف' if info.lang == 'ar' else 'Employee' }}
+    </h3>
+    <div style="display: flex; flex-wrap: wrap; gap: 6mm; font-size: 9.5pt;">
+      <div><strong>{{ doc.employee_name or doc.employee }}</strong>
+        <div class="epf-small epf-muted">{{ doc.employee }}</div>
+      </div>
+      {%- if doc.department -%}
+        <div>
+          <span class="epf-small epf-muted">{{ 'القسم' if info.lang == 'ar' else 'Department' }}</span><br/>
+          {{ doc.department }}
+        </div>
+      {%- endif -%}
+      {%- if doc.designation -%}
+        <div>
+          <span class="epf-small epf-muted">{{ 'المنصب' if info.lang == 'ar' else 'Designation' }}</span><br/>
+          {{ doc.designation }}
+        </div>
+      {%- endif -%}
+      <div>
+        <span class="epf-small epf-muted">{{ 'الفترة' if info.lang == 'ar' else 'Period' }}</span><br/>
+        {{ frappe.utils.formatdate(doc.start_date) }} → {{ frappe.utils.formatdate(doc.end_date) }}
+      </div>
+      <div>
+        <span class="epf-small epf-muted">{{ 'أيام الدفع' if info.lang == 'ar' else 'Payment days' }}</span><br/>
+        {{ '{:.0f}'.format(doc.payment_days | flt) }} / {{ '{:.0f}'.format(doc.total_working_days | flt) }}
+      </div>
+    </div>
+  </section>
+
+  <section class="epf-section" style="display: flex; gap: 4mm;">
+    <div style="flex: 1;">
+      <h3 class="epf-section__title">{{ 'المستحقات' if info.lang == 'ar' else 'Earnings' }}</h3>
+      <table class="epf-table">
+        <thead>
+          <tr>
+            <th>{{ 'البند' if info.lang == 'ar' else 'Component' }}</th>
+            <th class="num">{{ 'المبلغ' if info.lang == 'ar' else 'Amount' }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {%- for e in doc.earnings -%}
+          <tr>
+            <td>{{ e.salary_component }}</td>
+            <td class="num">{{ fmt_money(e.amount, 'EGP') }}</td>
+          </tr>
+          {%- endfor -%}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td><strong>{{ 'إجمالي المستحقات' if info.lang == 'ar' else 'Gross pay' }}</strong></td>
+            <td class="num"><strong>{{ fmt_money(doc.gross_pay, 'EGP') }}</strong></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    <div style="flex: 1;">
+      <h3 class="epf-section__title">{{ 'الاستقطاعات' if info.lang == 'ar' else 'Deductions' }}</h3>
+      {%- if doc.deductions -%}
+        <table class="epf-table">
+          <thead>
+            <tr>
+              <th>{{ 'البند' if info.lang == 'ar' else 'Component' }}</th>
+              <th class="num">{{ 'المبلغ' if info.lang == 'ar' else 'Amount' }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {%- for d in doc.deductions -%}
+            <tr>
+              <td>{{ d.salary_component }}</td>
+              <td class="num">{{ fmt_money(d.amount, 'EGP') }}</td>
+            </tr>
+            {%- endfor -%}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td><strong>{{ 'إجمالي الاستقطاعات' if info.lang == 'ar' else 'Total deductions' }}</strong></td>
+              <td class="num"><strong>{{ fmt_money(doc.total_deduction, 'EGP') }}</strong></td>
+            </tr>
+          </tfoot>
+        </table>
+      {%- else -%}
+        <p class="epf-muted" style="text-align: center; padding: 4mm;">
+          {{ 'لا توجد استقطاعات' if info.lang == 'ar' else 'No deductions' }}
+        </p>
+      {%- endif -%}
+    </div>
+  </section>
+
+  <section class="epf-section" style="background: #f8f8f8; padding: 4mm; border-radius: 2mm; margin-top: 6mm;">
+    <div style="display: flex; justify-content: space-between; font-size: 12pt;">
+      <strong>{{ 'صافي الراتب' if info.lang == 'ar' else 'Net pay' }}</strong>
+      <strong>{{ fmt_money(doc.net_pay, 'EGP') }}</strong>
+    </div>
+  </section>
+
+  {{ render_signatures(
+       info,
+       left_label=('استلم بواسطة' if info.lang == 'ar' else 'Received by'),
+       right_label=('اعتمد بواسطة' if info.lang == 'ar' else 'Approved by')
+  ) }}
+
+</div>

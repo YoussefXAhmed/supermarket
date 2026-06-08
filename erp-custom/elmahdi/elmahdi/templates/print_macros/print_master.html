@@ -1,0 +1,167 @@
+{#
+  Elmahdi Master Print Template — reusable Jinja macros.
+
+  Imported by every specific Print Format via:
+      {% from "elmahdi/templates/print_macros/print_master.html" import
+         render_header, render_audit_block, render_totals_block,
+         render_footer, render_signatures, render_status_pill %}
+
+  Conventions:
+    • `doc`  → the Frappe document (Purchase Invoice, Sales Invoice, …)
+    • `info` → dict produced by elmahdi.print_helpers.print_context(doc)
+              with branch / addresses / audit / company / logo / labels.
+    • All money is rendered through `fmt_money(value, currency)`.
+    • All datetimes are rendered through `fmt_dt(value)`.
+
+  The macros never touch `doc` for fields that are doctype-specific (line
+  items / tax tables) — those stay in the specific format. The master
+  owns: header, audit, totals, footer, status pill.
+#}
+
+{# ───────────────────────── helpers (inline filters) ────────────────────── #}
+{%- macro fmt_money(value, currency='EGP') -%}
+  {%- set v = (value | flt) -%}
+  {{ '%s %s' | format(currency, '{:,.2f}'.format(v)) }}
+{%- endmacro -%}
+
+{%- macro fmt_dt(value) -%}
+  {%- if value -%}{{ frappe.utils.format_datetime(value) }}{%- else -%}—{%- endif -%}
+{%- endmacro -%}
+
+{%- macro fmt_date(value) -%}
+  {%- if value -%}{{ frappe.utils.formatdate(value) }}{%- else -%}—{%- endif -%}
+{%- endmacro -%}
+
+{# ───────────────────────── status pill ─────────────────────────────────── #}
+{%- macro render_status_pill(status_text, tone='grey') -%}
+  <span class="epf-pill epf-pill--{{ tone }}">{{ status_text }}</span>
+{%- endmacro -%}
+
+{# ───────────────────────── header ──────────────────────────────────────── #}
+{%
+  macro render_header(doc, info, title, status_text='', status_tone='grey',
+                      number=None, date_field=None)
+%}
+  <header class="epf-header">
+    <div class="epf-header__brand">
+      {%- if info.logo_url -%}
+        <img class="epf-header__logo" src="{{ info.logo_url }}" alt="{{ info.company_name }}">
+      {%- endif -%}
+      <div class="epf-header__company">
+        <h1 class="epf-header__company-name">{{ info.company_name }}</h1>
+        {%- if info.branch_name -%}
+          <p class="epf-header__branch">{{ info.labels.branch }}: <strong>{{ info.branch_name }}</strong></p>
+        {%- endif -%}
+        {%- if info.branch_address -%}
+          <p class="epf-header__addr">{{ info.branch_address }}</p>
+        {%- endif -%}
+        {%- if info.branch_phone -%}
+          <p class="epf-header__phone">{{ info.labels.phone }}: {{ info.branch_phone }}</p>
+        {%- endif -%}
+      </div>
+    </div>
+    <div class="epf-header__meta">
+      <h2 class="epf-header__title">{{ title }}</h2>
+      <p class="epf-header__number">{{ number or doc.name }}</p>
+      <p class="epf-header__date">
+        {{ info.labels.date }}: {{ fmt_date(date_field or doc.posting_date or doc.creation) }}
+      </p>
+      <p class="epf-header__time">
+        {{ info.labels.time }}: {{ frappe.utils.get_time(doc.creation) if doc.creation else '—' }}
+      </p>
+      {%- if status_text -%}
+        {{ render_status_pill(status_text, status_tone) }}
+      {%- endif -%}
+    </div>
+  </header>
+{% endmacro %}
+
+{# ───────────────────────── audit block ─────────────────────────────────── #}
+{%
+  macro render_audit_block(doc, info)
+%}
+  <dl class="epf-audit">
+    <div class="epf-audit__col">
+      <dt>{{ info.labels.created_by }}</dt>
+      <dd>{{ info.audit.created_by or doc.owner or '—' }}</dd>
+      <dt>{{ info.labels.created_at }}</dt>
+      <dd>{{ fmt_dt(info.audit.created_at or doc.creation) }}</dd>
+    </div>
+    <div class="epf-audit__col">
+      <dt>{{ info.labels.approved_by }}</dt>
+      <dd>{{ info.audit.approved_by or '—' }}</dd>
+      <dt>{{ info.labels.approved_at }}</dt>
+      <dd>{{ fmt_dt(info.audit.approved_at) }}</dd>
+    </div>
+    <div class="epf-audit__col">
+      <dt>{{ info.labels.printed_by }}</dt>
+      <dd>{{ info.printed_by }}</dd>
+      <dt>{{ info.labels.printed_at }}</dt>
+      <dd>{{ info.printed_at }}</dd>
+    </div>
+  </dl>
+{% endmacro %}
+
+{# ───────────────────────── totals block ────────────────────────────────── #}
+{%
+  macro render_totals_block(info, subtotal=0, taxes=None, discount=0,
+                             grand_total=0, currency=None, extra_rows=None)
+%}
+  {%- set ccy = currency or info.currency or 'EGP' -%}
+  <dl class="epf-totals">
+    <div class="epf-totals__row">
+      <dt>{{ info.labels.subtotal }}</dt>
+      <dd>{{ fmt_money(subtotal, ccy) }}</dd>
+    </div>
+
+    {%- if taxes -%}
+      {%- for tax in taxes -%}
+        <div class="epf-totals__row">
+          <dt>
+            {{ tax.description or tax.account_head or info.labels.tax }}
+            {%- if tax.rate %} ({{ tax.rate }}%){%- endif -%}
+          </dt>
+          <dd>{{ '−' if tax.add_deduct_tax == 'Deduct' else '' }}{{ fmt_money((tax.tax_amount | flt) | abs, ccy) }}</dd>
+        </div>
+      {%- endfor -%}
+    {%- endif -%}
+
+    {%- if (discount | flt) > 0 -%}
+      <div class="epf-totals__row">
+        <dt>{{ info.labels.discount }}</dt>
+        <dd>−{{ fmt_money(discount, ccy) }}</dd>
+      </div>
+    {%- endif -%}
+
+    {%- if extra_rows -%}
+      {%- for row in extra_rows -%}
+        <div class="epf-totals__row">
+          <dt>{{ row.label }}</dt>
+          <dd>{{ fmt_money(row.value, ccy) }}</dd>
+        </div>
+      {%- endfor -%}
+    {%- endif -%}
+
+    <div class="epf-totals__row epf-totals__row--grand">
+      <dt>{{ info.labels.grand_total }}</dt>
+      <dd>{{ fmt_money(grand_total, ccy) }}</dd>
+    </div>
+  </dl>
+{% endmacro %}
+
+{# ───────────────────────── signatures ──────────────────────────────────── #}
+{%
+  macro render_signatures(info, left_label=None, right_label=None)
+%}
+  <div class="epf-signatures">
+    <div class="epf-signatures__cell">{{ left_label or info.labels.prepared_by }}</div>
+    <div class="epf-signatures__cell">{{ right_label or info.labels.received_by }}</div>
+  </div>
+{% endmacro %}
+
+{# ───────────────────────── footer ──────────────────────────────────────── #}
+{# Page numbers + "Generated by …" are handled via CSS @page directives in
+   print_styles.html. This macro is kept for any future custom footer block. #}
+{%
+  macro render_footer(info)
+%}{# intentionally empty — see @page in print_styles.html #}{% endmacro %}

@@ -3,6 +3,7 @@ import {
   ApiErrorCard,
   Badge,
   Btn,
+  ConfirmDialog,
   EmptyState,
   PageHeader,
   PageLoading,
@@ -75,6 +76,8 @@ export default function UsersPage() {
   const [disableTarget, setDisableTarget] = useState(null);
   const [disableConfirmText, setDisableConfirmText] = useState('');
   const [disabling, setDisabling] = useState(false);
+  const [enableTarget, setEnableTarget] = useState(null);
+  const [enabling, setEnabling] = useState(false);
 
   const template = getTemplateById(form.templateId);
 
@@ -249,14 +252,22 @@ export default function UsersPage() {
     }
   };
 
-  const handleEnable = async (row) => {
-    if (!window.confirm(`Enable user "${row.name}"?`)) return;
+  const handleEnable = (row) => {
+    setEnableTarget(row);
+  };
+
+  const confirmEnable = async () => {
+    if (!enableTarget) return;
+    setEnabling(true);
     setError('');
     try {
-      await enableOperationalUser(row.name);
+      await enableOperationalUser(enableTarget.name);
+      setEnableTarget(null);
       await loadUsers();
     } catch (e) {
       setError(getUserFriendlyMessage(e, 'Failed to enable user'));
+    } finally {
+      setEnabling(false);
     }
   };
 
@@ -564,6 +575,15 @@ export default function UsersPage() {
           </TableRegion>
         </LayoutSection>
       )}
+      <ConfirmDialog
+        open={!!enableTarget}
+        title="Enable user"
+        message={enableTarget ? `Re-enable login for "${enableTarget.full_name || enableTarget.name}"?` : ''}
+        confirmLabel="Enable user"
+        loading={enabling}
+        onCancel={() => !enabling && setEnableTarget(null)}
+        onConfirm={confirmEnable}
+      />
     </AdminPageLayout>
   );
 }

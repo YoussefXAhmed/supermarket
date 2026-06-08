@@ -113,7 +113,10 @@ _INVENTORY = {
 	"Batch": READ,
 	"Stock Ledger Entry": READ,
 	"Stock Entry": EXECUTE,
-	"Stock Reconciliation": READ,
+	# Inventory Clerk may DRAFT a count/recon for the manager to approve;
+	# the validate hook in write_guards.py still requires `can_inventory_reconcile`
+	# (manager cap) for submit, so this widens drafting only.
+	"Stock Reconciliation": WRITE_DRAFT,
 	"Purchase Receipt": NONE,
 	"Purchase Invoice": NONE,
 	"Payment Entry": NONE,

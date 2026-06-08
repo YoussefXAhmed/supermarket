@@ -143,7 +143,84 @@ def notify_supplier_payment(payment_name: str, supplier: str, amount: float, cre
     )
 
 
+def notify_finance_invoice_pending(
+    invoice_name: str,
+    supplier: str,
+    amount: float,
+    receipt_name: str = "",
+) -> None:
+    """A Purchase Invoice has just been auto-created from an approved Goods
+    Receipt and is now awaiting payment by Finance. Sends to all Accountants.
+    """
+    accountants = _users_with_role_profile("Elmahdi Accountant")
+    if not accountants:
+        return
+    receipt_hint = _(" (Goods Receipt {0})").format(receipt_name) if receipt_name else ""
+    _push(
+        for_users=accountants,
+        subject=_("New Supplier Invoice Pending — {0} · EGP {1}{2}").format(
+            supplier, f"{amount:.2f}", receipt_hint,
+        ),
+        body=_("Invoice {0} is ready for review and payment.").format(invoice_name),
+        doc_type="Purchase Invoice",
+        doc_name=invoice_name,
+    )
+
+
+def notify_invoice_overdue(
+    invoice_name: str,
+    supplier: str,
+    outstanding: float,
+    days_overdue: int,
+) -> None:
+    """Daily scheduler notification for a newly-overdue Purchase Invoice."""
+    accountants = _users_with_role_profile("Elmahdi Accountant")
+    if not accountants:
+        return
+    _push(
+        for_users=accountants,
+        subject=_("Supplier Invoice {0} is {1} day(s) overdue — {2} · EGP {3}").format(
+            invoice_name, days_overdue, supplier, f"{outstanding:.2f}",
+        ),
+        doc_type="Purchase Invoice",
+        doc_name=invoice_name,
+    )
+
+
 # ── whitelisted SPA endpoints ───────────────────────────────────────────────
+
+
+def _category_for(doctype: str | None) -> str:
+    """Map a Frappe doctype to a coarse category used by the SPA filter UI.
+
+    Categories are stable user-facing buckets — they map many-to-one to
+    doctypes so that new notification sources slot into an existing bucket
+    without changing the frontend.
+    """
+    if not doctype:
+        return "system"
+    d = (doctype or "").strip()
+    # Approvals / purchasing share Purchase Receipt — we route by *subject*
+    # in the frontend if needed, but coarse mapping keeps the backend simple.
+    if d == "Purchase Receipt":
+        return "approvals"
+    if d == "Purchase Invoice":
+        return "finance"
+    if d == "Payment Entry":
+        return "finance"
+    if d == "POS Closing Entry":
+        return "shifts"
+    if d == "POS Opening Entry":
+        return "shifts"
+    if d == "POS Invoice":
+        return "pos"
+    if d == "Sales Invoice":
+        return "pos"
+    if d in ("Stock Entry", "Stock Reconciliation", "Item", "Bin"):
+        return "inventory"
+    if d in ("Supplier", "Purchase Order"):
+        return "purchasing"
+    return "system"
 
 
 @frappe.whitelist()
@@ -159,6 +236,9 @@ def list_my_notifications(unread_only: int = 0, limit: int = 30) -> dict:
         order_by="creation desc",
         limit_page_length=int(limit or 30),
     )
+    for r in rows:
+        r["category"] = _category_for(r.get("document_type"))
+        r["creation"] = str(r.get("creation")) if r.get("creation") else None
     return {"rows": rows, "count": len(rows)}
 
 

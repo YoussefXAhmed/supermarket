@@ -136,6 +136,25 @@ function DetailModal({ open, onClose, detail, loading, error, t }) {
               </tbody>
               <tfoot>
                 <tr>
+                  <td colSpan={4} className="num">{t('approvals.subtotal', { defaultValue: 'Subtotal' })}</td>
+                  <td className="num">{fmtCurrency(detail.net_total ?? detail.total, { currency: detail.currency })}</td>
+                </tr>
+                {(detail.taxes || []).map((tx, i) => (
+                  <tr key={`${tx.account_head || 'tax'}-${i}`}>
+                    <td colSpan={4} className="num">
+                      {tx.description || tx.account_head || t('approvals.tax', { defaultValue: 'Tax' })}
+                      {tx.rate ? ` (${tx.rate}%)` : ''}
+                    </td>
+                    <td className="num">{tx.add_deduct === 'Deduct' ? '−' : ''}{fmtCurrency(Math.abs(Number(tx.tax_amount) || 0), { currency: detail.currency })}</td>
+                  </tr>
+                ))}
+                {Number(detail.discount_amount) > 0 && (
+                  <tr>
+                    <td colSpan={4} className="num">{t('approvals.discount', { defaultValue: 'Discount' })}</td>
+                    <td className="num">−{fmtCurrency(detail.discount_amount, { currency: detail.currency })}</td>
+                  </tr>
+                )}
+                <tr>
                   <td colSpan={4} className="num"><strong>{t('history.detail.total', { defaultValue: 'Total' })}</strong></td>
                   <td className="num"><strong>{fmtCurrency(detail.grand_total, { currency: detail.currency })}</strong></td>
                 </tr>

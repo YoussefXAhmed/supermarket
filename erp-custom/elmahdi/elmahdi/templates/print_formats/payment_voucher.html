@@ -1,0 +1,80 @@
+{%- from "elmahdi/templates/print_macros/print_master.html" import
+    render_header, render_audit_block, render_totals_block, render_signatures, fmt_money
+-%}
+{%- include "elmahdi/templates/print_macros/print_styles.html" -%}
+
+{%- set info = elmahdi.print_helpers.print_context(doc) -%}
+{%- set status =
+    'Submitted' if doc.docstatus == 1 else
+    'Cancelled' if doc.docstatus == 2 else 'Draft'
+-%}
+{%- set tone =
+    'green' if doc.docstatus == 1 else
+    'red'   if doc.docstatus == 2 else 'grey'
+-%}
+
+<div dir="{{ 'rtl' if info.lang == 'ar' else 'ltr' }}" lang="{{ info.lang }}">
+
+  {{ render_header(
+       doc, info,
+       title=('سند صرف' if info.lang == 'ar' else 'Payment Voucher'),
+       status_text=status, status_tone=tone,
+       date_field=doc.posting_date
+  ) }}
+
+  {{ render_audit_block(doc, info) }}
+
+  <section class="epf-section">
+    <h3 class="epf-section__title">{{ info.labels.supplier }}</h3>
+    <div>
+      <strong>{{ doc.party_name or doc.party }}</strong>
+      <span class="epf-muted">·</span> {{ info.labels.payment_method }}:
+      <strong>{{ doc.mode_of_payment or '—' }}</strong>
+      {%- if doc.paid_from %}<br/>{{ info.labels.reference }}: {{ doc.paid_from }}{%- endif -%}
+      {%- if doc.reference_no %}<br/>{{ info.labels.reference }}: {{ doc.reference_no }}
+        {%- if doc.reference_date %} ({{ frappe.utils.formatdate(doc.reference_date) }}){%- endif -%}
+      {%- endif -%}
+    </div>
+  </section>
+
+  <section class="epf-section">
+    <table class="epf-table">
+      <thead>
+        <tr>
+          <th>{{ info.labels.invoice }}</th>
+          <th class="num">{{ info.labels.amount }}</th>
+          <th class="num">{{ info.labels.outstanding }}</th>
+          <th class="num">{{ info.labels.paid_amount }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {%- for ref in doc.references -%}
+        <tr>
+          <td><strong>{{ ref.reference_name }}</strong>
+            <div class="epf-small epf-muted">{{ ref.reference_doctype }}</div>
+          </td>
+          <td class="num">{{ fmt_money(ref.total_amount, doc.paid_from_account_currency or 'EGP') }}</td>
+          <td class="num">{{ fmt_money(ref.outstanding_amount, doc.paid_from_account_currency or 'EGP') }}</td>
+          <td class="num">{{ fmt_money(ref.allocated_amount, doc.paid_from_account_currency or 'EGP') }}</td>
+        </tr>
+        {%- endfor -%}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="3" class="num">{{ info.labels.grand_total }}</td>
+          <td class="num">{{ fmt_money(doc.paid_amount, doc.paid_from_account_currency or 'EGP') }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </section>
+
+  {%- if doc.remarks -%}
+    <section class="epf-section">
+      <h3 class="epf-section__title">{{ info.labels.notes }}</h3>
+      <p class="epf-pre-wrap">{{ doc.remarks }}</p>
+    </section>
+  {%- endif -%}
+
+  {{ render_signatures(info) }}
+
+</div>

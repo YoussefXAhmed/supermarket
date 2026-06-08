@@ -28,10 +28,6 @@ ITEM_EDITOR_PROFILES = frozenset(
     {"Elmahdi Administrator", "Elmahdi Store Manager"}
 )
 
-ITEM_PRICING_PROFILES = frozenset(
-    {"Elmahdi Administrator"}
-)
-
 # ── authorization ────────────────────────────────────────────────────────────
 
 
@@ -58,12 +54,16 @@ def _may_edit_item() -> bool:
     return user_role_profile() in ITEM_EDITOR_PROFILES
 
 
-def _may_edit_pricing() -> bool:
+def _may_edit_buying_price() -> bool:
     if has_cap("can_manage_system"):
         return True
     if is_break_glass_user():
         return True
-    return user_role_profile() in ITEM_PRICING_PROFILES
+    return user_role_profile() == "Elmahdi Administrator"
+
+
+def _may_edit_selling_price() -> bool:
+    return _may_edit_item()
 
 
 def _assert_may_edit_item() -> None:
@@ -74,10 +74,18 @@ def _assert_may_edit_item() -> None:
         )
 
 
-def _assert_may_edit_pricing() -> None:
-    if not _may_edit_pricing():
+def _assert_may_edit_buying_price() -> None:
+    if not _may_edit_buying_price():
         frappe.throw(
-            _("Only Administrators can modify pricing."),
+            _("Only Administrators can change the buying price."),
+            frappe.PermissionError,
+        )
+
+
+def _assert_may_edit_selling_price() -> None:
+    if not _may_edit_selling_price():
+        frappe.throw(
+            _("Only Administrators and Store Managers can change the selling price."),
             frappe.PermissionError,
         )
 
@@ -188,7 +196,8 @@ def get_item_master(item_code: str) -> dict[str, Any]:
         "buying_price": _get_item_price(item_code, BUYING_PRICE_LIST),
         "barcode": _primary_barcode(item_code),
         "can_edit_item": _may_edit_item(),
-        "can_edit_pricing": _may_edit_pricing(),
+        "can_edit_selling_price": _may_edit_selling_price(),
+        "can_edit_buying_price": _may_edit_buying_price(),
     }
 
 
@@ -222,8 +231,10 @@ def update_item_master(item_code: str, **fields) -> dict[str, Any]:
     Permission split:
     - Item details (name, group, barcode, image-toggle, batch, thresholds via separate API):
       Administrator + Store Manager.
-    - Pricing (selling_price, buying_price, standard_rate):
-      Administrator ONLY. Pricing keys submitted by a non-admin are rejected.
+    - Selling price (selling_price, standard_rate):
+      Administrator + Store Manager.
+    - Buying price (buying_price):
+      Administrator ONLY. Per-price keys submitted without permission are rejected.
 
     Accepted fields: any of `_EDITABLE_FIELDS`, plus `selling_price`,
     `buying_price`, `barcode`. Unknown fields are silently ignored.
@@ -239,14 +250,11 @@ def update_item_master(item_code: str, **fields) -> dict[str, Any]:
 
     updates = {k: v for k, v in fields.items() if k in _EDITABLE_FIELDS}
 
-    # Pricing keys submitted? Verify pricing permission BEFORE touching the doc.
-    touching_pricing = (
-        selling is not None
-        or buying is not None
-        or "standard_rate" in updates
-    )
-    if touching_pricing:
-        _assert_may_edit_pricing()
+    # Per-price permission asserts BEFORE any DB writes — no partial saves on mixed requests.
+    if selling is not None or "standard_rate" in updates:
+        _assert_may_edit_selling_price()
+    if buying is not None:
+        _assert_may_edit_buying_price()
 
     # Any non-pricing edits at all require item-edit permission.
     non_pricing_updates = {k: v for k, v in updates.items() if k != "standard_rate"}
@@ -254,7 +262,9 @@ def update_item_master(item_code: str, **fields) -> dict[str, Any]:
     if touching_master:
         _assert_may_edit_item()
 
-    if not (touching_pricing or touching_master):
+    touching_selling = selling is not None or "standard_rate" in updates
+    touching_buying = buying is not None
+    if not (touching_selling or touching_buying or touching_master):
         frappe.throw(_("Nothing to update."), frappe.ValidationError)
 
     if "shelf_life_in_days" in updates:

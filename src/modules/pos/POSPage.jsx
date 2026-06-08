@@ -15,16 +15,20 @@ import {
   ApiErrorCard,
   ConfirmDialog,
 } from '../../components/ui';
-import UserSessionActions from '../../components/layout/UserSessionActions';
+import { UserMenu } from '../../components/ui';
+import NotificationBell from '../../components/notifications/NotificationBell';
+import LanguageSwitcher from '../../components/common/LanguageSwitcher';
+import POSAppShell from '../../components/layout/POSAppShell';
 import POSThermalReceipt from '../../components/pos/POSThermalReceipt';
 import POSShiftBar from '../../components/pos/POSShiftBar';
 import POSPaymentPanel from '../../components/pos/POSPaymentPanel';
 import POSMetricsBar from '../../components/pos/POSMetricsBar';
 import { getERPImageUrl } from '../../utils/erpLinks';
 import { getUserFriendlyMessage } from '../../utils/errorHandling';
+import { printErpFormat, PRINT_FORMATS } from '../../utils/printErpFormat';
 import { useNotify } from '../../context/NotificationContext';
 import { availableQty } from '../../utils/posStock';
-import { getPOSSessionLinks } from '../../auth/navigationConfig';
+import { getSessionLinksForWorkspace } from '../../auth/navigationConfig';
 import '../../styles/pos.css';
 
 const DEFAULT_PAYMENT = { mode: 'cash', singleMode: 'Cash', cashAmount: '', cardAmount: '', cashMode: 'Cash', cardMode: 'Card' };
@@ -124,12 +128,16 @@ export default function POSPage() {
   const pos = usePOS(user);
   const { requestLogout, guardModal } = useGuardedLogout();
 
-  const posSessionLinks = useMemo(
-    () => getPOSSessionLinks(capabilities).map((link) => ({
+  // Phase 3.5.b + 3.5.c — canonical session registry; surfaces
+  // [Personal Settings, Payslip-if-eligible, Returns, Shift Control]
+  // inside the UserMenu dropdown in the POS topbar.
+  const userMenuItems = useMemo(
+    () => getSessionLinksForWorkspace(capabilities, 'pos').map((link) => ({
+      key: link.to,
       label: t(link.labelKey),
-      onClick: () => navigate(link.to),
+      to: link.to,
     })),
-    [capabilities, navigate, t],
+    [capabilities, t],
   );
 
   const handleEndShift = useCallback(async () => {
@@ -144,6 +152,17 @@ export default function POSPage() {
   const [customer, setCustomer] = useState('Walk-in Customer');
   const [customers, setCustomers] = useState([]);
   const [checkoutErr, setCheckoutErr] = useState('');
+  // Auto-open the 80mm thermal receipt PDF after every successful sale.
+  // The cashier can disable per-session by clicking the toggle in the
+  // checkout bar (preference persists in localStorage).
+  const [autoPrintReceipt, setAutoPrintReceipt] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    return localStorage.getItem('elmahdi:pos:autoPrintReceipt') !== '0';
+  });
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('elmahdi:pos:autoPrintReceipt', autoPrintReceipt ? '1' : '0');
+  }, [autoPrintReceipt]);
   const [payment, setPayment] = useState(DEFAULT_PAYMENT);
   const [myInvoices, setMyInvoices] = useState([]);
   const [invoicesLoading, setInvoicesLoading] = useState(false);
@@ -312,6 +331,12 @@ export default function POSPage() {
           : {},
       });
       notify.success(t('pos.saleComplete', { name: invoice?.name || t('pos.invoiceSubmitted') }));
+      // Open the 80mm thermal receipt PDF immediately after the sale is
+      // submitted. The browser handles inline-view vs save based on the
+      // user's PDF settings.
+      if (invoice?.name && typeof window !== 'undefined' && autoPrintReceipt) {
+        printErpFormat({ ...PRINT_FORMATS.POS_RECEIPT, name: invoice.name });
+      }
     } catch (e) {
       const msg = pos.checkoutError || getUserFriendlyMessage(e);
       if (e?.isStockError) notify.error(msg);
@@ -340,7 +365,7 @@ export default function POSPage() {
   const sellDisabled = readOnlyPOS || !pos.shiftOpen || pos.profileLoading;
 
   return (
-    <div className="pos-page">
+    <POSAppShell>
       <header className="pos-topbar">
         <div className="pos-topbar__brand">
           <img className="pos-topbar__logo" src="/logo.png" alt="" />
@@ -372,11 +397,15 @@ export default function POSPage() {
         </div>
 
         <div className="pos-topbar__actions">
-          <UserSessionActions
+          {/* Phase 3.5.c — UserMenu primitive with NB + LS rendered as
+              siblings per decision D2 (frequently-used actions stay
+              one-click). */}
+          <NotificationBell />
+          <LanguageSwitcher />
+          <UserMenu
             user={user}
-            compact
-            links={posSessionLinks}
-            onLogout={requestLogout}
+            items={userMenuItems}
+            onSignOut={requestLogout}
           />
         </div>
       </header>
@@ -455,7 +484,7 @@ export default function POSPage() {
       )}
 
       {viewMode === 'sell' ? (
-        <div className="pos-body">
+        <div id="main" className="pos-body">
           <section className="pos-products">
             {pos.productsError && (
               <ApiErrorCard title={t('pos.couldNotLoadProducts')} message={pos.productsError} onRetry={() => pos.loadItems(pos.query)} />
@@ -667,6 +696,6 @@ export default function POSPage() {
         onConfirm={() => { pos.clearCart(); setConfirmClear(false); }}
       />
       {guardModal}
-    </div>
+    </POSAppShell>
   );
 }

@@ -11,8 +11,12 @@
   --layout-max-analytics: 1600px;
   --layout-max-admin: 1400px;
 
-  /* Horizontal padding (responsive) */
-  --layout-pad-x: clamp(12px, 1.5vw, 24px);
+  /* Horizontal padding (responsive).
+     Phase 4-hotfix: tightened from clamp(12, 1.5vw, 24) — the inner
+     LayoutSection cards already provide visual breathing room, and
+     the prior value left a 50–60px gap between sidebar and content
+     on 1440–1920px monitors. */
+  --layout-pad-x: clamp(8px, 0.8vw, 14px);
   --layout-pad-y: clamp(0px, 0.5vw, 8px);
 
   /* Section rhythm by density */
@@ -235,11 +239,15 @@
   max-width: 100%;
 }
 
-/* Admin main: full bleed workspace, pages constrain themselves */
+/* Admin main: full-bleed workspace.
+   Horizontal padding is owned by PageLayout (the inner shell rendered by
+   every workspace page). This wrapper must NOT add padding-inline — doing
+   so stacked with PageLayout's clamp(12px, 1.5vw, 24px) and produced ~38px
+   total padding at 1440px (audit 1.3). Phase 3.5.a closes that. */
 .admin-content--workspace {
   max-width: none;
   width: 100%;
-  padding-inline: clamp(12px, 1.2vw, 20px);
+  padding-inline: 0;
 }
 
 /* Legacy card.panel inside layouts */

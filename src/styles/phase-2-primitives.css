@@ -1,0 +1,605 @@
+/**
+ * Phase 2 — shared component styles.
+ *
+ * Lives here (not in components.css) so the file boundary maps directly
+ * to the Phase 2 migration. Every rule below uses Phase 1 design tokens.
+ *
+ * Components covered:
+ *   • Breadcrumbs            — inside PageHeader, or standalone
+ *   • FormGrid + FormActions — form layout primitives
+ *   • Table extensions       — sortable headers, sticky-left, selection state
+ *   • SortableHeader         — th--sortable button
+ *   • BulkActionBar          — sticky bottom action bar
+ *   • FilterBar              — date/select/search/action container
+ *   • DateInput              — bare-mode date input (only field-mode wraps the input)
+ *   • SettingsShell          — rail + content two-pane layout
+ *   • Modal sheet mode       — bottom-sheet on small viewports
+ *   • UserMenu               — avatar dropdown
+ */
+
+/* ── Breadcrumbs ─────────────────────────────────────────────────────── */
+.breadcrumbs {
+  font-size: var(--font-xs);
+  color: var(--text-3);
+  margin-bottom: var(--space-2);
+}
+.breadcrumbs__list {
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  gap: var(--space-1);
+  align-items: center;
+}
+.breadcrumbs__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.breadcrumbs__link {
+  color: var(--text-2);
+  border-radius: var(--radius-xs);
+  padding: 0 var(--space-1);
+  transition: color var(--duration-fast) var(--ease-out);
+}
+.breadcrumbs__link:hover { color: var(--text); }
+.breadcrumbs__link:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+.breadcrumbs__sep {
+  color: var(--text-3);
+  margin: 0 var(--space-0-5);
+}
+.breadcrumbs__item--current { color: var(--text); font-weight: 500; }
+
+/* PageHeader breadcrumb slot — pulls main column into a flex stack so
+   the title sits cleanly below the trail. */
+.page-header__main { display: flex; flex-direction: column; min-width: 0; }
+.page-header__crumbs { margin-bottom: var(--space-1); }
+
+/* ── FormGrid ────────────────────────────────────────────────────────── */
+.form-grid {
+  display: grid;
+  gap: var(--space-3);
+}
+.form-grid--auto         { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.form-grid--auto-dense   { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.form-grid--cols-1       { grid-template-columns: 1fr; }
+.form-grid--cols-2       { grid-template-columns: repeat(2, 1fr); }
+.form-grid--cols-3       { grid-template-columns: repeat(3, 1fr); }
+.form-grid--cols-4       { grid-template-columns: repeat(4, 1fr); }
+.form-grid--responsive-2 {
+  grid-template-columns: 1fr;
+}
+@media (min-width: 720px) {
+  .form-grid--responsive-2 { grid-template-columns: repeat(2, 1fr); }
+}
+.form-grid--compact      { gap: var(--space-2); }
+.form-grid--comfortable  { gap: var(--space-4); }
+
+/* ── FormActions ─────────────────────────────────────────────────────── */
+.form-actions {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin-top: var(--space-4);
+}
+.form-actions--end     { justify-content: flex-end; }
+.form-actions--start   { justify-content: flex-start; }
+.form-actions--between { justify-content: space-between; }
+.form-actions--full > * { flex: 1 1 0; }
+.form-actions--sticky {
+  position: sticky;
+  bottom: 0;
+  background: var(--bg-2);
+  padding: var(--space-3) var(--space-4);
+  margin-inline: calc(-1 * var(--space-4));
+  border-top: 1px solid var(--border);
+  z-index: var(--z-sticky);
+}
+
+/* ── Table extensions ────────────────────────────────────────────────── */
+.th, .td {
+  text-align: left;
+}
+.th--right,  .td--right  { text-align: right; }
+.th--center, .td--center { text-align: center; }
+
+/* Sticky-left column */
+.th--sticky-left, .td--sticky-left {
+  position: sticky;
+  left: 0;
+  background: var(--bg-2);
+  z-index: 1;
+}
+.tr--selected .td--sticky-left { background: var(--accent-glow); }
+
+/* Selection — works on both .table and .data-table (Phase 3.5.a). */
+.table--selectable tbody tr.tr--selected,
+.data-table--selectable tbody tr.tr--selected { background: var(--accent-glow); }
+.th--checkbox, .td--checkbox {
+  width: var(--space-9);
+  padding-inline: var(--space-2);
+}
+
+/* Row hover transition — both class names. The actual hover background
+   is owned by components.css (.table tbody tr:hover td, .data-table ...). */
+.table tbody tr,
+.data-table tbody tr {
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+/* ── SortableHeader ──────────────────────────────────────────────────── */
+.th--sortable { padding: 0; }
+.th-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  width: 100%;
+  padding: var(--space-2-5) var(--space-3);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  border-radius: var(--radius-sm);
+}
+.th-sort:hover { color: var(--accent); background: var(--bg-3); }
+.th-sort:focus-visible { outline: none; box-shadow: var(--ring-focus); }
+.th-sort__arrows { color: var(--text-3); font-size: var(--font-xs); }
+.th-sort__arrow  { color: var(--accent); font-size: var(--font-xs); }
+.th--sorted .th-sort__label { color: var(--accent); }
+.th--right .th-sort { justify-content: flex-end; }
+.th--center .th-sort { justify-content: center; }
+
+/* ── BulkActionBar ───────────────────────────────────────────────────── */
+.bulk-action-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.bulk-action-bar--sticky {
+  position: sticky;
+  bottom: var(--space-4);
+  margin-top: var(--space-4);
+  z-index: var(--z-sticky);
+}
+.bulk-action-bar--inline { box-shadow: none; }
+.bulk-action-bar__count {
+  font-weight: 600;
+  color: var(--accent);
+  font-size: var(--font-sm);
+}
+.bulk-action-bar__actions {
+  display: flex;
+  gap: var(--space-2);
+  flex: 1;
+}
+.bulk-action-bar__clear {
+  background: transparent;
+  border: none;
+  color: var(--text-3);
+  cursor: pointer;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+}
+.bulk-action-bar__clear:hover { color: var(--text); background: var(--bg-3); }
+
+/* ── Row checkbox (Phase 4.a) ────────────────────────────────────────
+   Used inside selectable Table rows + select-all header cells. Sized
+   to match WCAG 2.5.5 minimum touch target while staying visually
+   restrained in dense list views. */
+.row-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--accent);
+  margin: 0;
+  vertical-align: middle;
+}
+.row-checkbox:disabled { cursor: not-allowed; opacity: 0.5; }
+
+/* ── BatchResultToast (Phase 4.a) ────────────────────────────────────
+   Compact-but-expandable result panel embedded inside a notification
+   toast after a batch operation. Designed to live inside .toast and
+   inherit its tint while remaining legible. */
+.batch-result-toast { display: flex; flex-direction: column; gap: var(--space-1); }
+.batch-result-toast__row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1-5);
+}
+.batch-result-toast__summary { font-weight: 600; }
+.batch-result-toast__failed { color: var(--red); font-weight: 500; }
+.batch-result-toast__toggle {
+  background: transparent;
+  border: none;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 0.9em;
+  padding: 0;
+  margin-inline-start: auto;
+}
+.batch-result-toast__toggle:hover { color: var(--accent); }
+.batch-result-toast__errors {
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  list-style: none;
+  max-height: 220px;
+  overflow-y: auto;
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-1-5);
+}
+.batch-result-toast__error {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+  font-size: 0.9em;
+  border-bottom: 1px solid var(--border-2);
+}
+.batch-result-toast__error:last-child { border-bottom: 0; }
+.batch-result-toast__error-id {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  color: var(--text-2);
+  flex: 0 0 auto;
+  min-width: 110px;
+}
+.batch-result-toast__error-msg { color: var(--text); }
+
+/* ── Toast action slot (Phase 4.a) ───────────────────────────────────
+   Renders below the toast body when the caller passes
+   `{ action: { label, onClick } }` or `{ action: <Element/> }`. */
+.toast__action {
+  display: flex;
+  align-items: center;
+  margin-top: var(--space-1);
+}
+.toast__action-btn {
+  background: transparent;
+  border: 1px solid currentColor;
+  color: inherit;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: 0.9em;
+  cursor: pointer;
+  font-weight: 500;
+}
+.toast__action-btn:hover { background: rgba(255, 255, 255, 0.1); }
+
+/* ── FilterBar ───────────────────────────────────────────────────────── */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  margin-bottom: var(--space-3);
+}
+.filter-bar--compact { gap: var(--space-1-5); }
+.filter-bar__leading  { display: flex; gap: var(--space-2); align-items: center; }
+.filter-bar__fields   {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  min-width: 0;
+}
+.filter-bar__trailing {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin-inline-start: auto;
+}
+@media (max-width: 720px) {
+  .filter-bar { gap: var(--space-1-5); }
+  .filter-bar__trailing { margin-inline-start: 0; }
+}
+
+/* ── DateInput ───────────────────────────────────────────────────────── */
+.form-field--date input[type="date"] { font-family: inherit; }
+
+/* ── SettingsShell ───────────────────────────────────────────────────── */
+.settings-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: var(--space-4);
+}
+.settings-shell__rail { align-self: start; position: sticky; top: var(--space-3); }
+.settings-shell__pane { min-width: 0; }
+.settings-rail__list  { list-style: none; padding: 0; margin: 0; }
+.settings-rail__li    { margin: 0; }
+.settings-rail__link  {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: none;
+  text-align: inherit;
+  font: inherit;
+  cursor: pointer;
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  transition: background var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
+  text-decoration: none;
+}
+.settings-rail__link:hover { background: var(--bg-3); }
+.settings-rail__link:focus-visible { outline: none; box-shadow: var(--ring-focus); }
+.settings-rail__link.is-active,
+.settings-rail__link.active {
+  color: var(--accent);
+  background: var(--bg-3);
+  font-weight: 600;
+}
+.settings-rail__icon  { width: var(--space-5); display: inline-flex; justify-content: center; }
+.settings-rail__label { flex: 1; }
+
+@media (max-width: 720px) {
+  .settings-shell { grid-template-columns: 1fr; }
+  .settings-shell__rail { position: static; }
+  .settings-rail__list  {
+    display: flex;
+    overflow-x: auto;
+    gap: var(--space-1);
+  }
+  .settings-rail__link  { white-space: nowrap; }
+}
+
+/* ── Modal sheet mode ────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .ui-modal--sheet-auto {
+    position: fixed;
+    inset: auto 0 0 0;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    max-height: 90vh;
+    animation: modal-sheet-up var(--duration-base) var(--ease-out);
+  }
+  .ui-modal--sheet-auto .ui-modal__body {
+    overflow-y: auto;
+  }
+}
+@keyframes modal-sheet-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+/* ── UserMenu ────────────────────────────────────────────────────────── */
+.user-menu { position: relative; display: inline-block; }
+.user-menu__button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  transition: background var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out);
+}
+.user-menu__button:hover { background: var(--bg-3); }
+.user-menu__button:focus-visible { outline: none; box-shadow: var(--ring-focus); }
+.user-menu.is-open .user-menu__button {
+  background: var(--bg-3);
+  border-color: var(--border-light);
+}
+.user-menu__name {
+  font-size: var(--font-sm);
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.user-menu__caret { font-size: var(--font-xs); color: var(--text-3); }
+
+.user-menu__panel {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  min-width: 240px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-popover);
+  padding: var(--space-1);
+  z-index: var(--z-dropdown);
+  animation: user-menu-in var(--duration-fast) var(--ease-out);
+}
+.user-menu--end   .user-menu__panel { right: 0; }
+.user-menu--start .user-menu__panel { left: 0; }
+
+@keyframes user-menu-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.user-menu__identity {
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--space-1);
+}
+.user-menu__name-line { font-weight: 600; }
+.user-menu__email-line {
+  font-size: var(--font-xs);
+  color: var(--text-3);
+  margin-top: var(--space-0-5);
+}
+
+.user-menu__list { list-style: none; padding: 0; margin: 0; }
+.user-menu__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  transition: background var(--duration-fast) var(--ease-out);
+}
+.user-menu__item:hover { background: var(--bg-3); }
+.user-menu__item:focus-visible { outline: none; box-shadow: var(--ring-focus); }
+.user-menu__item--danger { color: var(--danger); }
+.user-menu__item--danger:hover { background: var(--danger-bg); }
+.user-menu__icon { width: var(--space-5); display: inline-flex; justify-content: center; }
+.user-menu__divider {
+  list-style: none;
+  height: 1px;
+  background: var(--border);
+  margin: var(--space-1) 0;
+}
+
+/* ── Phase 3 — Skip-to-content link (a11y) ─────────────────────────────
+   Visible only when focused via keyboard. Anchors to #main inside any
+   layout (PageLayout sets the id="main" on the main element). */
+.skip-link {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  z-index: var(--z-toast);
+  padding: var(--space-2) var(--space-3);
+  background: var(--accent);
+  color: var(--bg);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  text-decoration: none;
+  transform: translateY(-200%);
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+.skip-link:focus,
+.skip-link:focus-visible {
+  transform: translateY(0);
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+
+.settings-shell__loading {
+  margin: 0;
+  color: var(--text-3);
+}
+
+/* Phase 3.5.d — small helpers introduced during form-dedup migrations.
+   Used by personal/security + a couple of personal/profile sections to
+   replace one-off inline style props. */
+.personal-section--spaced { margin-top: var(--space-4); }
+.personal-section__intro {
+  margin: 0 0 var(--space-3);
+  color: var(--text-2);
+  font-size: var(--font-md);
+}
+.session-id-cell { display: inline-flex; align-items: center; gap: var(--space-2); }
+.session-id-cell__sid { font-size: var(--font-2xs); }
+.auto-print-options { display: flex; flex-direction: column; gap: var(--space-1); }
+
+/* Settings switch — checkbox + label + help row. Used by personal +
+   admin notification/security toggles. */
+.settings-switch {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2-5);
+  padding: var(--space-1-5) 0;
+  cursor: pointer;
+}
+.settings-switch input[type="checkbox"] { margin-top: var(--space-1); }
+.settings-switch__body { flex: 1; min-width: 0; }
+.settings-switch__label { font-weight: 500; font-size: var(--font-base); }
+.settings-switch__help {
+  color: var(--text-3);
+  font-size: var(--font-sm);
+  margin-top: var(--space-0-5);
+}
+
+/* Tiny utility classes used by Phase 3.5.d settings migrations. */
+.muted-3 { color: var(--text-3); }
+.backup-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: center;
+}
+.backup-status-row__label {
+  margin: 0;
+  font-size: var(--font-sm);
+  color: var(--text-3);
+}
+
+/* Feature flag toggle cards (admin settings). */
+.feature-flag-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-3);
+}
+.feature-flag-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2-5);
+  padding: var(--space-3);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.feature-flag-card__icon { font-size: 1.6rem; }
+.feature-flag-card__body { flex: 1; min-width: 0; }
+.feature-flag-card__name { margin: 0; font-weight: 500; }
+.feature-flag-card__state {
+  margin: var(--space-0-5) 0 0;
+  color: var(--text-3);
+  font-size: var(--font-sm);
+}
+.feature-flag-card__toggle { cursor: pointer; }
+.feature-flag-card__toggle.is-busy { cursor: wait; }
+.feature-flag-future-note {
+  margin: var(--space-3) 0 0;
+  color: var(--text-3);
+  font-size: var(--font-sm);
+}
+
+/* Settings section block — doctype-grouped fields inside System Settings.
+   Phase 3.5.d migrated from inline border/padding rules. */
+.settings-block {
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--space-4);
+}
+.settings-block:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.settings-block__title {
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-base);
+  text-transform: none;
+  font-weight: 500;
+}
+.settings-block__sub {
+  margin: 0 0 var(--space-3);
+  color: var(--text-3);
+  font-size: var(--font-sm);
+}
+.settings-block__missing {
+  padding: var(--space-2) 0;
+  color: var(--text-3);
+  font-size: var(--font-md);
+}
+.language-picker { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.language-picker__dir {
+  margin-inline-end: var(--space-1-5);
+  opacity: 0.7;
+}

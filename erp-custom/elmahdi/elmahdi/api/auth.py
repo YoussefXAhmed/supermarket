@@ -28,16 +28,24 @@ def get_session_identity():
             "role_profile_name": "",
             "roles": [],
             "csrf_token": "",
+            "lifecycle_state": "",
         }
 
     roles = list(frappe.get_roles(user))
     row = {}
     try:
+        # Phase 4.a — surface the lifecycle state. Conditional on the
+        # column existing so sites that haven't yet run the
+        # install_user_lifecycle_field patch keep working; the SPA must
+        # tolerate an empty string.
+        fields = ["first_name", "last_name", "email", "role_profile_name", "user_image"]
+        if frappe.db.has_column("User", "elmahdi_lifecycle_state"):
+            fields.append("elmahdi_lifecycle_state")
         row = (
             frappe.db.get_value(
                 "User",
                 user,
-                ["first_name", "last_name", "email", "role_profile_name", "user_image"],
+                fields,
                 as_dict=True,
             )
             or {}
@@ -71,4 +79,7 @@ def get_session_identity():
         "role_profile_name": row.get("role_profile_name") or "",
         "roles": roles,
         "csrf_token": csrf_token,
+        # Phase 4.a — lifecycle state ("" if the patch hasn't run yet;
+        # SPA falls back to Active for display).
+        "lifecycle_state": row.get("elmahdi_lifecycle_state") or "",
     }

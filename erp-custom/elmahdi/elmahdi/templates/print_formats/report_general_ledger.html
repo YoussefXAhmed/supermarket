@@ -1,0 +1,85 @@
+{%- from "elmahdi/templates/print_macros/print_master.html" import fmt_money -%}
+{%- include "elmahdi/templates/print_macros/print_styles.html" -%}
+
+<style>
+@page { size: A4 landscape; margin: 12mm; }
+.epf-table tbody td { font-size: 9pt; padding: 1.5mm 2mm; }
+</style>
+
+<div dir="{{ 'rtl' if info.lang == 'ar' else 'ltr' }}" lang="{{ info.lang }}">
+
+  <header class="epf-header">
+    <div class="epf-header__brand">
+      {%- if info.logo_url -%}
+        <img class="epf-header__logo" src="{{ info.logo_url }}" alt="">
+      {%- endif -%}
+      <div class="epf-header__company">
+        <h1 class="epf-header__company-name">{{ info.company_name }}</h1>
+      </div>
+    </div>
+    <div class="epf-header__meta">
+      <h2 class="epf-header__title">
+        {{ 'دفتر الأستاذ العام' if info.lang == 'ar' else 'General Ledger' }}
+      </h2>
+      <p class="epf-header__date">
+        {{ frappe.utils.formatdate(report.filters.from_date) }} — {{ frappe.utils.formatdate(report.filters.to_date) }}
+      </p>
+      {%- if report.filters.account -%}
+        <p class="epf-header__date">{{ 'الحساب' if info.lang == 'ar' else 'Account' }}: {{ report.filters.account }}</p>
+      {%- endif -%}
+      {%- if report.filters.branch -%}
+        <p class="epf-header__date">{{ info.labels.branch }}: {{ report.filters.branch }}</p>
+      {%- endif -%}
+    </div>
+  </header>
+
+  <dl class="epf-audit">
+    <div class="epf-audit__col">
+      <dt>{{ info.labels.printed_by }}</dt><dd>{{ info.printed_by }}</dd>
+    </div>
+    <div class="epf-audit__col">
+      <dt>{{ info.labels.printed_at }}</dt><dd>{{ info.printed_at }}</dd>
+    </div>
+    <div class="epf-audit__col">
+      <dt>{{ 'عدد القيود' if info.lang == 'ar' else 'Total entries' }}</dt>
+      <dd>{{ report.rows | length }}</dd>
+    </div>
+  </dl>
+
+  <table class="epf-table">
+    <thead>
+      <tr>
+        <th>{{ info.labels.date }}</th>
+        <th>{{ info.labels.voucher }}</th>
+        <th>{{ 'الحساب' if info.lang == 'ar' else 'Account' }}</th>
+        <th class="num">{{ 'مدين' if info.lang == 'ar' else 'Debit' }}</th>
+        <th class="num">{{ 'دائن' if info.lang == 'ar' else 'Credit' }}</th>
+        <th class="num">{{ 'الرصيد' if info.lang == 'ar' else 'Balance' }}</th>
+        <th>{{ info.labels.branch }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {%- for r in report.rows -%}
+        <tr>
+          <td>{{ frappe.utils.formatdate(r.posting_date) }}</td>
+          <td class="epf-small epf-monospace">{{ r.voucher_type }} {{ r.voucher_no }}</td>
+          <td>{{ r.account }}</td>
+          <td class="num">{{ fmt_money(r.debit, 'EGP') if r.debit else '—' }}</td>
+          <td class="num">{{ fmt_money(r.credit, 'EGP') if r.credit else '—' }}</td>
+          <td class="num"><strong>{{ fmt_money(r.balance, 'EGP') }}</strong></td>
+          <td class="epf-small">{{ r.branch or '—' }}</td>
+        </tr>
+      {%- endfor -%}
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="3" class="num">{{ info.labels.grand_total }}</td>
+        <td class="num">{{ fmt_money(report.totals.debit, 'EGP') }}</td>
+        <td class="num">{{ fmt_money(report.totals.credit, 'EGP') }}</td>
+        <td class="num">{{ fmt_money(report.totals.closing_balance, 'EGP') }}</td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
+
+</div>

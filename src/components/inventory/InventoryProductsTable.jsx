@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Badge, Table } from '../ui';
+import { stockStateIcon } from '../icons';
 
 export default function InventoryProductsTable({
   rows,
@@ -48,18 +49,29 @@ export default function InventoryProductsTable({
     ...(showValuation
       ? [{
         key: 'price',
-        label: t('inventory.table.price'),
-        render: (v) => <span className="mono">EGP {v.toFixed(2)}</span>,
+        label: t('inventory.table.buyingPrice'),
+        render: (v) => <span className="mono">EGP {Number(v || 0).toFixed(2)}</span>,
       }]
       : []),
     {
       key: 'stock_state',
       label: t('finance.table.status'),
-      render: (_, row) => (
-        row.qty < 10
-          ? <Badge color="amber">{t('inventory.alerts.lowStock')}</Badge>
-          : <Badge color="green">{t('inventory.table.inStock')}</Badge>
-      ),
+      render: (_, row) => {
+        const { Icon, tone } = stockStateIcon({ qty: row.qty, lowThreshold: row.reorder_level || 5 });
+        const label = tone === 'red'
+          ? t('inventory.alerts.outOfStock', { defaultValue: 'Out of stock' })
+          : tone === 'amber'
+            ? t('inventory.alerts.lowStock', { defaultValue: 'Low stock' })
+            : t('inventory.table.inStock', { defaultValue: 'In stock' });
+        return (
+          <Badge color={tone === 'red' ? 'red' : tone === 'amber' ? 'amber' : 'green'}>
+            <span className={`status-icon status-icon--${tone}`}>
+              <Icon size={14} />
+              <span>{label}</span>
+            </span>
+          </Badge>
+        );
+      },
     },
     {
       key: 'value',

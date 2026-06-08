@@ -3,6 +3,7 @@ import {
   ApiErrorCard,
   Badge,
   Btn,
+  ConfirmDialog,
   EmptyState,
   PageHeader,
   PageLoading,
@@ -74,6 +75,9 @@ export default function AdminWarehousesPage() {
   const [deleteAssessment, setDeleteAssessment] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  const [toggleTarget, setToggleTarget] = useState(null);
+  const [toggling, setToggling] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -201,16 +205,24 @@ export default function AdminWarehousesPage() {
     }
   };
 
-  const handleToggleDisabled = async (row) => {
-    const next = !row.disabled;
+  const handleToggleDisabled = (row) => {
+    setToggleTarget(row);
+  };
+
+  const confirmToggleDisabled = async () => {
+    if (!toggleTarget) return;
+    const next = !toggleTarget.disabled;
     const action = next ? 'disable' : 'enable';
-    if (!window.confirm(`${next ? 'Disable' : 'Enable'} warehouse "${row.warehouse_name}"?`)) return;
+    setToggling(true);
     try {
-      await setWarehouseDisabled(row.name, next);
+      await setWarehouseDisabled(toggleTarget.name, next);
       notify.success(`Warehouse ${action}d.`);
+      setToggleTarget(null);
       await load();
     } catch (err) {
       notify.error(getUserFriendlyMessage(err));
+    } finally {
+      setToggling(false);
     }
   };
 
@@ -544,6 +556,20 @@ export default function AdminWarehousesPage() {
           </TableRegion>
         </LayoutSection>
       )}
+      <ConfirmDialog
+        open={!!toggleTarget}
+        title={toggleTarget ? (toggleTarget.disabled ? 'Enable warehouse' : 'Disable warehouse') : ''}
+        message={
+          toggleTarget
+            ? `${toggleTarget.disabled ? 'Re-enable' : 'Disable'} warehouse "${toggleTarget.warehouse_name}"?`
+            : ''
+        }
+        confirmLabel={toggleTarget?.disabled ? 'Enable' : 'Disable'}
+        variant={toggleTarget?.disabled ? 'primary' : 'danger'}
+        loading={toggling}
+        onCancel={() => !toggling && setToggleTarget(null)}
+        onConfirm={confirmToggleDisabled}
+      />
     </AdminPageLayout>
   );
 }

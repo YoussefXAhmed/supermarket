@@ -34,6 +34,9 @@ const CASHIER = inv({
   canViewReturns: true,
   canCreateReturns: true,
   canApproveReturns: false,
+  // Self-service: every employee can request leave + see their own payslip.
+  canRequestLeave: true,
+  canViewPayslipSelf: true,
   roleLabel: 'Cashier',
   operationalPersona: 'cashier',
 });
@@ -43,6 +46,9 @@ const INVENTORY_CLERK = inv({
   canInventoryOperate: true,
   canInventoryReceipt: true,
   canInventoryTransfer: true,
+  canViewSuppliers: true,
+  canRequestLeave: true,
+  canViewPayslipSelf: true,
   roleLabel: 'Inventory Clerk',
   operationalPersona: 'inventory',
 });
@@ -55,12 +61,17 @@ const PURCHASING_OFFICER = {
   canApprovePurchasingAccountant: false,
   canViewPurchaseApprovals: false,
   canViewApprovalsDashboard: false,
+  canRequestLeave: true,
+  canViewPayslipSelf: true,
   roleLabel: 'Purchasing Officer',
   operationalPersona: 'purchasing',
 };
 
 /** Future-safe: accountant reviews shift closings without full store manager inventory powers */
 const ACCOUNTANT = {
+  // Phase 4.a — Accountant reads batch-audit history for compliance.
+  canViewBatchAudit: true,
+  canSetUserPasswordDirectly: false,
   canAccessAccountantWorkspace: true,
   canViewStockLedgerReadOnly: true,
   canViewReports: true,
@@ -73,6 +84,7 @@ const ACCOUNTANT = {
   canViewApprovalsDashboard: true,
   canViewSupplierPayments: true,
   canManageSupplierPayments: true,
+  canViewSuppliers: true,
   canAccessInvoiceMatching: true,
   canAccessPurchasing: false,
   canViewInvoices: true,
@@ -85,12 +97,22 @@ const ACCOUNTANT = {
   canInventoryTransfer: false,
   canInventoryReconcile: false,
   canInventoryOperate: false,
+  canRequestLeave: true,
+  canViewPayslipSelf: true,
+  // Phase 4 — Accountant owns finance policy (aging buckets, AP scan).
+  canManageFinanceSettings: true,
   roleLabel: 'Accountant',
   operationalPersona: 'accountant',
 };
 
 /** Monitor / approve only — no POS, returns, invoices, or execution modules. */
 const STORE_MANAGER = inv({
+  // Phase 4.a — Store Manager may read batch audit history and dispatch
+  // password-reset links for users they manage (own-branch scoping is
+  // enforced at the call-site). They MUST NOT set passwords directly.
+  canViewBatchAudit: true,
+  canSendPasswordResetLink: true,
+  canSetUserPasswordDirectly: false,
   canAccessManagerWorkspace: true,
   canViewReports: true,
   canViewAnalytics: true,
@@ -100,8 +122,21 @@ const STORE_MANAGER = inv({
   canApprovePurchasing: true,
   canViewPurchaseApprovals: true,
   canViewPurchasingHistory: true,
+  canViewSuppliers: true,
   canManagePOSProfiles: true,
   canViewApprovalsDashboard: true,
+  // Read-only General Ledger: managers see their branch's financial impact
+  // (margin, COGS, cash position) but cannot edit any accounting entry.
+  canViewGLReadOnly: true,
+  // HR — Store Manager approves leave for own branch + sees own-branch
+  // HR reports + can view own payslip. Everything else is HR / Admin.
+  canApproveLeave: true,
+  canViewHRReports: true,
+  canRequestLeave: true,
+  canViewPayslipSelf: true,
+  // Phase 4 — workspace settings: Store Manager owns store policy.
+  canManageInventorySettings: true,
+  canManagePurchasingSettings: true,
   canViewPOS: false,
   canOperatePOS: false,
   canOpenShift: false,
@@ -113,9 +148,14 @@ const STORE_MANAGER = inv({
   canCreateReturns: false,
   canAccessPurchasing: false,
   canAccessAdminWorkspace: false,
-  canViewSuppliers: false,
+  // canViewSuppliers is intentionally granted above (true). The earlier
+  // "monitor only" profile set this to false here — kept commented as a
+  // landmark since last-wins JS-object semantics make duplicate keys silent.
   canAccessInvoiceMatching: false,
-  canAccessInventory: true,
+  // Store Manager intentionally has NO inventory / warehouse visibility.
+  // They manage suppliers, approvals, shifts, reports, and POS profiles only —
+  // warehouse-level operations belong to Inventory Clerks.
+  canAccessInventory: false,
   canInventoryOperate: false,
   canInventoryReceipt: false,
   canInventoryTransfer: false,
@@ -133,12 +173,31 @@ const ADMINISTRATOR = {
   canManageUsers: true,
   canManageSettings: true,
   canManageOperationalUsers: true,
+  // Phase 4.a — Admin is the only role permitted to set a user password
+  // directly (break-glass). Reset links go through the secure token
+  // flow used by Store Manager + HR.
+  canViewBatchAudit: true,
+  canSendPasswordResetLink: true,
+  canSetUserPasswordDirectly: true,
   canManagePOSProfiles: true,
   canAccessAdminWorkspace: true,
   canViewReports: true,
   canViewAnalytics: true,
   canViewApprovalsDashboard: true,
   canViewEmployees: true,
+  // Phase 4 — Admin has every workspace settings cap.
+  canManageInventorySettings: true,
+  canManagePurchasingSettings: true,
+  canManageFinanceSettings: true,
+  canManageHRSettings: true,
+  // Full HR cap set for Admin so they can audit / fix any HR state.
+  canManageEmployees: true,
+  canManageAttendance: true,
+  canApproveLeave: true,
+  canRequestLeave: true,
+  canManagePayroll: true,
+  canViewHRReports: true,
+  canViewPayslipSelf: true,
   canViewPOS: false,
   canOperatePOS: false,
   canOpenShift: false,
@@ -164,11 +223,26 @@ const ADMINISTRATOR = {
 
 /** HR — workforce records + operational user provisioning (no finance/inventory/security). */
 const HR_OFFICER = {
+  // Phase 4.a — HR may dispatch password-reset links (own branch). Never
+  // sets passwords directly.
+  canViewBatchAudit: true,
+  canSendPasswordResetLink: true,
+  canSetUserPasswordDirectly: false,
   canAccessHRWorkspace: true,
   canManageEmployees: true,
   canViewEmployees: true,
   canManageOperationalUsers: true,
   canManageUsers: true,
+  // HR module caps (Batch A foundation — backend asserters mirror these).
+  canManageAttendance: true,
+  canApproveLeave: true,
+  canRequestLeave: true,
+  canManagePayroll: true,
+  canViewHRReports: true,
+  canViewPayslipSelf: true,
+  // Phase 4 — HR Officer owns HR Settings (standard working hours,
+  // leave notification flag, employee naming).
+  canManageHRSettings: true,
   canAccessAdminWorkspace: false,
   canManageSystem: false,
   canManageSettings: false,

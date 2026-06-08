@@ -77,9 +77,13 @@ export const MANAGER_NAV = [
     icon: '🛍️',
     cap: 'canViewPurchaseApprovals',
   },
-  { to: '/manager/reports', labelKey: 'nav.reports', icon: '📊', cap: 'canViewReports' },
-  { to: '/manager/shifts/history', labelKey: 'nav.shifts', icon: '◷', cap: 'canViewShiftReports' },
-  { to: '/inventory', labelKey: 'nav.inventory', icon: '📦', cap: 'canAccessInventory' },
+  { to: '/manager/reports', labelKey: 'nav.reports', icon: 'reports', cap: 'canViewReports' },
+  { to: '/finance/general-ledger', labelKey: 'nav.generalLedger', icon: 'finance', cap: 'canViewGLReadOnly' },
+  { to: '/manager/shifts/history', labelKey: 'nav.shifts', icon: 'shifts', cap: 'canViewShiftReports' },
+  { to: '/manager/suppliers', labelKey: 'nav.suppliers', icon: 'suppliers', cap: 'canViewSuppliers' },
+  { to: '/pos/settings', labelKey: 'nav.posWorkspaceSettings', icon: '⚙️', cap: 'canManagePOSProfiles' },
+  { to: '/inventory/settings', labelKey: 'nav.inventoryWorkspaceSettings', icon: '⚙️', cap: 'canManageInventorySettings' },
+  { to: '/purchasing/settings', labelKey: 'nav.purchasingWorkspaceSettings', icon: '⚙️', cap: 'canManagePurchasingSettings' },
 ];
 
 /** @param {import('./capabilities').Capabilities} capabilities */
@@ -91,14 +95,18 @@ export function getManagerNavItems(capabilities) {
 
 /** @type {NavItem[]} */
 export const FINANCE_NAV = [
-  { to: '/finance', labelKey: 'nav.finance', icon: '💼', exact: true },
-  { to: '/finance/matching', labelKey: 'nav.invoiceMatching', icon: '🧾', cap: 'canAccessInvoiceMatching' },
-  { to: '/finance/payments', labelKey: 'nav.supplierPayments', icon: '💳', cap: 'canViewSupplierPayments' },
-  { to: '/finance/approvals', labelKey: 'nav.approvals', icon: '✓', cap: 'canViewApprovalsDashboard' },
-  { to: '/finance/invoices', labelKey: 'common.invoices', icon: '🧾', cap: 'canViewInvoices' },
-  { to: '/finance/reports', labelKey: 'nav.reports', icon: '📊', cap: 'canViewReports' },
-  { to: '/finance/shifts/history', labelKey: 'nav.shifts', icon: '◷', cap: 'canViewShiftReports' },
-  { to: '/finance/ledger', labelKey: 'nav.ledger', icon: '📒', cap: 'canViewStockLedgerReadOnly' },
+  { to: '/finance', labelKey: 'nav.finance', icon: 'finance', exact: true },
+  { to: '/finance/matching', labelKey: 'nav.invoiceMatching', icon: 'invoices', cap: 'canAccessInvoiceMatching' },
+  { to: '/finance/payments', labelKey: 'nav.supplierPayments', icon: 'payments', cap: 'canViewSupplierPayments' },
+  { to: '/finance/general-ledger', labelKey: 'nav.generalLedger', icon: 'reports', caps: ['canViewSupplierPayments', 'canAccessAccountantWorkspace'] },
+  { to: '/finance/aging', labelKey: 'nav.apAging', icon: 'reports', caps: ['canViewSupplierPayments', 'canAccessAccountantWorkspace'] },
+  { to: '/finance/top-suppliers', labelKey: 'nav.topSuppliers', icon: 'suppliers', caps: ['canViewSupplierPayments', 'canAccessAccountantWorkspace'] },
+  { to: '/finance/approvals', labelKey: 'nav.approvals', icon: 'approvals', cap: 'canViewApprovalsDashboard' },
+  { to: '/finance/invoices', labelKey: 'common.invoices', icon: 'invoices', cap: 'canViewInvoices' },
+  { to: '/finance/reports', labelKey: 'nav.reports', icon: 'reports', cap: 'canViewReports' },
+  { to: '/finance/shifts/history', labelKey: 'nav.shifts', icon: 'shifts', cap: 'canViewShiftReports' },
+  { to: '/finance/ledger', labelKey: 'nav.ledger', icon: 'inventory', cap: 'canViewStockLedgerReadOnly' },
+  { to: '/finance/settings', labelKey: 'nav.workspaceSettings', icon: '⚙️', cap: 'canManageFinanceSettings' },
 ];
 
 /** @param {import('./capabilities').Capabilities} capabilities */
@@ -110,11 +118,18 @@ export function getFinanceNavItems(capabilities) {
 
 /** @type {NavItem[]} */
 export const HR_NAV = [
-  { to: '/hr', labelKey: 'nav.hrOverview', icon: '◈', exact: true, cap: 'canAccessHRWorkspace' },
-  { to: '/hr/employees', labelKey: 'nav.employees', icon: '👥', cap: 'canViewEmployees' },
-  { to: '/hr/users', labelKey: 'nav.systemUsers', icon: '🧑‍💼', cap: 'canManageOperationalUsers' },
-  { to: '/hr/departments', labelKey: 'nav.departments', icon: '🏢', cap: 'canAccessHRWorkspace' },
-  { to: '/hr/positions', labelKey: 'nav.positions', icon: '💼', cap: 'canAccessHRWorkspace' },
+  { to: '/hr', labelKey: 'nav.hrOverview', icon: 'dashboard', exact: true, cap: 'canAccessHRWorkspace' },
+  { to: '/hr/employees', labelKey: 'nav.employees', icon: 'customers', cap: 'canViewEmployees' },
+  { to: '/hr/attendance', labelKey: 'nav.attendance', icon: 'calendar', caps: ['canManageAttendance', 'canViewHRReports'] },
+  { to: '/hr/leave', labelKey: 'nav.leave', icon: 'approvals', caps: ['canApproveLeave', 'canRequestLeave', 'canViewHRReports'] },
+  { to: '/hr/payroll', labelKey: 'nav.payroll', icon: 'finance', caps: ['canManagePayroll', 'canViewHRReports'] },
+  { to: '/my-payslip', labelKey: 'nav.myPayslip', icon: 'user', cap: 'canViewPayslipSelf' },
+  { to: '/hr/users', labelKey: 'nav.systemUsers', icon: 'user', cap: 'canManageOperationalUsers' },
+  // Phase 4-hotfix: removed /hr/departments and /hr/positions — the
+  // SPA routes were never registered, so clicking either navigated
+  // to the catch-all and signed users out. Restore these entries
+  // when the matching pages ship.
+  { to: '/hr/settings', labelKey: 'nav.workspaceSettings', icon: '⚙️', cap: 'canManageHRSettings' },
 ];
 
 /** @param {import('./capabilities').Capabilities} capabilities */
@@ -142,6 +157,7 @@ const INVENTORY_NAV_FULL = [
   { to: '/inventory/reconciliation', labelKey: 'nav.reconcile', icon: '⚖', cap: 'canInventoryReconcile' },
   { to: '/inventory/analytics', labelKey: 'nav.analytics', icon: '📈', cap: 'canInventoryAnalytics' },
   { to: '/inventory/reports', labelKey: 'nav.reports', icon: '📊', cap: 'canInventoryManage' },
+  { to: '/inventory/settings', labelKey: 'nav.workspaceSettings', icon: '⚙️', cap: 'canManageInventorySettings' },
 ];
 
 /** @param {import('./capabilities').Capabilities} capabilities */
@@ -187,6 +203,7 @@ const PURCHASING_SHELL_FULL = [
   { to: '/purchasing/approvals', labelKey: 'nav.approvals', icon: '✓', cap: 'canViewPurchaseApprovals' },
   { to: '/purchasing/invoices', labelKey: 'common.invoices', icon: '🧾', cap: 'canAccessAccountantWorkspace' },
   { to: '/purchasing/reports', labelKey: 'nav.reports', icon: '📊', cap: 'canAccessAccountantWorkspace' },
+  { to: '/purchasing/settings', labelKey: 'nav.workspaceSettings', icon: '⚙️', cap: 'canManagePurchasingSettings' },
 ];
 
 /** @param {import('./capabilities').Capabilities} capabilities */
@@ -237,6 +254,65 @@ export function getShiftsSessionLinks(capabilities, inAdminShell = false) {
     return [{ to: '/manager', labelKey: 'nav.manager' }];
   }
   return [];
+}
+
+// ── Unified session-menu registry (Phase 3.5.b) ─────────────────────────────
+//
+// Single source of truth for the workspace footer / topbar UserMenu link
+// list. Canonical order per decision D4:
+//
+//   1. Personal Settings  — every authenticated user
+//   2. My Payslip         — gated on canViewPayslipSelf
+//   3. Workspace-specific — varies by workspace (System Settings for admin
+//                           if canManageSettings, Returns + Shift Control
+//                           for POS cashiers, Admin/POS jump for inventory
+//                           non-clerks, etc.)
+//   4. Logout             — NOT in this list. Sign out is added by the
+//                           UserMenu primitive via the onSignOut prop.
+//
+// Workspaces previously each built their own session-link arrays inline,
+// which is why Admin and HR users never saw Personal Settings while
+// Finance users did. This function closes audit findings 11.3 + 11.4.
+
+/**
+ * @param {import('./capabilities').Capabilities} capabilities
+ * @param {'admin'|'hr'|'finance'|'manager'|'purchasing'|'inventory'|'shifts'|'pos'} workspaceId
+ * @param {{ inAdminShell?: boolean }} [opts]
+ * @returns {{ to: string, labelKey: string }[]}
+ */
+export function getSessionLinksForWorkspace(capabilities, workspaceId, opts = {}) {
+  const links = [];
+
+  // 1. Personal Settings — uniform entry across every workspace.
+  links.push({ to: '/me/profile', labelKey: 'nav.personalSettings' });
+
+  // 2. My Payslip — only when the user has a payslip.
+  if (hasCapability(capabilities, 'canViewPayslipSelf')) {
+    links.push({ to: '/my-payslip', labelKey: 'nav.myPayslip' });
+  }
+
+  // 3. Workspace-specific links.
+  switch (workspaceId) {
+    case 'admin':
+      if (hasCapability(capabilities, 'canManageSettings')) {
+        links.push({ to: '/admin/settings', labelKey: 'nav.systemSettings' });
+      }
+      break;
+    case 'inventory':
+      links.push(...getInventorySessionLinks(capabilities));
+      break;
+    case 'shifts':
+      links.push(...getShiftsSessionLinks(capabilities, opts.inAdminShell));
+      break;
+    case 'pos':
+      links.push(...getPOSSessionLinks(capabilities));
+      break;
+    // hr / finance / manager / purchasing — no workspace-specific links today.
+    default:
+      break;
+  }
+
+  return links;
 }
 
 // ── POS session links ───────────────────────────────────────────────────────
@@ -294,12 +370,53 @@ export function canEditItemMaster(capabilities) {
 }
 
 /**
- * Can change buying / selling price on an item — Administrator ONLY.
+ * Can change the selling (retail) price on an item — Administrator OR
+ * Store Manager. Mirrors `canEditItemMaster` since both personas already
+ * own the broader item record; selling price moves with the rest of the
+ * commercial fields.
  * @param {import('./capabilities').Capabilities} capabilities
  */
-export function canEditItemPricing(capabilities) {
+export function canEditSellingPrice(capabilities) {
+  return canEditItemMaster(capabilities);
+}
+
+/**
+ * Can change the buying (cost) price on an item — Administrator ONLY.
+ * Cost data is restricted to break-glass / governance personas so that
+ * store managers cannot manipulate margin inputs.
+ * @param {import('./capabilities').Capabilities} capabilities
+ */
+export function canEditBuyingPrice(capabilities) {
   if (hasCapability(capabilities, 'canManageSystem')) return true;
   return resolveNavPersona(capabilities) === 'administrator';
+}
+
+/**
+ * Can create / edit / enable-disable suppliers — Administrator + Store Manager.
+ * Read-only for everyone else (Inventory Clerk, Purchasing Officer, Accountant,
+ * Cashier, HR). Backend enforces the same rule via Supplier doc_events.
+ * @param {import('./capabilities').Capabilities} capabilities
+ */
+export function canManageSuppliers(capabilities) {
+  if (hasCapability(capabilities, 'canManageSystem')) return true;
+  const persona = resolveNavPersona(capabilities);
+  if (persona === 'administrator') return true;
+  if (persona === 'store_manager') return true;
+  return false;
+}
+
+/**
+ * Can delete a supplier — Administrator + Store Manager. The backend still
+ * rejects the delete with `LinkExistsError` if the supplier has any linked
+ * Purchase Receipt / Purchase Invoice / Payment Entry, regardless of role.
+ * @param {import('./capabilities').Capabilities} capabilities
+ */
+export function canDeleteSuppliers(capabilities) {
+  if (hasCapability(capabilities, 'canManageSystem')) return true;
+  const persona = resolveNavPersona(capabilities);
+  if (persona === 'administrator') return true;
+  if (persona === 'store_manager') return true;
+  return false;
 }
 
 /** @param {import('./capabilities').Capabilities} capabilities */

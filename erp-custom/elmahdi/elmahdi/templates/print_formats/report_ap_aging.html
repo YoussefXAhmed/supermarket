@@ -1,0 +1,90 @@
+{%- from "elmahdi/templates/print_macros/print_master.html" import fmt_money -%}
+{%- include "elmahdi/templates/print_macros/print_styles.html" -%}
+
+<style>
+@page { size: A4 landscape; margin: 12mm; }
+.epf-table tbody td { font-size: 9.5pt; }
+</style>
+
+<div dir="{{ 'rtl' if info.lang == 'ar' else 'ltr' }}" lang="{{ info.lang }}">
+
+  <header class="epf-header">
+    <div class="epf-header__brand">
+      {%- if info.logo_url -%}
+        <img class="epf-header__logo" src="{{ info.logo_url }}" alt="">
+      {%- endif -%}
+      <div class="epf-header__company">
+        <h1 class="epf-header__company-name">{{ info.company_name }}</h1>
+      </div>
+    </div>
+    <div class="epf-header__meta">
+      <h2 class="epf-header__title">
+        {{ 'أعمار الذمم الدائنة' if info.lang == 'ar' else 'AP Aging Report' }}
+      </h2>
+      <p class="epf-header__date">
+        {{ 'حتى' if info.lang == 'ar' else 'As of' }} {{ report.as_of }}
+      </p>
+    </div>
+  </header>
+
+  <dl class="epf-audit">
+    <div class="epf-audit__col">
+      <dt>{{ info.labels.printed_by }}</dt><dd>{{ info.printed_by }}</dd>
+    </div>
+    <div class="epf-audit__col">
+      <dt>{{ info.labels.printed_at }}</dt><dd>{{ info.printed_at }}</dd>
+    </div>
+    <div class="epf-audit__col">
+      <dt>{{ 'عدد الموردين' if info.lang == 'ar' else 'Suppliers' }}</dt>
+      <dd>{{ report.rows | length }}</dd>
+    </div>
+  </dl>
+
+  <table class="epf-table">
+    <thead>
+      <tr>
+        <th>{{ info.labels.supplier }}</th>
+        <th class="num">{{ 'حالي' if info.lang == 'ar' else 'Current' }}</th>
+        <th class="num">1–30</th>
+        <th class="num">31–60</th>
+        <th class="num">61–90</th>
+        <th class="num">90+</th>
+        <th class="num">{{ 'إجمالي مستحق' if info.lang == 'ar' else 'Total Outstanding' }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {%- for r in report.rows -%}
+        <tr>
+          <td>
+            <strong>{{ r.supplier_name or r.supplier }}</strong>
+            <div class="epf-small epf-muted">
+              {{ r.invoice_count }} {{ 'فاتورة' if info.lang == 'ar' else 'invoice(s)' }}
+            </div>
+          </td>
+          <td class="num">{{ fmt_money(r.current, 'EGP') if r.current else '—' }}</td>
+          <td class="num">{{ fmt_money(r.days_1_30, 'EGP') if r.days_1_30 else '—' }}</td>
+          <td class="num">{{ fmt_money(r.days_31_60, 'EGP') if r.days_31_60 else '—' }}</td>
+          <td class="num" style="color: {% if r.days_61_90 %}#a36b00{% endif %}">
+            {{ fmt_money(r.days_61_90, 'EGP') if r.days_61_90 else '—' }}
+          </td>
+          <td class="num" style="color: {% if r.days_90_plus %}#b3261e{% endif %}">
+            {{ fmt_money(r.days_90_plus, 'EGP') if r.days_90_plus else '—' }}
+          </td>
+          <td class="num"><strong>{{ fmt_money(r.total, 'EGP') }}</strong></td>
+        </tr>
+      {%- endfor -%}
+    </tbody>
+    <tfoot>
+      <tr>
+        <td class="num">{{ info.labels.grand_total }}</td>
+        <td class="num">{{ fmt_money(report.totals.current, 'EGP') }}</td>
+        <td class="num">{{ fmt_money(report.totals.days_1_30, 'EGP') }}</td>
+        <td class="num">{{ fmt_money(report.totals.days_31_60, 'EGP') }}</td>
+        <td class="num">{{ fmt_money(report.totals.days_61_90, 'EGP') }}</td>
+        <td class="num">{{ fmt_money(report.totals.days_90_plus, 'EGP') }}</td>
+        <td class="num">{{ fmt_money(report.totals.total, 'EGP') }}</td>
+      </tr>
+    </tfoot>
+  </table>
+
+</div>

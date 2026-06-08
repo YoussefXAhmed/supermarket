@@ -45,14 +45,18 @@ export const ROUTE_ACCESS = [
   { prefix: '/inventory', anyOf: ['canAccessInventory'] },
   { prefix: '/hr/users', anyOf: ['canManageOperationalUsers'] },
   { prefix: '/hr/employees', anyOf: ['canViewEmployees'] },
-  { prefix: '/hr/departments', anyOf: ['canAccessHRWorkspace'] },
-  { prefix: '/hr/positions', anyOf: ['canAccessHRWorkspace'] },
+  // Phase 4-hotfix: SPA routes for departments/positions aren't
+  // registered yet. Removed from the access map so an authenticated
+  // user landing on them takes the catch-all path back to their home
+  // (after the auth-aware catch-all change), instead of being kicked
+  // back to /login as if signed out.
   { prefix: '/hr', anyOf: ['canAccessHRWorkspace'] },
   { prefix: '/manager/shifts/history', anyOf: ['canViewShiftReports'] },
   { prefix: '/manager/shifts', anyOf: ['canViewShiftReports'] },
   { prefix: '/manager/approvals/history', anyOf: ['canViewPurchaseApprovals'] },
   { prefix: '/manager/approvals', anyOf: ['canViewApprovalsDashboard'] },
   { prefix: '/manager/pos-profiles', anyOf: ['canManagePOSProfiles', 'canManageSystem'] },
+  { prefix: '/manager/suppliers', anyOf: ['canViewSuppliers', 'canManageSystem'] },
   { prefix: '/manager/purchase-approvals', anyOf: ['canViewPurchaseApprovals'] },
   { prefix: '/manager/reports', anyOf: ['canViewReports'] },
   { prefix: '/manager', anyOf: ['canAccessManagerWorkspace'] },
@@ -72,7 +76,7 @@ export const ROUTE_ACCESS = [
   { prefix: '/purchasing/approvals', anyOf: ['canViewPurchaseApprovals'] },
   { prefix: '/purchasing/history', anyOf: ['canViewPurchasingHistory', 'canManageSystem'] },
   { prefix: '/purchasing/receive', anyOf: ['canAccessPurchasing'] },
-  { prefix: '/purchasing/suppliers', anyOf: ['canAccessPurchasing'] },
+  { prefix: '/purchasing/suppliers', anyOf: ['canAccessPurchasing', 'canViewSuppliers', 'canManageSystem'] },
   { prefix: '/purchasing', anyOf: ['canAccessPurchasing'] },
   { prefix: '/admin/purchasing/invoices', anyOf: ['canManageSystem'] },
   { prefix: '/admin/purchasing/matching', anyOf: ['canManageSystem'] },

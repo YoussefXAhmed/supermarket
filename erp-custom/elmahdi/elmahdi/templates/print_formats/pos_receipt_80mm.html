@@ -1,0 +1,115 @@
+{#
+  Elmahdi POS Receipt — 80mm thermal.
+
+  This format is registered with `raw_printing=1` so ERPNext picks the
+  thermal page geometry. We still inherit the master macros but render a
+  trimmed-down layout: centred header, dashed dividers, item rows with
+  qty × rate stacked, totals block full-width, no signatures.
+#}
+{%- from "elmahdi/templates/print_macros/print_master.html" import fmt_money -%}
+{%- include "elmahdi/templates/print_macros/print_styles.html" -%}
+
+{%- set info = elmahdi.print_helpers.print_context(doc) -%}
+
+<style>
+@page { size: 80mm auto; margin: 4mm; }
+body { font-size: 9.5pt; font-family: "Cairo", monospace; color: #000; }
+.epf-r        { width: 72mm; margin: 0 auto; }
+.epf-r__center { text-align: center; }
+.epf-r__head   { padding-bottom: 1mm; border-bottom: 1px dashed #000; margin-bottom: 1mm; }
+.epf-r__head img { max-height: 14mm; max-width: 60mm; }
+.epf-r__big    { font-size: 11pt; font-weight: 700; }
+.epf-r__line   { border-top: 1px dashed #000; margin: 1mm 0; }
+.epf-r__items  { width: 100%; border-collapse: collapse; }
+.epf-r__items td { padding: 0.4mm 0; vertical-align: top; font-size: 9pt; }
+.epf-r__items td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.epf-r__totals { width: 100%; }
+.epf-r__totals tr td        { padding: 0.4mm 0; font-size: 9pt; }
+.epf-r__totals tr td.num    { text-align: right; }
+.epf-r__totals tr.grand td  { font-weight: 700; font-size: 10.5pt; border-top: 1px dashed #000; padding-top: 1mm; }
+.epf-r__footer { text-align: center; margin-top: 2mm; font-size: 8.5pt; }
+html[dir="rtl"] .epf-r__items td.num,
+html[dir="rtl"] .epf-r__totals tr td.num { text-align: left; }
+</style>
+
+<div class="epf-r" dir="{{ 'rtl' if info.lang == 'ar' else 'ltr' }}" lang="{{ info.lang }}">
+  <div class="epf-r__head epf-r__center">
+    {%- if info.logo_url -%}
+      <img src="{{ info.logo_url }}" alt="{{ info.company_name }}">
+    {%- endif -%}
+    <div class="epf-r__big">{{ info.company_name }}</div>
+    {%- if info.branch_name -%}<div>{{ info.branch_name }}</div>{%- endif -%}
+    {%- if info.branch_address -%}<div class="epf-small">{{ info.branch_address }}</div>{%- endif -%}
+    {%- if info.branch_phone -%}<div class="epf-small">{{ info.labels.phone }}: {{ info.branch_phone }}</div>{%- endif -%}
+  </div>
+
+  <div class="epf-r__center">
+    <div class="epf-r__big">{{ 'إيصال بيع' if info.lang == 'ar' else 'Sales Receipt' }}</div>
+    <div>{{ doc.name }}</div>
+    <div class="epf-small">
+      {{ frappe.utils.format_datetime(doc.creation) }}
+    </div>
+    {%- if doc.customer -%}
+      <div class="epf-small">{{ info.labels.customer }}: {{ doc.customer_name or doc.customer }}</div>
+    {%- endif -%}
+    <div class="epf-small">{{ info.labels.cashier }}: {{ doc.owner }}</div>
+  </div>
+
+  <div class="epf-r__line"></div>
+
+  <table class="epf-r__items">
+    {%- for item in doc.items -%}
+      <tr>
+        <td colspan="2"><strong>{{ item.item_name or item.item_code }}</strong></td>
+      </tr>
+      <tr>
+        <td>{{ '{:,.2f}'.format(item.qty | flt) }} × {{ fmt_money(item.rate, doc.currency or 'EGP') }}</td>
+        <td class="num">{{ fmt_money(item.amount, doc.currency or 'EGP') }}</td>
+      </tr>
+    {%- endfor -%}
+  </table>
+
+  <div class="epf-r__line"></div>
+
+  <table class="epf-r__totals">
+    <tr>
+      <td>{{ info.labels.subtotal }}</td>
+      <td class="num">{{ fmt_money(doc.net_total or doc.total, doc.currency or 'EGP') }}</td>
+    </tr>
+    {%- for tax in doc.taxes -%}
+      <tr>
+        <td>{{ tax.description or info.labels.tax }}{% if tax.rate %} ({{ tax.rate }}%){% endif %}</td>
+        <td class="num">{{ fmt_money((tax.tax_amount | flt) | abs, doc.currency or 'EGP') }}</td>
+      </tr>
+    {%- endfor -%}
+    {%- if (doc.discount_amount | flt) > 0 -%}
+      <tr>
+        <td>{{ info.labels.discount }}</td>
+        <td class="num">−{{ fmt_money(doc.discount_amount, doc.currency or 'EGP') }}</td>
+      </tr>
+    {%- endif -%}
+    <tr class="grand">
+      <td>{{ info.labels.grand_total }}</td>
+      <td class="num">{{ fmt_money(doc.grand_total, doc.currency or 'EGP') }}</td>
+    </tr>
+    {%- for p in doc.payments -%}
+      <tr>
+        <td>{{ p.mode_of_payment }}</td>
+        <td class="num">{{ fmt_money(p.amount, doc.currency or 'EGP') }}</td>
+      </tr>
+    {%- endfor -%}
+    {%- if (doc.change_amount | flt) > 0 -%}
+      <tr>
+        <td>{{ 'الباقي' if info.lang == 'ar' else 'Change' }}</td>
+        <td class="num">{{ fmt_money(doc.change_amount, doc.currency or 'EGP') }}</td>
+      </tr>
+    {%- endif -%}
+  </table>
+
+  <div class="epf-r__line"></div>
+
+  <div class="epf-r__footer">
+    {{ 'شكراً لزيارتكم' if info.lang == 'ar' else 'Thank you for shopping with us!' }}<br/>
+    <span class="epf-small">{{ info.labels.printed_by }}: {{ info.printed_by }} · {{ info.printed_at }}</span>
+  </div>
+</div>

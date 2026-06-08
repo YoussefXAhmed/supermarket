@@ -18,7 +18,7 @@ import {
   uploadItemImage,
 } from '../../../services/itemMasterApi';
 import { getItemThresholds, updateItemThresholds } from '../../../services/inventoryThresholdsApi';
-import { canEditItemMaster, canEditItemPricing } from '../../../auth/navigationConfig';
+import { canEditItemMaster, canEditSellingPrice, canEditBuyingPrice } from '../../../auth/navigationConfig';
 import { getUserFriendlyMessage } from '../../../utils/errorHandling';
 
 function absImageUrl(url) {
@@ -51,7 +51,8 @@ export default function ItemEditPage() {
   const notify = useNotify();
   const { capabilities } = useAuth();
   const canEditDetails = canEditItemMaster(capabilities);
-  const canEditPricing = canEditItemPricing(capabilities);
+  const canEditSelling = canEditSellingPrice(capabilities);
+  const canEditBuying = canEditBuyingPrice(capabilities);
 
   const [data, setData] = useState(EMPTY);
   const [draft, setDraft] = useState(EMPTY);
@@ -99,7 +100,7 @@ export default function ItemEditPage() {
 
   const handleSave = async (e) => {
     e?.preventDefault?.();
-    if (!canEditDetails && !canEditPricing) return;
+    if (!canEditDetails && !canEditSelling && !canEditBuying) return;
     setSaving(true);
     try {
       if (dirty) {
@@ -119,10 +120,8 @@ export default function ItemEditPage() {
           payload.shelf_life_in_days = Number(draft.shelf_life_in_days) || 0;
           payload.disabled = draft.disabled ? 1 : 0;
         }
-        if (canEditPricing) {
-          payload.selling_price = Number(draft.selling_price) || 0;
-          payload.buying_price = Number(draft.buying_price) || 0;
-        }
+        if (canEditSelling) payload.selling_price = Number(draft.selling_price) || 0;
+        if (canEditBuying)  payload.buying_price  = Number(draft.buying_price)  || 0;
         if (Object.keys(payload).length > 0) {
           const fresh = await updateItemMaster(itemCode, payload);
           if (fresh) {
@@ -205,7 +204,7 @@ export default function ItemEditPage() {
             <Btn variant="ghost" size="sm" onClick={() => navigate('/inventory')}>
               ← {t('common.back', { defaultValue: 'Back' })}
             </Btn>
-            {(canEditDetails || canEditPricing) && (
+            {(canEditDetails || canEditSelling || canEditBuying) && (
               <Btn
                 variant="primary"
                 size="sm"
@@ -220,7 +219,7 @@ export default function ItemEditPage() {
         }
       />
 
-      {!canEditDetails && !canEditPricing && (
+      {!canEditDetails && !canEditSelling && !canEditBuying && (
         <p className="empty-inline" style={{ marginBottom: 'var(--space-3)' }}>
           {t('itemEdit.readOnlyHint', {
             defaultValue: 'Read-only view — only Administrator and Store Manager can edit items.',
@@ -366,10 +365,10 @@ export default function ItemEditPage() {
           variant="raised"
           title={t('itemEdit.pricing', { defaultValue: 'Pricing' })}
           subtitle={t('itemEdit.pricingSub', {
-            defaultValue: 'Editable by Administrator only.',
+            defaultValue: 'Buying price is Administrator only. Selling price is editable by Store Manager.',
           })}
         >
-          {!canEditPricing && (
+          {!canEditBuying && (
             <div
               className="empty-inline"
               style={{
@@ -381,8 +380,8 @@ export default function ItemEditPage() {
                 textAlign: 'start',
               }}
             >
-              🔒 {t('itemEdit.pricingAdminOnly', {
-                defaultValue: 'Only administrators can modify pricing.',
+              🔒 {t('itemEdit.buyingPriceAdminOnly', {
+                defaultValue: 'Only administrators can change the buying price.',
               })}
             </div>
           )}
@@ -396,8 +395,8 @@ export default function ItemEditPage() {
                 step="0.01"
                 value={draft.buying_price ?? 0}
                 onChange={(e) => setField('buying_price', e.target.value)}
-                disabled={!canEditPricing}
-                readOnly={!canEditPricing}
+                disabled={!canEditBuying}
+                readOnly={!canEditBuying}
               />
             </label>
             <label className="form-field">
@@ -409,8 +408,8 @@ export default function ItemEditPage() {
                 step="0.01"
                 value={draft.selling_price ?? 0}
                 onChange={(e) => setField('selling_price', e.target.value)}
-                disabled={!canEditPricing}
-                readOnly={!canEditPricing}
+                disabled={!canEditSelling}
+                readOnly={!canEditSelling}
               />
             </label>
             <div className="form-field">
@@ -527,7 +526,7 @@ export default function ItemEditPage() {
           </LayoutSection>
         )}
 
-        {(canEditDetails || canEditPricing) && (
+        {(canEditDetails || canEditSelling || canEditBuying) && (
           <div style={{ display: 'flex', gap: 'var(--space-2)', justifyContent: 'flex-end' }}>
             {(dirty || thresholdsDirty) && (
               <Btn

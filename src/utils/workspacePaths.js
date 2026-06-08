@@ -15,6 +15,20 @@ export function purchasingPath(segment = '') {
   return `${base}/${segment.replace(/^\//, '')}`;
 }
 
+/**
+ * Workspace-aware supplier path — picks `/manager/suppliers/...` when the
+ * caller is currently inside the Store Manager workspace, otherwise falls
+ * back to `/purchasing/suppliers/...`. Pass the current location pathname
+ * (typically `useLocation().pathname` from React Router).
+ */
+export function suppliersPath(pathname = '', segment = '') {
+  const base = pathname && pathname.startsWith('/manager')
+    ? '/manager/suppliers'
+    : '/purchasing/suppliers';
+  if (!segment) return base;
+  return `${base}/${segment.replace(/^\//, '')}`;
+}
+
 /** Invoice matching — finance workspace. */
 export function invoiceMatchingPath(caps) {
   if (hasCapability(caps, 'canAccessInvoiceMatching')) {

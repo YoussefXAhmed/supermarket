@@ -1,0 +1,287 @@
+/*
+ * Liquid Glass — hybrid design system
+ * ────────────────────────────────────────────────────────────────────────────
+ * Apple Liquid Glass aesthetics applied SELECTIVELY to chrome only.
+ *
+ * APPLIED to (chrome / framing surfaces):
+ *   • Top navigation (.sidebar, .pos-topbar)
+ *   • Notification center (.notif-bell__panel--dropdown / --drawer)
+ *   • User menu / session actions chip (.session-actions when compact)
+ *   • Branch selector (future-proofed: any .branch-selector element)
+ *   • Search bars (.search-input-wrap, .pos-topbar__search input)
+ *   • Modals (.ui-modal, .ui-modal-backdrop)
+ *   • KPI cards (.stat-card)
+ *
+ * NOT APPLIED to (data-heavy operational surfaces — kept fully opaque):
+ *   • All tables (.table, .ap-payments-table, .ledger-table, etc.)
+ *   • POS product grid (.pos-products, .pos-product-card)
+ *   • Inventory list rows
+ *   • Reports tables, invoice lists, finance tables, purchasing tables
+ *
+ * Design tokens are tuned for the dark theme (--bg-1 ≈ #0f1117). On a light
+ * theme the same vars can be re-bound in a [data-theme="light"] block.
+ *
+ * Performance notes:
+ *   • backdrop-filter is GPU-accelerated but expensive when stacked. The
+ *     selector list is intentionally narrow — chrome only, never tables.
+ *   • A media query disables blur on @media (prefers-reduced-transparency:
+ *     reduce) per accessibility guidelines.
+ *   • Saturation lifts the underlying colours so the glass reads as
+ *     "Apple-style" frosted rather than muddy.
+ */
+
+:root {
+  /* Surface tints — dark theme tuned */
+  --glass-bg:          rgba(22, 25, 35, 0.55);
+  --glass-bg-strong:   rgba(22, 25, 35, 0.72);
+  --glass-bg-subtle:   rgba(30, 35, 48, 0.42);
+
+  /* Borders — barely visible "halo" + slightly stronger top edge */
+  --glass-border:      1px solid rgba(255, 255, 255, 0.08);
+  --glass-border-strong: 1px solid rgba(255, 255, 255, 0.12);
+
+  /* Blur — kept within the 16-24px range; saturation lifts the bg color */
+  --glass-blur:        20px;
+  --glass-blur-strong: 24px;
+  --glass-blur-light:  16px;
+  --glass-saturate:    180%;
+
+  /* Layered shadows — top sheen (inset) + drop + ambient */
+  --glass-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 8px 32px rgba(0, 0, 0, 0.30),
+    0 2px 8px rgba(0, 0, 0, 0.18);
+
+  --glass-shadow-strong:
+    0 1px 0 rgba(255, 255, 255, 0.08) inset,
+    0 12px 48px rgba(0, 0, 0, 0.45),
+    0 4px 16px rgba(0, 0, 0, 0.24);
+
+  --glass-radius:      14px;
+  --glass-radius-sm:   10px;
+}
+
+/*
+ * Single shared utility. Components below reference one of three variants:
+ *   .glass-surface          — standard frosted panel
+ *   .glass-surface--strong  — deeper blur + heavier shadow (modals, drawers)
+ *   .glass-surface--subtle  — light tint + lower blur (search inputs)
+ */
+.glass-surface {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border: var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+.glass-surface--strong {
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  border: var(--glass-border-strong);
+  box-shadow: var(--glass-shadow-strong);
+}
+
+.glass-surface--subtle {
+  background: var(--glass-bg-subtle);
+  backdrop-filter: blur(var(--glass-blur-light)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur-light)) saturate(var(--glass-saturate));
+  border: var(--glass-border);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Targeted application — each block re-declares the relevant glass vars
+ * inline so the rule cascades over any earlier solid background. We do
+ * NOT use the utility class on every element (existing components don't
+ * know about it); we apply the styles directly via the existing selectors.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+/* ── Top navigation: sidebar (workspace) + POS topbar ─────────────────── */
+.sidebar {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border-right: var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+.pos-topbar {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border-bottom: var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+/* ── Notification center (dropdown + drawer) ──────────────────────────── */
+.notif-bell__panel--dropdown,
+.notif-bell__panel--drawer {
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  border: var(--glass-border-strong);
+  box-shadow: var(--glass-shadow-strong);
+  border-radius: var(--glass-radius);
+}
+.notif-bell__panel--drawer { border-radius: 0; }
+
+.notif-bell__head,
+.notif-bell__foot {
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: var(--glass-border);
+}
+.notif-bell__foot {
+  border-top: var(--glass-border);
+  border-bottom: none;
+}
+
+/* ── User menu / session actions chip (when compact dropdown) ────────── */
+.session-actions--compact {
+  background: var(--glass-bg-subtle);
+  backdrop-filter: blur(var(--glass-blur-light)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur-light)) saturate(var(--glass-saturate));
+  border: var(--glass-border);
+  border-radius: var(--glass-radius-sm);
+}
+
+/* ── Branch selector (forward-proofed) ────────────────────────────────── */
+.branch-selector,
+.branch-selector__menu {
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border: var(--glass-border);
+  border-radius: var(--glass-radius-sm);
+  box-shadow: var(--glass-shadow);
+}
+
+/* ── Search bars ──────────────────────────────────────────────────────── */
+/* Reusable SearchInput component */
+.search-input-wrap {
+  background: var(--glass-bg-subtle);
+  backdrop-filter: blur(var(--glass-blur-light)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur-light)) saturate(var(--glass-saturate));
+  border: var(--glass-border);
+  border-radius: var(--glass-radius-sm);
+}
+
+/* POS topbar search input — sits on top of the glassy topbar but should
+ * still look like a distinct entry field. */
+.pos-topbar__search input {
+  background: rgba(255, 255, 255, 0.04);
+  border: var(--glass-border);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.pos-topbar__search input:focus {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+/* Native [type=search] anywhere outside data tables.
+ * Scope it to inputs INSIDE a search-input-wrap so we don't blur the search
+ * cells on data tables. */
+.search-input-wrap input[type="search"] {
+  background: transparent;
+  border: none;
+}
+
+/* ── Modals (overlay + backdrop) ──────────────────────────────────────── */
+.ui-modal {
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate));
+  border: var(--glass-border-strong);
+  box-shadow: var(--glass-shadow-strong);
+  border-radius: var(--glass-radius);
+}
+
+.ui-modal__head {
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: var(--glass-border);
+}
+
+.ui-modal-backdrop {
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* ── KPI cards (StatCard) ─────────────────────────────────────────────── */
+.stat-card {
+  background: var(--glass-bg-subtle);
+  backdrop-filter: blur(var(--glass-blur-light)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur-light)) saturate(var(--glass-saturate));
+  border: var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * EXEMPTIONS — explicitly force solid (no glass) on data-dense surfaces.
+ * These selectors override anything inherited from above so charts, tables,
+ * and POS product cards stay maximally readable.
+ * ───────────────────────────────────────────────────────────────────────── */
+.table,
+.table--compact,
+.table-wrap,
+.ap-payments-table,
+.approval-table,
+.invoice-detail table,
+.pos-products,
+.pos-product-card,
+.purchase-history-table,
+.ledger-table,
+.report-table,
+.layout-section--raised,
+.layout-section--flat {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Tables inside glassy modals stay solid for readability. */
+.ui-modal table {
+  background: var(--bg-2);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Accessibility / reduced transparency
+ * Respect user OS preference — strip blur + reduce transparency.
+ * ───────────────────────────────────────────────────────────────────────── */
+@media (prefers-reduced-transparency: reduce) {
+  .sidebar,
+  .pos-topbar,
+  .notif-bell__panel--dropdown,
+  .notif-bell__panel--drawer,
+  .session-actions--compact,
+  .branch-selector,
+  .branch-selector__menu,
+  .search-input-wrap,
+  .ui-modal,
+  .stat-card {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: var(--bg-2) !important;
+  }
+  .ui-modal-backdrop {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: rgba(0, 0, 0, 0.75) !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Performance guardrail for low-power devices
+ * If the browser flags a low-end environment we drop blur entirely.
+ * ───────────────────────────────────────────────────────────────────────── */
+@media (max-width: 480px) and (any-pointer: coarse) {
+  /* On small touch devices we keep the glass on modals/notifications
+   * (small, transient surfaces) but drop it on the sidebar and topbar
+   * which are persistent and would burn battery. */
+  .sidebar,
+  .pos-topbar {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: var(--bg-2);
+  }
+}

@@ -40,9 +40,14 @@ function rowFromBin(bin, itemByCode) {
 
   const item = itemByCode.get(code) || {};
   const qty = Math.max(0, Number(bin.sellable_qty ?? 0));
-  const standardRate = toNum(item.standard_rate);
-  const valuationRate = toNum(bin.valuation_rate);
-  const price = standardRate > 0 ? standardRate : valuationRate;
+  // Inventory valuation = BUYING cost. Use the per-warehouse Bin valuation
+  // (moving-average cost from posted purchase receipts), fall back to the
+  // item's last purchase rate, then to the item-level valuation snapshot.
+  // standard_rate is ERPNext's *selling* List Rate — never use it here.
+  const price =
+    toNum(bin.valuation_rate)
+    || toNum(item.last_purchase_rate)
+    || toNum(item.valuation_rate);
   const value = qty * price;
   const wh = bin.warehouse || '';
   const reorderMap = parseReorderLevels(item);
@@ -92,7 +97,9 @@ export function buildPerWarehouseRows(bins, items) {
       item_code: code,
       item_name: item.item_name || code,
       qty: 0,
-      price: toNum(item.standard_rate),
+      // Synthetic row (item not yet stocked anywhere) — show last buying rate
+      // so the column has the same semantics as Bin-backed rows.
+      price: toNum(item.last_purchase_rate) || toNum(item.valuation_rate),
       value: 0,
       warehouse: '',
       warehouse_label: '',

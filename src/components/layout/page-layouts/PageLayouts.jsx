@@ -1,10 +1,27 @@
 /**
  * Enterprise page layout shells — constrain width on ultrawide displays.
  * POS intentionally excluded (full workspace).
+ *
+ * Phase 3 additions:
+ *   • Every layout renders a "Skip to main content" link as the first
+ *     focusable element (a11y — closes the audit finding 11.9). The link
+ *     is visually hidden until focused via keyboard.
+ *   • The main content area carries `id="main"` so the skip link lands
+ *     reliably regardless of layout variant.
  */
+import { useTranslation } from 'react-i18next';
 
 function cx(...parts) {
   return parts.filter(Boolean).join(' ');
+}
+
+function SkipToContent() {
+  const { t } = useTranslation();
+  return (
+    <a className="skip-link" href="#main">
+      {t('ui.a11y.skipToMain', { defaultValue: 'Skip to main content' })}
+    </a>
+  );
 }
 
 function PageLayout({
@@ -15,17 +32,21 @@ function PageLayout({
   children,
 }) {
   return (
-    <div
-      className={cx(
-        'page-layout',
-        `page-layout--${variant}`,
-        `density--${density}`,
-        tableConstrain && 'page-layout--table-fit',
-        className
-      )}
-    >
-      {children}
-    </div>
+    <>
+      <SkipToContent />
+      <main
+        id="main"
+        className={cx(
+          'page-layout',
+          `page-layout--${variant}`,
+          `density--${density}`,
+          tableConstrain && 'page-layout--table-fit',
+          className
+        )}
+      >
+        {children}
+      </main>
+    </>
   );
 }
 

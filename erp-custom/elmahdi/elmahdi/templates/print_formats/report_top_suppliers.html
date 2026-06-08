@@ -1,0 +1,69 @@
+{%- from "elmahdi/templates/print_macros/print_master.html" import fmt_money -%}
+{%- include "elmahdi/templates/print_macros/print_styles.html" -%}
+
+<style>
+@page { size: A4 landscape; margin: 12mm; }
+</style>
+
+<div dir="{{ 'rtl' if info.lang == 'ar' else 'ltr' }}" lang="{{ info.lang }}">
+
+  <header class="epf-header">
+    <div class="epf-header__brand">
+      {%- if info.logo_url -%}
+        <img class="epf-header__logo" src="{{ info.logo_url }}" alt="">
+      {%- endif -%}
+      <div class="epf-header__company">
+        <h1 class="epf-header__company-name">{{ info.company_name }}</h1>
+      </div>
+    </div>
+    <div class="epf-header__meta">
+      <h2 class="epf-header__title">
+        {{ 'أهم الموردين' if info.lang == 'ar' else 'Top Suppliers' }}
+      </h2>
+      <p class="epf-header__date">
+        {{ frappe.utils.formatdate(report.from_date) }} — {{ frappe.utils.formatdate(report.to_date) }}
+      </p>
+    </div>
+  </header>
+
+  <dl class="epf-audit">
+    <div class="epf-audit__col">
+      <dt>{{ info.labels.printed_by }}</dt><dd>{{ info.printed_by }}</dd>
+    </div>
+    <div class="epf-audit__col">
+      <dt>{{ info.labels.printed_at }}</dt><dd>{{ info.printed_at }}</dd>
+    </div>
+    <div class="epf-audit__col">
+      <dt>{{ 'عدد الموردين' if info.lang == 'ar' else 'Suppliers' }}</dt>
+      <dd>{{ report.rows | length }}</dd>
+    </div>
+  </dl>
+
+  <table class="epf-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>{{ info.labels.supplier }}</th>
+        <th class="num">{{ 'إجمالي المشتريات' if info.lang == 'ar' else 'Purchase Amount' }}</th>
+        <th class="num">{{ info.labels.outstanding }}</th>
+        <th class="num">{{ 'عدد الفواتير' if info.lang == 'ar' else 'Invoices' }}</th>
+        <th>{{ 'آخر شراء' if info.lang == 'ar' else 'Last Purchase' }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {%- for r in report.rows -%}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td><strong>{{ r.supplier_name or r.supplier }}</strong></td>
+          <td class="num"><strong>{{ fmt_money(r.purchase_amount, 'EGP') }}</strong></td>
+          <td class="num" style="color: {% if r.outstanding %}#a36b00{% endif %}">
+            {{ fmt_money(r.outstanding, 'EGP') }}
+          </td>
+          <td class="num">{{ r.invoice_count }}</td>
+          <td>{{ frappe.utils.formatdate(r.last_purchase_date) if r.last_purchase_date else '—' }}</td>
+        </tr>
+      {%- endfor -%}
+    </tbody>
+  </table>
+
+</div>

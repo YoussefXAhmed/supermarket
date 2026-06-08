@@ -5,6 +5,7 @@ import {
   ApiErrorCard,
   Badge,
   Btn,
+  ConfirmDialog,
   EmptyState,
   PageHeader,
   PageLoading,
@@ -12,6 +13,7 @@ import {
 } from '../../components/ui';
 import { TablePageLayout, LayoutSection } from '../../components/layout/page-layouts';
 import { useAuth } from '../../hooks/useAuth';
+import { useNotify } from '../../context/NotificationContext';
 import {
   OPERATIONAL_USER_TEMPLATES,
   TEMPLATE_IDS,
@@ -22,6 +24,8 @@ import {
   createEmployee,
   linkEmployeeToUser,
   listEmployees,
+  listBranches,
+  listActiveEmployeesForReportsTo,
   setEmployeeStatus,
   updateEmployee,
 } from '../../services/hrEmployeeApi';
@@ -47,6 +51,11 @@ const EMPTY_FORM = {
   address: '',
   department: '',
   position: '',
+  // Batch B additions — branch (warehouse), direct manager, gender, DOB.
+  branch: '',
+  reports_to: '',
+  gender: '',
+  date_of_birth: '',
   hire_date: new Date().toISOString().slice(0, 10),
   employment_status: EMPLOYMENT_STATUS.ACTIVE,
   has_system_access: false,
@@ -66,6 +75,7 @@ function statusBadge(status, t) {
 
 export default function EmployeesPage() {
   const { t } = useTranslation();
+  const notify = useNotify();
   const { canManageEmployees } = useAuth();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -75,6 +85,8 @@ export default function EmployeesPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [formErr, setFormErr] = useState('');
+  const [statusTarget, setStatusTarget] = useState(null);
+  const [statusBusy, setStatusBusy] = useState(false);
 
   const [provisionTarget, setProvisionTarget] = useState(null);
   const [provisionForm, setProvisionForm] = useState({
@@ -89,6 +101,11 @@ export default function EmployeesPage() {
   const [priceLists, setPriceLists] = useState([]);
   const [provisioning, setProvisioning] = useState(false);
 
+  // Batch B — branch filter + form-side picklists.
+  const [branchFilter, setBranchFilter] = useState('');
+  const [branches, setBranches] = useState([]);
+  const [reportsToOptions, setReportsToOptions] = useState([]);
+
   const hrTemplates = useMemo(
     () => TEMPLATE_IDS.filter((id) => id !== 'hr_officer').map((id) => OPERATIONAL_USER_TEMPLATES[id]),
     [],
@@ -98,14 +115,25 @@ export default function EmployeesPage() {
     setLoading(true);
     setError('');
     try {
-      setRows(await listEmployees({ limit: 500 }));
+      setRows(await listEmployees({
+        limit: 500,
+        branch: branchFilter || undefined,
+        search: query.trim() || undefined,
+      }));
     } catch (e) {
       setRows([]);
       setError(getUserFriendlyMessage(e, t('hr.employees.loadError')));
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [t, branchFilter, query]);
+
+  // Branch + Reports To picklists — fetched once. Stored in module-level
+  // state so they survive list reloads without re-fetching every time.
+  useEffect(() => {
+    listBranches().then(setBranches).catch(() => setBranches([]));
+    listActiveEmployeesForReportsTo().then(setReportsToOptions).catch(() => setReportsToOptions([]));
+  }, []);
 
   const loadProvisionOptions = useCallback(async () => {
     try {
@@ -128,6 +156,9 @@ export default function EmployeesPage() {
     loadProvisionOptions();
   }, [load, loadProvisionOptions]);
 
+  // Backend already filters by branch + search, so the client-side filter
+  // is just a final substring pass that includes national_id (so a quick
+  // refine on the loaded set still works without re-hitting the server).
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return rows;
@@ -136,7 +167,9 @@ export default function EmployeesPage() {
         r.full_name?.toLowerCase().includes(q) ||
         r.employee_id?.toLowerCase().includes(q) ||
         r.department?.toLowerCase().includes(q) ||
-        r.position?.toLowerCase().includes(q),
+        r.position?.toLowerCase().includes(q) ||
+        r.national_id?.toLowerCase().includes(q) ||
+        r.phone?.toLowerCase().includes(q),
     );
   }, [rows, query]);
 
@@ -155,6 +188,10 @@ export default function EmployeesPage() {
       address: row.address || '',
       department: row.department || '',
       position: row.position || '',
+      branch: row.branch || '',
+      reports_to: row.reports_to || '',
+      gender: row.gender || '',
+      date_of_birth: row.date_of_birth || '',
       hire_date: row.hire_date || new Date().toISOString().slice(0, 10),
       employment_status: row.employment_status || EMPLOYMENT_STATUS.ACTIVE,
       has_system_access: row.has_system_access,
@@ -203,10 +240,15 @@ export default function EmployeesPage() {
     }
   };
 
-  const deactivateEmployee = async (row, status) => {
-    if (!canManageEmployees || !window.confirm(t('hr.employees.confirmStatus', { name: row.full_name }))) {
-      return;
-    }
+  const deactivateEmployee = (row, status) => {
+    if (!canManageEmployees) return;
+    setStatusTarget({ row, status });
+  };
+
+  const confirmStatusChange = async () => {
+    if (!statusTarget) return;
+    const { row, status } = statusTarget;
+    setStatusBusy(true);
     try {
       await setEmployeeStatus(row.id, status);
       if (row.has_system_access && row.system_user_id) {
@@ -216,9 +258,12 @@ export default function EmployeesPage() {
           /* user may already be disabled */
         }
       }
+      setStatusTarget(null);
       await load();
     } catch (e) {
       setError(getUserFriendlyMessage(e));
+    } finally {
+      setStatusBusy(false);
     }
   };
 
@@ -266,9 +311,11 @@ export default function EmployeesPage() {
     if (!row.system_user_id) return;
     try {
       await updateUser(row.system_user_id, { send_welcome_email: 1 });
-      window.alert(t('hr.employees.welcomeEmailSent'));
+      notify.success(t('hr.employees.welcomeEmailSent'));
     } catch (e) {
-      setError(getUserFriendlyMessage(e));
+      const msg = getUserFriendlyMessage(e);
+      setError(msg);
+      notify.error(msg);
     }
   };
 
@@ -277,6 +324,16 @@ export default function EmployeesPage() {
     { key: 'full_name', label: t('hr.employees.colName') },
     { key: 'department', label: t('hr.employees.colDepartment') },
     { key: 'position', label: t('hr.employees.colPosition') },
+    {
+      key: 'branch',
+      label: t('hr.employees.colBranch', { defaultValue: 'Branch' }),
+      render: (_value, row) =>
+        row.branch ? (
+          <Badge color="default">{row.branch}</Badge>
+        ) : (
+          <span style={{ color: 'var(--text-3)' }}>—</span>
+        ),
+    },
     {
       key: 'employment_status',
       label: t('hr.employees.colStatus'),
@@ -360,12 +417,28 @@ export default function EmployeesPage() {
       />
 
       <LayoutSection variant="flat">
-        <input
-          className="input"
-          placeholder={t('hr.employees.search')}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <input
+            className="input"
+            placeholder={t('hr.employees.search', { defaultValue: 'Search by name, ID, national ID or phone…' })}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            style={{ flex: '1 1 240px', minWidth: 200 }}
+            aria-label={t('hr.employees.search', { defaultValue: 'Search' })}
+          />
+          <select
+            className="input"
+            value={branchFilter}
+            onChange={(e) => setBranchFilter(e.target.value)}
+            aria-label={t('hr.employees.branchFilter', { defaultValue: 'Branch' })}
+            style={{ maxWidth: 220 }}
+          >
+            <option value="">{t('hr.employees.allBranches', { defaultValue: 'All branches' })}</option>
+            {branches.map((b) => (
+              <option key={b.name} value={b.name}>{b.warehouse_name || b.name}</option>
+            ))}
+          </select>
+        </div>
       </LayoutSection>
 
       {loading && <PageLoading />}
@@ -411,6 +484,57 @@ export default function EmployeesPage() {
               <label>
                 {t('hr.employees.colPosition')}
                 <input className="input" value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value })} />
+              </label>
+              <label>
+                {t('hr.employees.branch', { defaultValue: 'Branch (Warehouse)' })}
+                <select
+                  className="input"
+                  value={form.branch}
+                  onChange={(e) => setForm({ ...form, branch: e.target.value })}
+                >
+                  <option value="">{t('hr.employees.noBranch', { defaultValue: '— Unassigned —' })}</option>
+                  {branches.map((b) => (
+                    <option key={b.name} value={b.name}>{b.warehouse_name || b.name}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                {t('hr.employees.reportsTo', { defaultValue: 'Reports to' })}
+                <select
+                  className="input"
+                  value={form.reports_to}
+                  onChange={(e) => setForm({ ...form, reports_to: e.target.value })}
+                >
+                  <option value="">{t('hr.employees.noManager', { defaultValue: '— None —' })}</option>
+                  {reportsToOptions
+                    .filter((e) => !modal || e.name !== modal.id)
+                    .map((e) => (
+                      <option key={e.name} value={e.name}>
+                        {e.employee_name || e.name}{e.department ? ` · ${e.department}` : ''}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <label>
+                {t('hr.employees.gender', { defaultValue: 'Gender' })}
+                <select
+                  className="input"
+                  value={form.gender}
+                  onChange={(e) => setForm({ ...form, gender: e.target.value })}
+                >
+                  <option value="">{t('hr.employees.genderNone', { defaultValue: '— Not specified —' })}</option>
+                  <option value="Male">{t('hr.employees.male', { defaultValue: 'Male' })}</option>
+                  <option value="Female">{t('hr.employees.female', { defaultValue: 'Female' })}</option>
+                </select>
+              </label>
+              <label>
+                {t('hr.employees.dateOfBirth', { defaultValue: 'Date of birth' })}
+                <input
+                  type="date"
+                  className="input"
+                  value={form.date_of_birth || ''}
+                  onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })}
+                />
               </label>
               <label>
                 {t('hr.employees.hireDate')}
@@ -541,6 +665,16 @@ export default function EmployeesPage() {
           </div>
         </div>
       )}
+      <ConfirmDialog
+        open={!!statusTarget}
+        title={t('hr.employees.confirmStatusTitle', { defaultValue: 'Update employee status' })}
+        message={statusTarget ? t('hr.employees.confirmStatus', { name: statusTarget.row.full_name }) : ''}
+        confirmLabel={t('common.confirm', { defaultValue: 'Confirm' })}
+        variant="danger"
+        loading={statusBusy}
+        onCancel={() => !statusBusy && setStatusTarget(null)}
+        onConfirm={confirmStatusChange}
+      />
     </TablePageLayout>
   );
 }

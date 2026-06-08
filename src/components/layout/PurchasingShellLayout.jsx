@@ -11,9 +11,9 @@ export default function PurchasingShellLayout() {
 
   return (
     <SidebarShellLayout
-      className="purchasing-shell-layout"
       brandLabel={t('nav.purchasing')}
       navItems={navItems}
+      workspace="purchasing"
     />
   );
 }

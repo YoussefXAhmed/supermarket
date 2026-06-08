@@ -149,7 +149,7 @@ def _report_sales_register(filters: dict) -> dict:
         ),
         default=[],
         warning_list=warnings,
-        label="Sales Invoice (consolidated)",
+        label="Sales Invoice (completed)",
     )
 
     pi_filters: dict[str, Any] = {
@@ -181,7 +181,7 @@ def _report_sales_register(filters: dict) -> dict:
         ),
         default=[],
         warning_list=warnings,
-        label="POS Invoice (unconsolidated)",
+        label="POS Invoice (pending)",
     )
 
     rows = []
@@ -202,7 +202,7 @@ def _report_sales_register(filters: dict) -> dict:
             "cashier": r.get("owner"),
             "tax": tax,
             "grand_total": amt,
-            "stage": "consolidated",
+            "stage": "completed",
             "status": r.get("status"),
         })
     for r in pos_invoices:

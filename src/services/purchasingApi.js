@@ -102,6 +102,9 @@ export const createSupplier = (payload) =>
 export const updateSupplier = (name, payload) =>
   api.put(`/api/resource/Supplier/${encodeURIComponent(name)}`, payload);
 
+export const deleteSupplier = (name) =>
+  api.delete(`/api/resource/Supplier/${encodeURIComponent(name)}`);
+
 export async function saveSupplier({ name, ...fields }) {
   const check = validateSupplierForm(fields);
   if (!check.valid) {
@@ -291,7 +294,28 @@ export { linkReceiptToInvoice } from './invoiceMatchingService';
 export const listSupplierGroups = () =>
   api.get('/api/resource/Supplier Group', {
     params: {
-      fields: JSON.stringify(['name']),
-      limit_page_length: 50,
+      fields: JSON.stringify(['name', 'is_group', 'parent_supplier_group']),
+      filters: JSON.stringify([['is_group', '=', 0]]),
+      order_by: 'name asc',
+      limit_page_length: 100,
     },
   });
+
+export const createSupplierGroup = (name) =>
+  api.post('/api/resource/Supplier Group', {
+    supplier_group_name: name,
+    is_group: 0,
+    parent_supplier_group: 'All Supplier Groups',
+  });
+
+export const listCountries = () =>
+  api.get('/api/resource/Country', {
+    params: {
+      fields: JSON.stringify(['name']),
+      order_by: 'name asc',
+      limit_page_length: 500,
+    },
+  });
+
+/** ERPNext Supplier doctype `supplier_type` Select options — kept in sync with the doctype. */
+export const SUPPLIER_TYPE_OPTIONS = ['Company', 'Individual', 'Partnership'];

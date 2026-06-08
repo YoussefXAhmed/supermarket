@@ -1,25 +1,30 @@
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useMemo } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useGuardedLogout } from '../../hooks/useGuardedLogout';
-import { getShiftsNavItems, getShiftsSessionLinks } from '../../auth/navigationConfig';
-import UserSessionActions from './UserSessionActions';
+import { getShiftsNavItems, getSessionLinksForWorkspace } from '../../auth/navigationConfig';
+import { UserMenu } from '../ui';
+import NotificationBell from '../notifications/NotificationBell';
+import LanguageSwitcher from '../common/LanguageSwitcher';
 
 export default function ShiftsLayout() {
   const { t } = useTranslation();
   const { user, capabilities } = useAuth();
-  const navigate = useNavigate();
   const location = useLocation();
   const inAdminShell = location.pathname.startsWith('/admin/');
   const { requestLogout, guardModal } = useGuardedLogout();
 
-  const sessionLinks = useMemo(
-    () => getShiftsSessionLinks(capabilities, inAdminShell).map((link) => ({
+  // Phase 3.5.b — session menu sourced from the canonical registry, with
+  // `inAdminShell` passed through so the existing shifts-in-admin-shell
+  // suppression behaviour is preserved. Phase 3.5.c — items shape for UserMenu.
+  const userMenuItems = useMemo(
+    () => getSessionLinksForWorkspace(capabilities, 'shifts', { inAdminShell }).map((link) => ({
+      key: link.to,
       label: t(link.labelKey),
-      onClick: () => navigate(link.to),
+      to: link.to,
     })),
-    [capabilities, inAdminShell, navigate, t],
+    [capabilities, inAdminShell, t],
   );
 
   const links = useMemo(() => getShiftsNavItems(capabilities), [capabilities]);
@@ -31,7 +36,11 @@ export default function ShiftsLayout() {
           <h1 className="shifts-layout__title">{t('shifts.shiftControl')}</h1>
           <p className="page-header__sub">{t('shifts.subtitle')}</p>
         </div>
-        <UserSessionActions user={user} onLogout={requestLogout} links={sessionLinks} />
+        <div className="session-actions">
+          <NotificationBell />
+          <LanguageSwitcher />
+          <UserMenu user={user} items={userMenuItems} onSignOut={requestLogout} />
+        </div>
       </header>
       <nav className="shifts-layout__nav">
         {links.map((l) => (

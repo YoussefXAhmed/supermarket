@@ -11,9 +11,9 @@ export default function FinanceLayout() {
 
   return (
     <SidebarShellLayout
-      className="finance-layout"
       brandLabel={t('nav.finance')}
       navItems={navItems}
+      workspace="finance"
     />
   );
 }

@@ -9,7 +9,10 @@ const REQUIRE_CAP = {
   admin: 'canManageSystem',
   'admin-system': 'canManageSystem',
   manager: 'canAccessManagerWorkspace',
-  finance: 'canAccessAccountantWorkspace',
+  // Read-only GL access also unlocks the /finance scope (the route's own
+  // CapabilityRoute still gates each page; Store Manager only reaches the
+  // GL page itself, not payments / matching / invoices).
+  finance: ['canAccessAccountantWorkspace', 'canViewGLReadOnly'],
   hr: 'canAccessHRWorkspace',
   pos: 'canViewPOS',
   inventory: 'canAccessInventory',
@@ -53,8 +56,17 @@ export default function ProtectedRoute({
     }
   } else if (requireRole !== 'any') {
     const cap = REQUIRE_CAP[requireRole];
-    if (cap && !hasCapability(capabilities, cap)) {
-      return <UnauthorizedPage homePath={homePath || '/login'} reason="workspace" />;
+    if (cap) {
+      // `cap` may be a string (single required cap) or an array of
+      // alternative caps — anyOf. The latter lets cross-workspace
+      // read-only visitors (e.g. Store Manager reading GL) reach the
+      // workspace without needing the full operating cap.
+      const ok = Array.isArray(cap)
+        ? cap.some((c) => hasCapability(capabilities, c))
+        : hasCapability(capabilities, cap);
+      if (!ok) {
+        return <UnauthorizedPage homePath={homePath || '/login'} reason="workspace" />;
+      }
     }
   }
 

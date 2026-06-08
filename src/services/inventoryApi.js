@@ -89,6 +89,7 @@ export const listItemsForInventory = (params = {}) =>
         'disabled',
         'standard_rate',
         'valuation_rate',
+        'last_purchase_rate',
         'has_batch_no',
         'is_stock_item',
         'reorder_levels',

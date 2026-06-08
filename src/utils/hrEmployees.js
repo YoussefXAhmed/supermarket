@@ -38,10 +38,17 @@ export function normalizeEmployee(doc) {
     employee_id: doc.employee || doc.name,
     full_name: doc.employee_name || doc.first_name || doc.name,
     phone: doc.cell_number || doc.mobile_no || '',
-    national_id: doc.passport_number || doc.identification_document_number || '',
-    address: doc.current_address || doc.permanent_address || '',
+    // Prefer the Elmahdi-owned `national_id` field; fall back to legacy
+    // `passport_number` for records created before the Batch A fixture.
+    national_id: doc.national_id || doc.passport_number || doc.identification_document_number || '',
+    // Same for address — Elmahdi field takes priority.
+    address: doc.elmahdi_address || doc.current_address || doc.permanent_address || '',
     department: doc.department || '',
     position: doc.designation || '',
+    branch: doc.elmahdi_branch_warehouse || '',
+    reports_to: doc.reports_to || '',
+    gender: doc.gender || '',
+    date_of_birth: doc.date_of_birth || '',
     hire_date: doc.date_of_joining || '',
     employment_status: erpStatusToSpaStatus(doc.status),
     has_system_access: Boolean(userId),
@@ -59,13 +66,18 @@ export function buildEmployeePayload(form, company) {
     employee_name: form.full_name?.trim(),
     employee: form.employee_id?.trim() || undefined,
     cell_number: form.phone?.trim() || '',
-    passport_number: form.national_id?.trim() || '',
-    current_address: form.address?.trim() || '',
+    // Write to the dedicated `national_id` custom field. We deliberately
+    // stop populating `passport_number` for new records — keep that field
+    // for actual passport data going forward.
+    national_id: form.national_id?.trim() || '',
+    elmahdi_address: form.address?.trim() || '',
+    elmahdi_branch_warehouse: form.branch || '',
+    reports_to: form.reports_to || '',
     department: form.department?.trim() || '',
     designation: form.position?.trim() || '',
     date_of_joining: form.hire_date || new Date().toISOString().slice(0, 10),
-    date_of_birth: form.hire_date || '1990-01-01',
-    gender: 'Other',
+    date_of_birth: form.date_of_birth || '1990-01-01',
+    gender: form.gender || 'Other',
     status,
     company: company || form.company,
     personal_email: form.email?.trim() || '',

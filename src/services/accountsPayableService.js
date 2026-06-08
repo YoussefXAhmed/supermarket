@@ -29,6 +29,41 @@ export function fetchSupplierApSummary(supplier, company) {
   return callGet('get_supplier_ap_summary', { supplier, company: company || undefined });
 }
 
+export function fetchGeneralLedger(params = {}) {
+  return callGet('get_general_ledger', {
+    from_date: params.fromDate || undefined,
+    to_date: params.toDate || undefined,
+    account: params.account || undefined,
+    branch: params.branch || undefined,
+    company: params.company || undefined,
+    limit: params.limit || 500,
+  });
+}
+
+export function fetchApAgingBySupplier(params = {}) {
+  return callGet('get_ap_aging_by_supplier', {
+    company: params.company || undefined,
+    supplier: params.supplier || undefined,
+  });
+}
+
+export function fetchTopSuppliersReport(params = {}) {
+  return callGet('get_top_suppliers_report', {
+    company: params.company || undefined,
+    from_date: params.fromDate || undefined,
+    to_date: params.toDate || undefined,
+    limit: params.limit || 50,
+  });
+}
+
+export function fetchPaymentVoucher(paymentEntryName) {
+  return callGet('get_payment_voucher_detail', { payment_entry_name: paymentEntryName });
+}
+
+export function listModesOfPayment() {
+  return callGet('list_modes_of_payment');
+}
+
 export function listPaymentAccounts(company, accountType) {
   return callGet('list_payment_accounts', {
     company: company || undefined,
@@ -54,6 +89,7 @@ export async function createSupplierPayment(payload) {
     reference_date: payload.reference_date || undefined,
     remarks: payload.remarks || undefined,
     allocations: JSON.stringify(payload.allocations || []),
+    mode_of_payment: payload.mode_of_payment || undefined,
     submit: 1,
   });
   logActivity({

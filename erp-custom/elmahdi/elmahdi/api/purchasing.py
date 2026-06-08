@@ -483,12 +483,13 @@ def list_pending_purchase_approvals(limit=50):
             "posting_date",
             "grand_total",
             "owner",
+            "creation",
             "modified",
             "approval_status",
             "purchase_approval_level",
             "variance_percent",
         ],
-        order_by="modified desc",
+        order_by="creation desc",
         limit_page_length=int(limit or 50),
     )
 
@@ -528,16 +529,34 @@ def _serialize_approval_row(doc, audit, level, status=""):
                 }
             )
     can_approve, block_reason = _approval_action_state(doc, level)
+    taxes = [
+        {
+            "description": (tx.description or tx.account_head or "").strip(),
+            "account_head": tx.account_head,
+            "charge_type": tx.charge_type,
+            "rate": flt(tx.rate),
+            "tax_amount": flt(tx.tax_amount),
+            "add_deduct": (getattr(tx, "add_deduct_tax", None) or "Add"),
+        }
+        for tx in (doc.get("taxes") or [])
+        if flt(tx.tax_amount) != 0
+    ]
     return {
         "name": doc.name,
         "supplier": doc.supplier,
         "warehouse": doc.set_warehouse,
         "posting_date": str(doc.posting_date),
+        "net_total": flt(doc.net_total),
+        "total_taxes_and_charges": flt(doc.total_taxes_and_charges),
+        "discount_amount": flt(doc.discount_amount),
         "grand_total": flt(doc.grand_total),
+        "currency": doc.currency,
+        "taxes": taxes,
         "approval_level": level,
         "approval_status": status or audit.get("approval_status") or _status_for_pending(level),
         "requested_by": audit.get("requested_by") or doc.owner,
-        "requested_at": audit.get("requested_at"),
+        "requested_at": audit.get("requested_at") or (str(doc.creation) if doc.creation else None),
+        "creation": str(doc.creation) if doc.creation else None,
         "lines": lines,
         "max_variance_pct": audit.get("max_variance_pct"),
         "can_approve": can_approve,
@@ -672,6 +691,147 @@ def get_invoice_matching_rows(limit=150):
     from elmahdi.api.invoice_matching import get_invoice_matching_rows as _rows
 
     return _rows(limit=limit)
+
+
+# ─── Phase 4.b — Batch endpoints for Purchase Receipt approvals ───────────
+#
+# Each row runs the existing `approve_purchase_receipt` single-doc path so
+# all validation (variance level, self-approval guard, side effects, audit,
+# Purchase Invoice auto-creation) inherits unchanged. Per-row failures land
+# as `{ok: false, error}` entries in the result envelope; the rest of the
+# batch continues (D4 — atomic-per-row).
+#
+# Branch scoping: `assert_may_act_as_purchase_approver` is a role gate; the
+# queue itself is scoped via `permission_query_conditions` on Purchase
+# Receipt. The batch endpoint adds a per-row `has_permission("read")` check
+# so a motivated client passing an out-of-scope name gets a clean "Not in
+# your branch scope" failure rather than mutating data outside their reach.
+
+
+def _assert_receipt_in_scope(name: str) -> None:
+    """Reject this row if the caller cannot read the receipt in their
+    current branch scope. Run BEFORE the mutating call so out-of-scope
+    receipts never reach the approval logic."""
+    if not frappe.has_permission("Purchase Receipt", "read", doc=name):
+        frappe.throw(
+            _("Receipt {0} is not in your branch scope.").format(name),
+            frappe.PermissionError,
+        )
+
+
+def _batch_approval_row(item, _index, *, action: str, default_notes: str = ""):
+    """Per-row callback used by both batch_approve_* and batch_reject_*.
+    `item` may be a bare name string OR a dict ``{name, notes?}`` so the
+    caller can specify per-row notes (used by the SPA when a rejection
+    reason differs per receipt — though in practice all rows in a batch
+    typically share the same reason)."""
+    if isinstance(item, str):
+        name = item
+        notes = default_notes
+    elif isinstance(item, dict):
+        name = item.get("name") or item.get("docname")
+        notes = item.get("notes") or default_notes
+    else:
+        frappe.throw(_("Invalid batch item shape."), frappe.ValidationError)
+
+    if not name:
+        frappe.throw(_("Missing receipt name."), frappe.ValidationError)
+
+    _assert_receipt_in_scope(name)
+    result = approve_purchase_receipt(name, action=action, notes=notes)
+    # Tighten the row payload so the SPA gets exactly what BulkActionBar +
+    # BatchResultToast need without leaking the full single-doc response.
+    return {
+        "name": result.get("name") or name,
+        "status": result.get("status"),
+        "purchase_invoice": result.get("purchase_invoice"),
+    }
+
+
+@frappe.whitelist(methods=["POST"])
+def batch_approve_purchase_receipts(items=None, notes: str = ""):
+    """Approve N pending Purchase Receipts in one call.
+
+    Parameters
+    ----------
+    items : list
+        Either a list of receipt names (strings) or a list of
+        ``{name, notes?}`` dicts. JSON-deserialized by Frappe if posted
+        as the request body string.
+    notes : str, optional
+        Default approval notes applied to every row that doesn't carry
+        its own ``notes``. Stored in each receipt's
+        ``purchase_rate_audit.events[]`` entry.
+
+    Returns the standard run_row_batch envelope:
+        {audit_id, total, succeeded, failed, results: [...]}
+
+    Caller must hold `can_approve_purchasing` (Store Manager + break-glass).
+    Per-row branch scoping is enforced by `has_permission("read")`.
+    """
+    assert_may_act_as_purchase_approver()
+    from elmahdi.api._batch import run_row_batch
+
+    # Frappe POSTs whitelisted-method args as JSON-deserialized values
+    # automatically; if a caller still passes a raw string (rare), we
+    # parse it defensively.
+    if isinstance(items, str):
+        import json as _json
+        try:
+            items = _json.loads(items)
+        except ValueError:
+            items = []
+
+    return run_row_batch(
+        items or [],
+        lambda item, idx: _batch_approval_row(item, idx, action="approve", default_notes=notes or ""),
+        action="purchase.batch_approve_purchase_receipts",
+        doctype="Purchase Receipt",
+        summary_extra={"notes": notes or ""},
+    )
+
+
+@frappe.whitelist(methods=["POST"])
+def batch_reject_purchase_receipts(items=None, notes: str = ""):
+    """Reject N pending Purchase Receipts in one call.
+
+    Same shape as `batch_approve_purchase_receipts`. The `notes` value is
+    the rejection reason — required per row (either via `notes` arg or
+    via the per-row dict). Rows with empty reason fail with a clear
+    error rather than recording an empty audit entry.
+    """
+    assert_may_act_as_purchase_approver()
+    from elmahdi.api._batch import run_row_batch
+
+    if isinstance(items, str):
+        import json as _json
+        try:
+            items = _json.loads(items)
+        except ValueError:
+            items = []
+
+    if not (notes or "").strip() and items:
+        # Pre-check: at least one of (default notes, per-row notes) must be set.
+        # Don't reject the whole batch — instead the per-row callback raises
+        # if it ends up with an empty reason. This keeps the policy local.
+        pass
+
+    def row(item, idx):
+        if isinstance(item, dict):
+            reason = (item.get("notes") or notes or "").strip()
+        else:
+            reason = (notes or "").strip()
+        if not reason:
+            frappe.throw(_("Rejection reason is required."), frappe.ValidationError)
+        return _batch_approval_row(item, idx, action="reject", default_notes=reason)
+
+    return run_row_batch(
+        items or [],
+        row,
+        action="purchase.batch_reject_purchase_receipts",
+        doctype="Purchase Receipt",
+        summary_extra={"notes": notes or ""},
+    )
 
 
 @frappe.whitelist()

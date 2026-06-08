@@ -1,0 +1,103 @@
+{%- from "elmahdi/templates/print_macros/print_master.html" import
+    render_header, render_audit_block, render_signatures, fmt_money
+-%}
+{%- include "elmahdi/templates/print_macros/print_styles.html" -%}
+
+{%- set info = elmahdi.print_helpers.print_context(doc) -%}
+{%- set status =
+    'Submitted' if doc.docstatus == 1 else
+    'Cancelled' if doc.docstatus == 2 else 'Draft'
+-%}
+{%- set tone =
+    'green' if doc.docstatus == 1 else
+    'red'   if doc.docstatus == 2 else 'grey'
+-%}
+{%- set title_map = {
+  'Material Transfer': ('تحويل مخزون', 'Stock Transfer'),
+  'Material Issue':    ('صرف مخزون',  'Stock Issue'),
+  'Material Receipt':  ('استلام مخزون', 'Stock Receipt'),
+  'Repack':            ('إعادة تعبئة', 'Repack'),
+  'Manufacture':       ('تصنيع', 'Manufacture'),
+} -%}
+{%- set ar, en = title_map.get(doc.stock_entry_type or 'Material Transfer', ('تحويل مخزون', 'Stock Transfer')) -%}
+
+<div dir="{{ 'rtl' if info.lang == 'ar' else 'ltr' }}" lang="{{ info.lang }}">
+
+  {{ render_header(
+       doc, info,
+       title=(ar if info.lang == 'ar' else en),
+       status_text=status, status_tone=tone,
+       date_field=doc.posting_date
+  ) }}
+
+  {{ render_audit_block(doc, info) }}
+
+  <section class="epf-section">
+    <h3 class="epf-section__title">{{ info.labels.warehouse }}</h3>
+    <div>
+      {%- if doc.from_warehouse -%}
+        {{ info.labels.from_wh }}: <strong>{{ doc.from_warehouse }}</strong>
+      {%- endif -%}
+      {%- if doc.from_warehouse and doc.to_warehouse %}<span class="epf-muted"> &nbsp;→&nbsp; </span>{% endif -%}
+      {%- if doc.to_warehouse -%}
+        {{ info.labels.to_wh }}: <strong>{{ doc.to_warehouse }}</strong>
+      {%- endif -%}
+    </div>
+  </section>
+
+  <section class="epf-section">
+    <table class="epf-table">
+      <thead>
+        <tr>
+          <th>{{ info.labels.item }}</th>
+          <th>{{ info.labels.from_wh }}</th>
+          <th>{{ info.labels.to_wh }}</th>
+          <th class="num">{{ info.labels.qty }}</th>
+          <th>{{ info.labels.uom }}</th>
+          <th class="num">{{ info.labels.rate }}</th>
+          <th class="num">{{ info.labels.amount }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {%- for item in doc.items -%}
+        <tr>
+          <td>
+            <strong>{{ item.item_code }}</strong>
+            {%- if item.item_name and item.item_name != item.item_code -%}
+              <div class="epf-small epf-muted">{{ item.item_name }}</div>
+            {%- endif -%}
+          </td>
+          <td class="epf-small">{{ item.s_warehouse or '—' }}</td>
+          <td class="epf-small">{{ item.t_warehouse or '—' }}</td>
+          <td class="num">{{ '{:,.2f}'.format(item.qty | flt) }}</td>
+          <td>{{ item.uom or item.stock_uom or '' }}</td>
+          <td class="num">{{ fmt_money(item.basic_rate or item.valuation_rate, 'EGP') }}</td>
+          <td class="num">{{ fmt_money(item.basic_amount or item.amount, 'EGP') }}</td>
+        </tr>
+        {%- endfor -%}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="3" class="num">{{ info.labels.grand_total }}</td>
+          <td class="num">{{ '{:,.2f}'.format(doc.total_outgoing_value | flt) }}</td>
+          <td colspan="2"></td>
+          <td class="num">{{ fmt_money(doc.total_amount or doc.total_outgoing_value, 'EGP') }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </section>
+
+  {%- if doc.remarks -%}
+    <section class="epf-section">
+      <h3 class="epf-section__title">{{ info.labels.notes }}</h3>
+      <p class="epf-pre-wrap">{{ doc.remarks }}</p>
+    </section>
+  {%- endif -%}
+
+  {{ render_signatures(
+       info,
+       left_label=('سلم بواسطة' if info.lang == 'ar' else 'Issued by'),
+       right_label=('استلم بواسطة' if info.lang == 'ar' else 'Received by')
+  ) }}
+
+</div>

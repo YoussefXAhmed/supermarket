@@ -23,7 +23,15 @@ export function useApprovalQueues({ enabled = true } = {}) {
         listPendingPurchaseApprovals().catch(() => []),
         listShiftSessions({ limit: 80 }).catch(() => []),
       ]);
-      setPurchases(purchaseRows || []);
+      // Sort newest-first by requested_at / creation. Backend already orders
+      // this way but the safety net keeps the UI stable if a row arrives
+      // without a sort key or from a stale cache.
+      const sortedPurchases = [...(purchaseRows || [])].sort((a, b) => {
+        const ta = new Date(a.requested_at || a.creation || 0).getTime();
+        const tb = new Date(b.requested_at || b.creation || 0).getTime();
+        return tb - ta;
+      });
+      setPurchases(sortedPurchases);
       setShifts(shiftRows || []);
     } catch (e) {
       setPurchases([]);

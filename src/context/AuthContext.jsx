@@ -119,6 +119,32 @@ export function AuthProvider({ children }) {
     loadUser();
   }, [loadUser]);
 
+  // Phase 5 — once authenticated, sync the user's saved language to
+  // i18n + dir. Theme/accent/sidebar customizations were dropped per
+  // user request — only language preference is restored.
+  useEffect(() => {
+    if (!user?.name || user.name === 'Guest') return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const [{ getLanguage }, i18nMod] = await Promise.all([
+          import('../services/personalSettingsApi'),
+          import('../i18n'),
+        ]);
+        const language = await getLanguage().catch(() => null);
+        if (cancelled) return;
+        const lang = language?.language;
+        if (lang && lang !== i18nMod.default?.language) {
+          await i18nMod.default?.changeLanguage(lang);
+          document.documentElement.lang = lang;
+          document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+          try { localStorage.setItem('i18nextLng', lang); } catch { /* noop */ }
+        }
+      } catch { /* best-effort, never block auth */ }
+    })();
+    return () => { cancelled = true; };
+  }, [user?.name]);
+
   const logout = async () => {
     try {
       await apiLogout();

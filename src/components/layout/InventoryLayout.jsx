@@ -1,60 +1,34 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
+/**
+ * Inventory workspace shell — thin composition of SidebarShellLayout.
+ *
+ * Phase 3.5.b consolidation: previously rendered an inline horizontal
+ * header nav with NO sidebar (audit finding 11.2 — jarring context
+ * switch for users navigating from other workspaces). Now matches every
+ * other workspace shell: left-aligned collapsible sidebar with workspace
+ * accent via [data-workspace="inventory"], canonical session menu, and
+ * RoleBadge in the sidebar footer.
+ *
+ * Page-level dense-module spacing is no longer applied at the shell
+ * level — inventory pages already use the canonical PageLayout (which
+ * owns horizontal padding) so removing the extra layer matches the
+ * Phase 3.5.a double-padding fix.
+ */
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../hooks/useAuth';
-import { useGuardedLogout } from '../../hooks/useGuardedLogout';
-import { getInventoryNavItems, getInventorySessionLinks } from '../../auth/navigationConfig';
-import UserSessionActions from './UserSessionActions';
-import ErrorBoundary from '../common/ErrorBoundary';
-import { RoleBadge } from '../ui';
+import { getInventoryNavItems } from '../../auth/navigationConfig';
+import SidebarShellLayout from './SidebarShellLayout';
 
 export default function InventoryLayout() {
   const { t } = useTranslation();
-  const { user, capabilities } = useAuth();
-  const navigate = useNavigate();
-  const { requestLogout, guardModal } = useGuardedLogout();
-
-  const visibleNav = useMemo(() => getInventoryNavItems(capabilities), [capabilities]);
-  const sessionLinks = useMemo(
-    () => getInventorySessionLinks(capabilities).map((link) => ({
-      label: t(link.labelKey),
-      onClick: () => navigate(link.to),
-    })),
-    [capabilities, navigate, t],
-  );
+  const { capabilities } = useAuth();
+  const navItems = useMemo(() => getInventoryNavItems(capabilities), [capabilities]);
 
   return (
-    <main className="admin-main">
-      <div className="admin-content dense-module">
-        <div className="inventory-module-header">
-          <RoleBadge />
-          <nav className="module-nav" aria-label="Inventory">
-            {visibleNav.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.end}
-                className={({ isActive }) =>
-                  `module-nav__link ${isActive ? 'module-nav__link--active' : ''}`
-                }
-              >
-                {t(item.labelKey)}
-              </NavLink>
-            ))}
-          </nav>
-          <UserSessionActions
-            user={user}
-            compact
-            links={sessionLinks}
-            onLogout={requestLogout}
-          />
-        </div>
-
-        <ErrorBoundary>
-          <Outlet />
-        </ErrorBoundary>
-        {guardModal}
-      </div>
-    </main>
+    <SidebarShellLayout
+      brandLabel={t('nav.inventory')}
+      navItems={navItems}
+      workspace="inventory"
+    />
   );
 }

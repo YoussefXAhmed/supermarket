@@ -1,0 +1,114 @@
+{%- from "elmahdi/templates/print_macros/print_master.html" import
+    render_header, render_audit_block, render_signatures, fmt_money
+-%}
+{%- include "elmahdi/templates/print_macros/print_styles.html" -%}
+
+{%- set info = elmahdi.print_helpers.print_context(doc) -%}
+{%- set status =
+    'Submitted' if doc.docstatus == 1 else
+    'Cancelled' if doc.docstatus == 2 else
+    (doc.get('status') or 'Draft')
+-%}
+{%- set tone =
+    'green' if doc.docstatus == 1 or status in ('Approved', 'Submitted') else
+    'red'   if doc.docstatus == 2 or status == 'Rejected' else
+    'amber' if status in ('Pending', 'Draft') else 'grey'
+-%}
+
+{%- set expected_cash = doc.get('expected_amount_cash') or doc.get('total_quantity_cash') or 0 -%}
+{%- set counted_cash  = doc.get('actual_amount_cash')   or 0 -%}
+{%- set variance      = (counted_cash | flt) - (expected_cash | flt) -%}
+
+<div dir="{{ 'rtl' if info.lang == 'ar' else 'ltr' }}" lang="{{ info.lang }}">
+
+  {{ render_header(
+       doc, info,
+       title=('تقرير إغلاق الشيفت' if info.lang == 'ar' else 'Shift Closing Report'),
+       status_text=status, status_tone=tone,
+       date_field=doc.posting_date
+  ) }}
+
+  {{ render_audit_block(doc, info) }}
+
+  <section class="epf-section">
+    <h3 class="epf-section__title">{{ info.labels.cashier }}</h3>
+    <div>
+      <strong>{{ doc.user or doc.owner }}</strong>
+      {%- if doc.pos_profile %}<span class="epf-muted"> · {{ doc.pos_profile }}</span>{%- endif -%}
+    </div>
+  </section>
+
+  <section class="epf-section">
+    <table class="epf-table">
+      <tbody>
+        <tr>
+          <td><strong>{{ info.labels.opening_time }}</strong></td>
+          <td>{{ frappe.utils.format_datetime(doc.period_start_date) if doc.period_start_date else '—' }}</td>
+          <td><strong>{{ info.labels.closing_time }}</strong></td>
+          <td>{{ frappe.utils.format_datetime(doc.period_end_date) if doc.period_end_date else '—' }}</td>
+        </tr>
+        <tr>
+          <td><strong>{{ info.labels.sales }}</strong></td>
+          <td class="num">{{ fmt_money(doc.grand_total or 0, 'EGP') }}</td>
+          <td><strong>{{ info.labels.invoice_count }}</strong></td>
+          <td class="num">{{ (doc.pos_transactions | length) if doc.pos_transactions else 0 }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="epf-section">
+    <h3 class="epf-section__title">{{ 'النقدية' if info.lang == 'ar' else 'Cash' }}</h3>
+    <table class="epf-table">
+      <tbody>
+        <tr>
+          <td><strong>{{ info.labels.expected_cash }}</strong></td>
+          <td class="num">{{ fmt_money(expected_cash, 'EGP') }}</td>
+        </tr>
+        <tr>
+          <td><strong>{{ info.labels.counted_cash }}</strong></td>
+          <td class="num">{{ fmt_money(counted_cash, 'EGP') }}</td>
+        </tr>
+        <tr>
+          <td><strong>{{ info.labels.variance }}</strong></td>
+          <td class="num" style="color: {{ 'var(--red)' if variance < 0 else 'inherit' }}">
+            {{ '{:+,.2f}'.format(variance) }} EGP
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  {%- if doc.payment_reconciliation -%}
+    <section class="epf-section">
+      <h3 class="epf-section__title">{{ 'طرق الدفع' if info.lang == 'ar' else 'Payment Modes' }}</h3>
+      <table class="epf-table">
+        <thead>
+          <tr>
+            <th>{{ info.labels.payment_method }}</th>
+            <th class="num">{{ 'متوقع' if info.lang == 'ar' else 'Expected' }}</th>
+            <th class="num">{{ 'فعلي' if info.lang == 'ar' else 'Actual' }}</th>
+            <th class="num">{{ info.labels.variance }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {%- for p in doc.payment_reconciliation -%}
+            <tr>
+              <td>{{ p.mode_of_payment }}</td>
+              <td class="num">{{ fmt_money(p.expected_amount, 'EGP') }}</td>
+              <td class="num">{{ fmt_money(p.closing_amount, 'EGP') }}</td>
+              <td class="num">{{ '{:+,.2f}'.format((p.closing_amount | flt) - (p.expected_amount | flt)) }}</td>
+            </tr>
+          {%- endfor -%}
+        </tbody>
+      </table>
+    </section>
+  {%- endif -%}
+
+  {{ render_signatures(
+       info,
+       left_label=info.labels.cashier,
+       right_label=('اعتمد بواسطة' if info.lang == 'ar' else 'Approved by')
+  ) }}
+
+</div>

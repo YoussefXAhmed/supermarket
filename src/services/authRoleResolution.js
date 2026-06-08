@@ -79,6 +79,10 @@ function applyIdentityPayload(userData, payload) {
     last_name: payload.last_name ?? userData.last_name,
     user_image: payload.user_image ?? userData.user_image,
     role_profile_name: payload.role_profile_name ?? userData.role_profile_name,
+    // Phase 4.a — lifecycle state (Invited / Active / Locked / Disabled /
+    // Terminated). Empty string on sites that haven't run the install
+    // patch yet; consumers normalize via `normalizeLifecycleState`.
+    lifecycle_state: payload.lifecycle_state ?? userData.lifecycle_state ?? '',
   };
 }
 

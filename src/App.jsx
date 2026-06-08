@@ -4,6 +4,8 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from './services/reports';
 import { getReportRouteAnyOf } from './auth/reportAccess';
 import { AuthProvider } from './context/AuthContext';
+import { useAuth } from './hooks/useAuth';
+import { NotificationCenterProvider } from './context/NotificationCenterContext';
 import ProtectedRoute from './components/layout/ProtectedRoute';
 import CapabilityRoute from './components/layout/CapabilityRoute';
 import InventoryCapabilityRoute from './components/layout/InventoryCapabilityRoute';
@@ -18,6 +20,7 @@ import LegacyPrefixRedirect from './components/routing/LegacyPrefixRedirect';
 import { PageLoading } from './components/ui';
 
 const LoginPage = lazy(() => import('./modules/auth/LoginPage'));
+const NotificationsPage = lazy(() => import('./modules/notifications/NotificationsPage'));
 const POSPage = lazy(() => import('./modules/pos/POSPage'));
 const DashboardPage = lazy(() => import('./modules/admin/DashboardPage'));
 const AdminHomePage = lazy(() => import('./modules/admin/AdminHomePage'));
@@ -35,7 +38,13 @@ const StockBalancePage = lazy(() => import('./modules/reports/StockBalancePage')
 const CustomerLedgerPage = lazy(() => import('./modules/reports/CustomerLedgerPage'));
 const ProfitAndLossPage = lazy(() => import('./modules/reports/ProfitAndLossPage'));
 const ItemWiseSalesPage = lazy(() => import('./modules/reports/ItemWiseSalesPage'));
-const SettingsPage = lazy(() => import('./modules/admin/SettingsPage'));
+const SystemSettingsPage = lazy(() => import('./modules/admin/settings/SystemSettingsPage'));
+const PosSettingsPage = lazy(() => import('./modules/pos/PosSettingsPage'));
+const InventorySettingsPage = lazy(() => import('./modules/inventory/InventorySettingsPage'));
+const PurchasingSettingsPage = lazy(() => import('./modules/purchasing/PurchasingSettingsPage'));
+const FinanceSettingsPage = lazy(() => import('./modules/finance/FinanceSettingsPage'));
+const HrSettingsPage = lazy(() => import('./modules/hr/HrSettingsPage'));
+const PersonalSettingsPage = lazy(() => import('./modules/personal/PersonalSettingsPage'));
 const ActivityLogPage = lazy(() => import('./modules/admin/ActivityLogPage'));
 const InventoryDashboardPage = lazy(() => import('./modules/inventory/InventoryPage'));
 const WarehousesPage = lazy(() => import('./modules/inventory/pages/WarehousesPage'));
@@ -60,6 +69,9 @@ const PurchaseApprovalsPage = lazy(() => import('./modules/purchasing/PurchaseAp
 const PurchasingHistoryPage = lazy(() => import('./modules/purchasing/PurchasingHistoryPage'));
 const AccountantDashboardPage = lazy(() => import('./modules/accountant/pages/AccountantDashboardPage'));
 const SupplierPaymentsPage = lazy(() => import('./modules/accountant/pages/SupplierPaymentsPage'));
+const GeneralLedgerPage    = lazy(() => import('./modules/accountant/pages/GeneralLedgerPage'));
+const ApAgingPage          = lazy(() => import('./modules/accountant/pages/ApAgingPage'));
+const TopSuppliersPage     = lazy(() => import('./modules/accountant/pages/TopSuppliersPage'));
 const ApprovalsDashboardPage = lazy(() => import('./modules/approvals/pages/ApprovalsDashboardPage'));
 const PurchaseApprovalHistoryPage = lazy(() => import('./modules/approvals/pages/PurchaseApprovalHistoryPage'));
 const ReturnsPage = lazy(() => import('./modules/returns/ReturnsPage'));
@@ -69,9 +81,24 @@ const ShiftClosePage = lazy(() => import('./modules/shifts/pages/ShiftClosePage'
 const ShiftHistoryPage = lazy(() => import('./modules/shifts/pages/ShiftHistoryPage'));
 const HRDashboardPage = lazy(() => import('./modules/hr/HRDashboardPage'));
 const HREmployeesPage = lazy(() => import('./modules/hr/EmployeesPage'));
+const HRAttendancePage = lazy(() => import('./modules/hr/AttendancePage'));
+const HRLeavePage = lazy(() => import('./modules/hr/LeavePage'));
+const HRPayrollPage = lazy(() => import('./modules/hr/PayrollPage'));
+const HRMyPayslipPage = lazy(() => import('./modules/hr/MyPayslipPage'));
 
 function LazyPage({ children }) {
   return <Suspense fallback={<PageLoading size={28} />}>{children}</Suspense>;
+}
+
+// Phase 4-hotfix: catch-all redirect that stops sending authenticated
+// users to /login when they land on a route that exists in the
+// navigation but has no registered component (e.g. /hr/departments).
+// The previous behavior looked like an unexpected sign-out.
+function UnknownPathRedirect() {
+  const { user, loading, homePath } = useAuth();
+  if (loading) return <PageLoading size={28} />;
+  if (user) return <Navigate to={homePath || '/'} replace />;
+  return <Navigate to="/login" replace />;
 }
 
 export default function App() {
@@ -79,8 +106,43 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <BrowserRouter>
+        <NotificationCenterProvider>
         <Routes>
           <Route path="/login" element={<LazyPage><LoginPage /></LazyPage>} />
+          <Route
+            path="/notifications"
+            element={
+              <ProtectedRoute require="any" checkPath={false}>
+                <LazyPage><NotificationsPage /></LazyPage>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/my-payslip"
+            element={
+              <ProtectedRoute require="any" checkPath={false}>
+                <CapabilityRoute cap="canViewPayslipSelf">
+                  <LazyPage><HRMyPayslipPage /></LazyPage>
+                </CapabilityRoute>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/me"
+            element={
+              <ProtectedRoute require="any" checkPath={false}>
+                <LazyPage><PersonalSettingsPage /></LazyPage>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/me/:section"
+            element={
+              <ProtectedRoute require="any" checkPath={false}>
+                <LazyPage><PersonalSettingsPage /></LazyPage>
+              </ProtectedRoute>
+            }
+          />
 
           <Route
             path="/pos/returns"
@@ -102,6 +164,16 @@ export default function App() {
                 <ErrorBoundary>
                   <LazyPage><POSPage /></LazyPage>
                 </ErrorBoundary>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/pos/settings"
+            element={
+              <ProtectedRoute require="any" checkPath={false}>
+                <CapabilityRoute cap="canManagePOSProfiles">
+                  <LazyPage><PosSettingsPage /></LazyPage>
+                </CapabilityRoute>
               </ProtectedRoute>
             }
           />
@@ -161,10 +233,42 @@ export default function App() {
               )}
             />
             <Route
+              path="attendance"
+              element={(
+                <CapabilityRoute anyOf={['canManageAttendance', 'canViewHRReports']}>
+                  <LazyPage><HRAttendancePage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="leave"
+              element={(
+                <CapabilityRoute anyOf={['canApproveLeave', 'canRequestLeave', 'canViewHRReports']}>
+                  <LazyPage><HRLeavePage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="payroll"
+              element={(
+                <CapabilityRoute anyOf={['canManagePayroll', 'canViewHRReports']}>
+                  <LazyPage><HRPayrollPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
               path="users"
               element={(
                 <CapabilityRoute cap="canManageOperationalUsers">
                   <LazyPage><UsersPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="settings"
+              element={(
+                <CapabilityRoute cap="canManageHRSettings">
+                  <LazyPage><HrSettingsPage /></LazyPage>
                 </CapabilityRoute>
               )}
             />
@@ -227,6 +331,11 @@ export default function App() {
                 <LazyPage><InventoryReportsPage /></LazyPage>
               </CapabilityRoute>
             )} />
+            <Route path="settings" element={(
+              <CapabilityRoute cap="canManageInventorySettings">
+                <LazyPage><InventorySettingsPage /></LazyPage>
+              </CapabilityRoute>
+            )} />
           </Route>
 
           <Route
@@ -275,6 +384,14 @@ export default function App() {
                 </CapabilityRoute>
               )}
             />
+            <Route
+              path="settings"
+              element={(
+                <CapabilityRoute cap="canManagePurchasingSettings">
+                  <LazyPage><PurchasingSettingsPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
           </Route>
 
           <Route
@@ -301,6 +418,22 @@ export default function App() {
               element={(
                 <CapabilityRoute cap="canViewPurchaseApprovals">
                   <LazyPage><PurchaseApprovalHistoryPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="suppliers"
+              element={(
+                <CapabilityRoute anyOf={['canViewSuppliers', 'canManageSystem']}>
+                  <LazyPage><SuppliersPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="suppliers/:id"
+              element={(
+                <CapabilityRoute anyOf={['canViewSuppliers', 'canManageSystem']}>
+                  <LazyPage><SupplierDetailPage /></LazyPage>
                 </CapabilityRoute>
               )}
             />
@@ -414,6 +547,30 @@ export default function App() {
               )}
             />
             <Route
+              path="general-ledger"
+              element={(
+                <CapabilityRoute anyOf={['canViewSupplierPayments', 'canAccessAccountantWorkspace', 'canViewGLReadOnly']}>
+                  <LazyPage><GeneralLedgerPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="aging"
+              element={(
+                <CapabilityRoute anyOf={['canViewSupplierPayments', 'canAccessAccountantWorkspace']}>
+                  <LazyPage><ApAgingPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="top-suppliers"
+              element={(
+                <CapabilityRoute anyOf={['canViewSupplierPayments', 'canAccessAccountantWorkspace']}>
+                  <LazyPage><TopSuppliersPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
               path="approvals"
               element={(
                 <CapabilityRoute cap="canViewApprovalsDashboard">
@@ -434,6 +591,14 @@ export default function App() {
               element={(
                 <CapabilityRoute cap="canViewReports">
                   <LazyPage><ReportsPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="settings"
+              element={(
+                <CapabilityRoute cap="canManageFinanceSettings">
+                  <LazyPage><FinanceSettingsPage /></LazyPage>
                 </CapabilityRoute>
               )}
             />
@@ -682,8 +847,16 @@ export default function App() {
             <Route
               path="settings"
               element={(
-                <CapabilityRoute anyOf={['canManageSettings', 'canManageSystem']}>
-                  <LazyPage><SettingsPage /></LazyPage>
+                <CapabilityRoute cap="canManageSystem">
+                  <LazyPage><SystemSettingsPage /></LazyPage>
+                </CapabilityRoute>
+              )}
+            />
+            <Route
+              path="settings/:section"
+              element={(
+                <CapabilityRoute cap="canManageSystem">
+                  <LazyPage><SystemSettingsPage /></LazyPage>
                 </CapabilityRoute>
               )}
             />
@@ -723,8 +896,9 @@ export default function App() {
             </Route>
           </Route>
 
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<UnknownPathRedirect />} />
         </Routes>
+        </NotificationCenterProvider>
       </BrowserRouter>
       </AuthProvider>
     </QueryClientProvider>

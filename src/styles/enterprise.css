@@ -348,9 +348,9 @@
   margin-bottom: 0;
   flex: 1 1 auto;
 }
-.inventory-module-header .session-actions {
-  margin-left: auto;
-}
+/* Phase 3.5.b: InventoryLayout was rewritten to compose SidebarShellLayout
+   and no longer renders .inventory-module-header. The accompanying
+   .session-actions margin override was removed in Phase 3.5.c. */
 
 .dense-module .admin-content {
   padding-top: 20px;

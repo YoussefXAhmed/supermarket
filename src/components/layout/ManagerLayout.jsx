@@ -11,9 +11,9 @@ export default function ManagerLayout() {
 
   return (
     <SidebarShellLayout
-      className="manager-layout"
       brandLabel={t('nav.manager')}
       navItems={navItems}
+      workspace="manager"
     />
   );
 }

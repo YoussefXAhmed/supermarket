@@ -1,0 +1,235 @@
+/*
+ * Modern UI layer — per-workspace identity, nav micro-interactions, bell
+ * animations, count-up animation. Loaded AFTER glass.css so its motion
+ * and tint overrides win where intended.
+ *
+ * Conventions:
+ *   • Workspace identity is keyed by a `data-workspace="…"` attribute set
+ *     on a top-level layout wrapper. Each workspace gets its own accent token
+ *     bound from that scope; downstream components reading `--workspace-accent`
+ *     pick up the right colour automatically.
+ *   • All animations respect prefers-reduced-motion.
+ */
+
+/* ── Workspace accents ─────────────────────────────────────────────────── */
+:root {
+  --workspace-accent: var(--accent);
+  --workspace-accent-bg: rgba(245, 166, 35, 0.10);
+  --workspace-accent-glow: rgba(245, 166, 35, 0.22);
+}
+
+/* Workspace accent palette.
+   Phase 3.5.b: every workspace shell now sets data-workspace via
+   SidebarShellLayout (or POSAppShell for POS). The legacy class-name
+   selectors (.inventory-layout, .hr-layout, .purchasing-layout,
+   .finance-layout, .manager-layout) are no longer emitted by any
+   layout — the [data-workspace] attribute selector is the single
+   source of truth. */
+
+/* Inventory = green */
+[data-workspace="inventory"] {
+  --workspace-accent: #22c55e;
+  --workspace-accent-bg: rgba(34, 197, 94, 0.10);
+  --workspace-accent-glow: rgba(34, 197, 94, 0.25);
+}
+
+/* Purchasing = orange (already site default-ish) */
+[data-workspace="purchasing"] {
+  --workspace-accent: #f97316;
+  --workspace-accent-bg: rgba(249, 115, 22, 0.10);
+  --workspace-accent-glow: rgba(249, 115, 22, 0.22);
+}
+
+/* Finance = blue */
+[data-workspace="finance"] {
+  --workspace-accent: #3b82f6;
+  --workspace-accent-bg: rgba(59, 130, 246, 0.10);
+  --workspace-accent-glow: rgba(59, 130, 246, 0.25);
+}
+
+/* Manager = purple */
+[data-workspace="manager"] {
+  --workspace-accent: #a855f7;
+  --workspace-accent-bg: rgba(168, 85, 247, 0.10);
+  --workspace-accent-glow: rgba(168, 85, 247, 0.25);
+}
+
+/* POS = gold (a richer gold than the default accent amber) */
+[data-workspace="pos"] {
+  --workspace-accent: #eab308;
+  --workspace-accent-bg: rgba(234, 179, 8, 0.10);
+  --workspace-accent-glow: rgba(234, 179, 8, 0.28);
+}
+
+/* HR = teal */
+[data-workspace="hr"] {
+  --workspace-accent: #14b8a6;
+  --workspace-accent-bg: rgba(20, 184, 166, 0.10);
+  --workspace-accent-glow: rgba(20, 184, 166, 0.25);
+}
+
+/* Admin = indigo */
+[data-workspace="admin"] {
+  --workspace-accent: #6366f1;
+  --workspace-accent-bg: rgba(99, 102, 241, 0.10);
+  --workspace-accent-glow: rgba(99, 102, 241, 0.28);
+}
+
+/* ── Sidebar nav: micro-interactions ───────────────────────────────────── */
+/*
+ * Hover effect: translateX(2px) + faint glow + accent text colour.
+ * Active state: solid accent bar on the leading edge + light bg tint.
+ * Icon scales slightly (1.05) on hover for tactile feedback.
+ */
+.sidebar__link {
+  position: relative;
+  transition:
+    transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 180ms ease,
+    color 180ms ease,
+    box-shadow 180ms ease;
+}
+.sidebar__link::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--workspace-accent);
+  transform: scaleY(0);
+  transform-origin: center;
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.sidebar__link:hover {
+  background: var(--workspace-accent-bg);
+  color: var(--workspace-accent);
+  transform: translateX(2px);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+.sidebar__link--active {
+  color: var(--workspace-accent);
+  background: var(--workspace-accent-bg);
+}
+.sidebar__link--active::before { transform: scaleY(1); }
+.sidebar__link--active:hover { transform: none; }
+
+.sidebar__link .lucide-icon {
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.sidebar__link:hover .lucide-icon {
+  transform: scale(1.08);
+}
+
+/* RTL: invert the translateX direction so hover always moves toward content */
+[dir="rtl"] .sidebar__link:hover { transform: translateX(-2px); }
+
+/* ── Notification bell — pulse on unread, ring on new ──────────────────── */
+@keyframes notifBadgePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 166, 35, 0.55); }
+  50%      { box-shadow: 0 0 0 5px rgba(245, 166, 35, 0); }
+}
+@keyframes notifBellRing {
+  0%   { transform: rotate(0); }
+  15%  { transform: rotate(-12deg); }
+  30%  { transform: rotate(10deg); }
+  45%  { transform: rotate(-8deg); }
+  60%  { transform: rotate(6deg); }
+  75%  { transform: rotate(-3deg); }
+  100% { transform: rotate(0); }
+}
+
+.notif-bell__badge {
+  animation: notifBadgePulse 2.4s ease-in-out infinite;
+}
+.notif-bell__button .lucide-icon {
+  transition: transform 180ms ease;
+  transform-origin: 50% 18%;
+}
+.notif-bell__button:hover .lucide-icon { transform: scale(1.06); }
+
+/* Triggered by adding .notif-bell__button--ring momentarily when the poller
+ * detects a fresh notification. The class is removed by the bell itself
+ * after the animation finishes. */
+.notif-bell__button--ring .lucide-icon {
+  animation: notifBellRing 0.9s ease-in-out;
+}
+
+/* ── KPI count-up + card lift ──────────────────────────────────────────── */
+@keyframes cardEnter {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.stat-card {
+  animation: cardEnter 360ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 180ms ease, box-shadow 220ms ease;
+}
+.stat-card:hover { transform: translateY(-2px); }
+.stat-card__value--countup {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Empty state polish ────────────────────────────────────────────────── */
+.empty-state {
+  text-align: center;
+  padding: 2rem 1rem;
+}
+.empty-state__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--workspace-accent-bg);
+  color: var(--workspace-accent);
+  margin: 0 auto 12px;
+}
+.empty-state__title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+.empty-state__desc {
+  font-size: 0.85rem;
+  color: var(--text-2);
+  margin: 0 auto;
+  max-width: 380px;
+}
+
+/* ── Status icon helpers ───────────────────────────────────────────────── */
+.status-icon { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; }
+.status-icon--green { color: var(--green); }
+.status-icon--amber { color: var(--accent); }
+.status-icon--red   { color: var(--red); }
+.status-icon--blue  { color: var(--blue); }
+
+/* ── Buttons: subtle press feedback ───────────────────────────────────── */
+.btn {
+  transition:
+    transform 120ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+.btn:active:not(:disabled) { transform: translateY(1px); }
+
+/* ── Reduced motion: kill all custom animations ───────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .sidebar__link,
+  .sidebar__link::before,
+  .sidebar__link .lucide-icon,
+  .notif-bell__badge,
+  .notif-bell__button .lucide-icon,
+  .notif-bell__button--ring .lucide-icon,
+  .stat-card,
+  .btn {
+    animation: none !important;
+    transition: none !important;
+  }
+  .sidebar__link:hover { transform: none; }
+}
+
+/* ── Lucide icon defaults ──────────────────────────────────────────────── */
+.lucide-icon { flex-shrink: 0; vertical-align: middle; }

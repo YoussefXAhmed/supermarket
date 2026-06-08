@@ -86,7 +86,7 @@ export default function ReceiptMatchingCard({
 
       {row.ap_stage && (
         <p className="receipt-matching-card__lifecycle" role="status">
-          <span className={`ap-lifecycle-pill ap-lifecycle-pill--${row.ap_stage}`}>
+          <span className={`pill pill--${row.ap_stage}`}>
             {AP_STAGE_LABELS[row.ap_stage] || row.ap_stage}
           </span>
           {row.lifecycle_hint}
@@ -183,10 +183,10 @@ export default function ReceiptMatchingCard({
             loading={retrying}
             onClick={handleRetryAutoPayable}
           >
-            Retry create payable
+            Create Supplier Invoice
           </Btn>
           <span className="page-header__sub">
-            Payable auto-creation failed after approval — retry or contact support.
+            Supplier invoice was not auto-created after approval — create it now or contact support.
           </span>
         </div>
       )}

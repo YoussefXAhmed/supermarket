@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   ApiErrorCard,
@@ -12,6 +12,8 @@ import {
 import { TablePageLayout, LayoutSection, TableRegion } from '../../../components/layout/page-layouts';
 import ApPaymentStatusPill from '../../../components/accounting/ApPaymentStatusPill';
 import CreateSupplierPaymentPanel from '../../../components/accounting/CreateSupplierPaymentPanel';
+import SupplierInvoiceDetailModal from '../../../components/accounting/SupplierInvoiceDetailModal';
+import PaymentVoucherModal from '../../../components/accounting/PaymentVoucherModal';
 import {
   fetchApDashboard,
   listApInvoices,
@@ -35,6 +37,8 @@ const STATUS_TABS = [
 export default function SupplierPaymentsPage() {
   const { t } = useTranslation();
   const notify = useNotify();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [dashboard, setDashboard] = useState(null);
   const [invoices, setInvoices] = useState([]);
   const [payments, setPayments] = useState([]);
@@ -43,6 +47,8 @@ export default function SupplierPaymentsPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [view, setView] = useState('invoices');
   const [showPayForm, setShowPayForm] = useState(false);
+  const [openInvoiceName, setOpenInvoiceName] = useState(null);
+  const [openVoucherName, setOpenVoucherName] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -77,6 +83,26 @@ export default function SupplierPaymentsPage() {
     listSuppliers({ limit: 300 }).then((r) => setSuppliers(r?.data?.data || []));
   }, [load]);
 
+  // Open invoice detail modal when navigated to /finance/payments?invoice=PINV-...
+  // — used by the Notification Bell when a "New Supplier Invoice Pending" alert
+  // is clicked.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const invName = params.get('invoice');
+    if (invName) {
+      setOpenInvoiceName(invName);
+    }
+  }, [location.search]);
+
+  const closeInvoiceModal = () => {
+    setOpenInvoiceName(null);
+    const params = new URLSearchParams(location.search);
+    if (params.has('invoice')) {
+      params.delete('invoice');
+      navigate({ pathname: location.pathname, search: params.toString() }, { replace: true });
+    }
+  };
+
   const filteredCounts = useMemo(() => {
     const c = { all: invoices.length };
     for (const inv of invoices) {
@@ -88,7 +114,16 @@ export default function SupplierPaymentsPage() {
 
   const onPaymentSuccess = (result) => {
     setShowPayForm(false);
-    notify.success(`Supplier payment ${result.name} recorded — ${fmtCurrency(result.paid_amount)}`);
+    notify.success(
+      t('finance.payments.paymentSubmitted', {
+        defaultValue: 'Supplier payment {{name}} recorded — {{amount}}',
+        name: result.name,
+        amount: fmtCurrency(result.paid_amount),
+      })
+    );
+    // Open the Payment Voucher modal immediately so the accountant can print
+    // it or hand a copy to the supplier on the spot.
+    if (result?.name) setOpenVoucherName(result.name);
     load();
   };
 
@@ -111,41 +146,97 @@ export default function SupplierPaymentsPage() {
       />
 
       <div className="ap-workflow-banner" role="note">
-        <strong>Payables lifecycle:</strong> Goods Receipt →{' '}
-        <Link to={financePath('matching')}>Match supplier bill</Link> → Supplier bill →{' '}
-        <strong>Supplier payment</strong> (this page). The system posts accounting entries and updates the bill balance.
+        <strong>{t('finance.payments.workflow')}:</strong> {t('approvals.goodsReceipt', { defaultValue: 'Goods Receipt' })} →{' '}
+        <Link to={financePath('matching')}>{t('finance.payments.openInvoices')}</Link> →{' '}
+        <strong>{t('finance.payments.recordPayment')}</strong>. {t('finance.payments.workflowDesc')}
       </div>
 
       {dashboard && (
-        <section className="layout-grid layout-grid--kpi" aria-label="AP summary">
-          <StatCard
-            label={t('finance.outstanding')}
-            value={fmtCurrency(dashboard.amounts?.total_outstanding)}
-            icon="💳"
-            color="amber"
-            compact
-          />
-          <StatCard
-            label={t('finance.status.overdue')}
-            value={fmtCurrency(dashboard.amounts?.overdue_amount)}
-            icon="⚠"
-            color="red"
-            compact
-          />
-          <StatCard
-            label={t('finance.unpaidInvoices')}
-            value={dashboard.counts?.unpaid ?? 0}
-            icon="📄"
-            color="blue"
-            compact
-          />
-          <StatCard
-            label={t('finance.overdueCount')}
-            value={dashboard.counts?.overdue ?? 0}
-            icon="⏰"
-            color="red"
-            compact
-          />
+        <section className="layout-grid layout-grid--kpi" aria-label={t('finance.kpi.title', { defaultValue: 'AP summary' })}>
+          <button
+            type="button"
+            className="kpi-card-link"
+            onClick={() => { setStatusFilter(PAY_STATUS.UNPAID); }}
+            aria-label={t('finance.kpi.outstandingPayables', { defaultValue: 'Outstanding payables' })}
+          >
+            <StatCard
+              label={t('finance.kpi.outstandingPayables', { defaultValue: 'Outstanding payables' })}
+              value={fmtCurrency(dashboard.amounts?.total_outstanding)}
+              icon="💳"
+              color="amber"
+              compact
+            />
+          </button>
+          <button
+            type="button"
+            className="kpi-card-link"
+            onClick={() => { setStatusFilter(PAY_STATUS.OVERDUE); }}
+            aria-label={t('finance.kpi.overdueBills', { defaultValue: 'Overdue supplier invoices' })}
+          >
+            <StatCard
+              label={t('finance.kpi.overdueBills', { defaultValue: 'Overdue supplier invoices' })}
+              value={fmtCurrency(dashboard.amounts?.overdue_amount)}
+              icon="⚠"
+              color="red"
+              compact
+            />
+          </button>
+          <button
+            type="button"
+            className="kpi-card-link"
+            onClick={() => { setView('history'); }}
+            aria-label={t('finance.kpi.todayPayments', { defaultValue: "Today's payments" })}
+          >
+            <StatCard
+              label={t('finance.kpi.todayPayments', { defaultValue: "Today's payments" })}
+              value={fmtCurrency(dashboard.amounts?.today_payments)}
+              icon="💰"
+              color="green"
+              compact
+            />
+          </button>
+          <button
+            type="button"
+            className="kpi-card-link"
+            onClick={() => { navigate(financePath('general-ledger') + '?accountType=Cash'); }}
+            aria-label={t('finance.kpi.cashInHand', { defaultValue: 'Cash in hand' })}
+          >
+            <StatCard
+              label={t('finance.kpi.cashInHand', { defaultValue: 'Cash in hand' })}
+              value={fmtCurrency(dashboard.amounts?.cash_in_hand)}
+              icon="🧾"
+              color="accent"
+              compact
+            />
+          </button>
+          <button
+            type="button"
+            className="kpi-card-link"
+            onClick={() => { navigate(financePath('general-ledger') + '?accountType=Bank'); }}
+            aria-label={t('finance.kpi.bankBalance', { defaultValue: 'Bank balance' })}
+          >
+            <StatCard
+              label={t('finance.kpi.bankBalance', { defaultValue: 'Bank balance' })}
+              value={fmtCurrency(dashboard.amounts?.bank_balance)}
+              icon="🏦"
+              color="blue"
+              compact
+            />
+          </button>
+          <button
+            type="button"
+            className="kpi-card-link"
+            onClick={() => { setStatusFilter(PAY_STATUS.UNPAID); }}
+            aria-label={t('finance.kpi.unpaidCount', { defaultValue: 'Unpaid supplier invoices' })}
+          >
+            <StatCard
+              label={t('finance.kpi.unpaidCount', { defaultValue: 'Unpaid supplier invoices' })}
+              value={dashboard.counts?.unpaid ?? 0}
+              icon="📄"
+              color="default"
+              compact
+            />
+          </button>
         </section>
       )}
 
@@ -255,62 +346,108 @@ export default function SupplierPaymentsPage() {
                     <tr>
                       <th scope="col">{t('finance.table.invoice')}</th>
                       <th scope="col">{t('nav.suppliers')}</th>
+                      <th scope="col">{t('finance.table.branch', { defaultValue: 'Branch' })}</th>
+                      <th scope="col">{t('finance.table.receipt')}</th>
+                      <th scope="col">{t('finance.table.posted')}</th>
                       <th scope="col">{t('finance.table.due')}</th>
                       <th scope="col" className="num">{t('finance.table.total')}</th>
                       <th scope="col" className="num">{t('finance.outstanding')}</th>
                       <th scope="col" className="num">{t('finance.table.paidPct')}</th>
                       <th scope="col">{t('finance.table.status')}</th>
+                      <th scope="col">{t('finance.table.actions')}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {invoices.map((inv) => (
-                      <tr
-                        key={inv.name}
-                        className={
-                          inv.payment_status === PAY_STATUS.OVERDUE ? 'ap-invoices-table__overdue' : ''
-                        }
-                      >
-                        <td className="mono">{inv.name}</td>
-                        <td>{inv.supplier_name || inv.supplier}</td>
-                        <td>{inv.due_date || '—'}</td>
-                        <td className="num">{fmtCurrency(inv.grand_total)}</td>
-                        <td className="num">
-                          <strong>{fmtCurrency(inv.outstanding_amount)}</strong>
-                        </td>
-                        <td className="num">{inv.paid_pct != null ? `${inv.paid_pct}%` : '—'}</td>
-                        <td>
-                          <ApPaymentStatusPill status={inv.payment_status} paidPct={inv.paid_pct} />
-                        </td>
-                      </tr>
-                    ))}
+                    {invoices.map((inv) => {
+                      const dueHint = inv.days_overdue > 0
+                        ? t('finance.payments.daysOverdue', { count: inv.days_overdue })
+                        : inv.days_remaining === 0 && inv.due_date
+                          ? t('finance.payments.dueToday')
+                          : inv.days_remaining > 0
+                            ? t('finance.payments.daysRemaining', { count: inv.days_remaining })
+                            : null;
+                      return (
+                        <tr
+                          key={inv.name}
+                          className={
+                            inv.payment_status === PAY_STATUS.OVERDUE ? 'ap-invoices-table__overdue' : ''
+                          }
+                        >
+                          <td className="mono">{inv.name}</td>
+                          <td>{inv.supplier_name || inv.supplier}</td>
+                          <td style={{ fontSize: '0.78rem' }}>
+                            {inv.branch || <span style={{ color: 'var(--text-3)' }}>—</span>}
+                          </td>
+                          <td>
+                            {inv.purchase_receipt ? (
+                              <Link
+                                className="mono"
+                                to={`/purchasing/history?name=${encodeURIComponent(inv.purchase_receipt)}`}
+                                style={{ fontSize: '0.78rem' }}
+                              >
+                                {inv.purchase_receipt}
+                              </Link>
+                            ) : (
+                              <span style={{ color: 'var(--text-3)' }}>—</span>
+                            )}
+                          </td>
+                          <td>{inv.posting_date || '—'}</td>
+                          <td>
+                            {inv.due_date || '—'}
+                            {dueHint && (
+                              <div
+                                style={{
+                                  fontSize: '0.7rem',
+                                  color: inv.days_overdue > 0 ? 'var(--red)' : 'var(--text-3)',
+                                  marginTop: 2,
+                                }}
+                              >
+                                {dueHint}
+                              </div>
+                            )}
+                          </td>
+                          <td className="num">{fmtCurrency(inv.grand_total)}</td>
+                          <td className="num">
+                            <strong>{fmtCurrency(inv.outstanding_amount)}</strong>
+                          </td>
+                          <td className="num">{inv.paid_pct != null ? `${inv.paid_pct}%` : '—'}</td>
+                          <td>
+                            <ApPaymentStatusPill status={inv.payment_status} paidPct={inv.paid_pct} />
+                          </td>
+                          <td>
+                            <Btn
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setOpenInvoiceName(inv.name)}
+                            >
+                              {t('finance.payments.viewInvoice')}
+                            </Btn>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
             </TableRegion>
           </LayoutSection>
         )
-      ) : payments.length === 0 ? (
-        <EmptyState icon="💰" title={t('finance.payments.noPayments')} desc={t('finance.payments.noPaymentsDesc')} />
       ) : (
-        <LayoutSection variant="raised" flushHead>
-          <ul className="ap-payment-history">
-            {payments.map((pe) => (
-              <li key={pe.name} className="ap-payment-history__item">
-                <span className="mono">{pe.name}</span>
-                <span>{pe.party}</span>
-                <span>{pe.posting_date}</span>
-                <strong>{fmtCurrency(pe.paid_amount)}</strong>
-                <span className="page-header__sub">{pe.paid_from}</span>
-                {pe.references?.length > 0 && (
-                  <span className="page-header__sub">
-                    → {pe.references.map((r) => r.reference_name).join(', ')}
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
-        </LayoutSection>
+        <PaymentHistorySection
+          payments={payments}
+          onOpenVoucher={(name) => setOpenVoucherName(name)}
+        />
       )}
+      <SupplierInvoiceDetailModal
+        open={!!openInvoiceName}
+        invoiceName={openInvoiceName}
+        onClose={closeInvoiceModal}
+      />
+      <PaymentVoucherModal
+        open={!!openVoucherName}
+        paymentEntryName={openVoucherName}
+        onClose={() => setOpenVoucherName(null)}
+      />
     </TablePageLayout>
   );
 }

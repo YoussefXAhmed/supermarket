@@ -113,16 +113,33 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
   letter-spacing: 0.04em;
   white-space: nowrap;
 }
+/* Tone variants — base names + domain aliases. Phase 3.5.a folded the
+   former .ap-pill, .ap-lifecycle-pill, and .status-pill systems into
+   this single set per decision D6. AP payment domain words (unpaid /
+   partial / paid / overdue) and AP lifecycle stages (invoice_pending /
+   payment_pending / partially_paid / settled) live as aliases here so
+   `<Pill tone={apStage}>` works directly. */
 .pill--default,
-.pill--draft       { background: var(--bg-4);     color: var(--text-2); }
+.pill--draft,
+.pill--cancelled,
+.pill--closed             { background: var(--bg-4);     color: var(--text-2); }
 .pill--pending,
-.pill--warning     { background: var(--amber-bg); color: var(--amber); }
+.pill--warning,
+.pill--unpaid,
+.pill--invoice_pending,
+.pill--payment_pending    { background: var(--amber-bg); color: var(--amber); }
 .pill--approved,
-.pill--success     { background: var(--green-bg); color: var(--green); }
+.pill--success,
+.pill--paid,
+.pill--settled            { background: var(--green-bg); color: var(--green); }
 .pill--rejected,
-.pill--danger      { background: var(--red-bg);   color: var(--red); }
+.pill--danger,
+.pill--overdue,
+.pill--failed             { background: var(--red-bg);   color: var(--red); }
 .pill--submitted,
-.pill--info        { background: var(--blue-bg);  color: var(--blue); }
+.pill--info,
+.pill--partial,
+.pill--partially_paid     { background: var(--blue-bg);  color: var(--blue); }
 .pill__hint {
   opacity: 0.85;
   font-weight: 500;
@@ -214,7 +231,23 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
 }
 .page-header__link:hover { background: var(--bg-3); color: var(--text); }
 
-/* ── Tables ── */
+/* ══════════════════════════════════════════════════════════════════════
+   Tables — Phase 3.5.a consolidation
+   ──────────────────────────────────────────────────────────────────────
+   .table and .data-table are a single visual system now. Every shared
+   rule targets both classes via comma grouping. Differences preserved:
+
+   • .table is naked (no border / no radius / no bg) — must wrap in
+     `<div class="table-wrap">` to get container chrome.
+   • .data-table self-borders — used WITHOUT .table-wrap by older pages
+     (PurchasingHistory, PurchaseApprovalHistory, POSProfiles, Returns,
+     Alerts, ReorderPage).
+
+   All modifiers (--compact, --cozy, --clickable, --fill, --selectable),
+   sticky thead, tfoot styling, numeric/mono cells, and .truncate-cell
+   work on both class names. D5 keeps .data-table as a permanent alias;
+   no JSX rename this phase. ══════════════════════════════════════════ */
+
 .table-wrap {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -223,9 +256,19 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
   position: relative;
 }
 .table-wrap--scroll-y { max-height: 480px; }
-.table { width: 100%; border-collapse: collapse; }
 
-.table thead th {
+.table, .data-table { width: 100%; border-collapse: collapse; }
+
+/* .data-table self-borders (no .table-wrap parent). */
+.data-table {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--bg-2);
+}
+
+.table thead th,
+.data-table thead th {
   background: var(--bg-3);
   padding: 10px 16px;
   text-align: left;
@@ -240,69 +283,10 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
   z-index: var(--z-sticky);
   white-space: nowrap;
 }
-.table thead th[scope="col"] { /* explicit scope; styling neutral */ }
+.table thead th[scope="col"],
+.data-table thead th[scope="col"] { /* explicit scope; styling neutral */ }
 
-.table td {
-  padding: 12px 16px;
-  font-size: 0.85rem;
-  border-bottom: 1px solid var(--border);
-  color: var(--text);
-  vertical-align: middle;
-}
-.table tr:last-child td { border-bottom: none; }
-
-/* Zebra striping — subtle, layered with hover */
-.table tbody tr:nth-child(even) td { background: rgba(255, 255, 255, 0.012); }
-.table tbody tr:hover td { background: var(--bg-3); }
-
-/* Numeric alignment — opt-in via th.num / td.num or column index */
-.table th.num,
-.table td.num,
-.table th.text-right,
-.table td.text-right {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-.table td.mono,
-.table th.mono { font-family: 'DM Mono', monospace; font-variant-numeric: tabular-nums; }
-
-/* Density variants — pair with .table-wrap--compact */
-.table--compact th { padding: 7px 12px; }
-.table--compact td { padding: 8px 12px; font-size: var(--font-sm); }
-.table--cozy th    { padding: 12px 18px; }
-.table--cozy td    { padding: 16px 18px; }
-
-/* Truncate-friendly cell */
-.table td.truncate-cell {
-  max-width: 240px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* ── data-table alias: forward-compat name used in newer pages.
-   Inherits the .table look so PurchaseApprovalHistory, PurchasingHistory,
-   POSProfiles, and Returns all render identically. ── */
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  background: var(--bg-2);
-}
-.data-table thead th {
-  background: var(--bg-3);
-  padding: 10px 16px;
-  text-align: left;
-  font-size: var(--font-xs);
-  font-weight: 600;
-  color: var(--text-2);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  border-bottom: 1px solid var(--border);
-  white-space: nowrap;
-}
+.table td,
 .data-table td {
   padding: 12px 16px;
   font-size: 0.85rem;
@@ -310,54 +294,98 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-
   color: var(--text);
   vertical-align: middle;
 }
+.table tr:last-child td,
 .data-table tr:last-child td { border-bottom: none; }
+
+/* Zebra striping — subtle, layered with hover */
+.table tbody tr:nth-child(even) td,
 .data-table tbody tr:nth-child(even) td { background: rgba(255, 255, 255, 0.012); }
+.table tbody tr:hover td,
 .data-table tbody tr:hover td { background: var(--bg-3); }
+
+/* Numeric alignment — opt-in via th.num / td.num or column index */
+.table th.num,
+.table td.num,
+.table th.text-right,
+.table td.text-right,
 .data-table th.num,
-.data-table td.num {
+.data-table td.num,
+.data-table th.text-right,
+.data-table td.text-right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+.table td.mono,
+.table th.mono,
 .data-table td.mono,
 .data-table th.mono { font-family: 'DM Mono', monospace; font-variant-numeric: tabular-nums; }
+
+/* tfoot styling — both class names. Phase 2 baseline (font-weight 600,
+   2px top border, bg-2) plus .data-table's padding/font-size carried in. */
+.table tfoot td,
 .data-table tfoot td {
   padding: 12px 16px;
   font-size: 0.85rem;
-  background: var(--bg-3);
-  border-top: 1px solid var(--border);
+  font-weight: 600;
+  background: var(--bg-2);
+  border-top: 2px solid var(--border);
 }
+
+/* Density variants — work on both class names. */
+.table--compact th,
 .data-table--compact th { padding: 7px 12px; }
+.table--compact td,
 .data-table--compact td { padding: 8px 12px; font-size: var(--font-sm); }
+.table--cozy th,
+.data-table--cozy th { padding: 12px 18px; }
+.table--cozy td,
+.data-table--cozy td { padding: 16px 18px; }
+
+/* Clickable rows — work on both class names. */
+.table--clickable tbody tr,
 .data-table--clickable tbody tr { cursor: pointer; }
+.table--clickable tbody tr:focus-within td,
 .data-table--clickable tbody tr:focus-within td { background: var(--bg-3); }
+.table__row--clickable,
 .data-table__row--clickable { cursor: pointer; }
+.table__row--clickable:hover td,
 .data-table__row--clickable:hover td { background: var(--bg-3); }
 
-/* ── data-table--fill: forces one designated column (marked with
-   `className="fill-col"` on its <th> + <td>) to absorb leftover horizontal
-   width so dense list pages with few columns don't leave dead space on the
-   right. Used by Purchasing History, Purchase Approval History, POS Profiles
-   where the "Supplier" or "Warehouse" column is the natural wide target. ── */
+/* ── --fill: forces a designated column (marked with `className="fill-col"`
+   on its <th> + <td>) to absorb leftover horizontal width so dense list
+   pages with few columns don't leave dead space on the right. Used by
+   Purchasing History, Purchase Approval History, POS Profiles. ── */
+.table--fill,
 .data-table--fill { width: 100%; table-layout: auto; }
+.table--fill .fill-col,
 .data-table--fill .fill-col { width: 100%; }
+.table--fill .fill-col,
+.table--fill td.fill-col,
 .data-table--fill .fill-col,
 .data-table--fill td.fill-col {
   white-space: normal;
   word-break: break-word;
 }
 
+/* Truncate-friendly cell — both class names. */
+.table td.truncate-cell,
+.data-table td.truncate-cell {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Standalone numeric alignment + muted mono — when not under .table/.data-table */
 .num { text-align: right; font-variant-numeric: tabular-nums; }
 .mono--muted { color: var(--text-3, var(--text-2)); opacity: 0.7; font-size: var(--font-xs); }
 
-/* ── Filter bar — horizontal row of label+input filters above a table.
-   Used by Purchase Approval History, Purchasing History. ── */
-.filter-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: flex-end;
-}
+/* ── Filter bar field labels.
+   Phase 3.5.d: the base .filter-bar rule was deleted from this file — it
+   conflicted with phase-2-primitives.css and was overridden in the cascade.
+   The .filter-bar__field* rules below remain in use by the 4 legacy filter
+   pages (PurchasingHistory, PurchaseApprovalHistory, Alerts, Reorder). A
+   future phase migrates those callsites to the <FilterBar> primitive. ── */
 .filter-bar__field {
   display: flex;
   flex-direction: column;
@@ -785,24 +813,11 @@ input[type="time"].input { color-scheme: dark; }
 }
 .form-field--error .form-field__label { color: var(--red); }
 
-/* Form layout helpers */
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: var(--space-4);
-}
-.form-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.form-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-  margin-top: var(--space-5);
-}
-@media (max-width: 640px) {
-  .form-grid--2, .form-grid--3 { grid-template-columns: 1fr; }
-}
+/* Form layout helpers were duplicated here and in phase-2-primitives.css.
+   Phase 3.5.d: the legacy .form-grid / .form-grid--2 / .form-grid--3 /
+   .form-actions rules were deleted — phase-2-primitives.css is now the
+   single source of truth. Consumer JSX uses <FormGrid> / <FormActions>
+   primitives, which emit the canonical Phase 2 modifier classes. */
 
 /* ── API error & error boundary ── */
 .api-error-card {
@@ -894,30 +909,90 @@ input[type="time"].input { color-scheme: dark; }
   line-height: 1;
   border: 2px solid var(--bg-2);
 }
+/* Notification panel — shared base. Two variants render this:
+     .notif-bell__panel--dropdown   → small floating popover anchored to the bell
+     .notif-bell__panel--drawer     → full-height side panel for sidebar/mobile bells
+   Both are portal'd to <body> so they escape any ancestor overflow:hidden. */
 .notif-bell__panel {
-  /* Position is set inline (portal'd to body via fixed coords),
-     so the panel can escape the sidebar's overflow:hidden clip. */
   background: var(--bg-2);
   border: 1px solid var(--border-light);
-  border-radius: var(--radius-lg);
-  box-shadow: 0 12px 32px rgba(0,0,0,0.4);
   display: flex; flex-direction: column;
   z-index: var(--z-popover);
   overflow: hidden;
 }
+.notif-bell__panel--dropdown {
+  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+  /* position / top / left / width / max-height are computed inline from
+     the bell's bounding rect — never hardcoded in CSS. */
+  animation: notifDropdownIn 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.notif-bell__panel--drawer {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  inset-inline-end: 0;
+  /* width is set inline (capped at viewport on small screens). */
+  border-inline-start: 1px solid var(--border-light);
+  border-block: none;
+  border-inline-end: none;
+  border-radius: 0;
+  box-shadow: -16px 0 40px rgba(0,0,0,0.45);
+  animation: notifDrawerIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes notifDropdownIn {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+@keyframes notifDrawerIn {
+  from { opacity: 0; transform: translateX(8%); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+/* RTL: drawer slides in from the left (inset-inline-end resolves to the left
+   side automatically; the slide direction needs the matching reverse). */
+[dir="rtl"] .notif-bell__panel--drawer { animation: notifDrawerInRtl 0.22s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes notifDrawerInRtl {
+  from { opacity: 0; transform: translateX(-8%); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.notif-bell__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 10, 16, 0.55);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  z-index: calc(var(--z-popover) - 1);
+  animation: fadeIn 0.18s ease;
+}
+
 .notif-bell__head {
   padding: 12px 14px;
   display: flex; align-items: center; justify-content: space-between;
   border-bottom: 1px solid var(--border);
   background: var(--bg-3);
+  flex-shrink: 0;
 }
 .notif-bell__head strong { font-size: 0.9rem; color: var(--text); }
+.notif-bell__head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
 .notif-bell__mark-all {
   background: none; border: none; color: var(--accent);
   font-size: 0.74rem; font-weight: 600; cursor: pointer;
   padding: 4px 8px; border-radius: var(--radius-sm);
 }
 .notif-bell__mark-all:hover { background: rgba(245,166,35,0.10); }
+.notif-bell__close {
+  background: none; border: none; color: var(--text-3);
+  font-size: 1.25rem; line-height: 1; cursor: pointer;
+  padding: 2px 8px; border-radius: var(--radius-sm);
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.notif-bell__close:hover { background: var(--bg-4); color: var(--text); }
 .notif-bell__list {
   list-style: none; margin: 0; padding: 4px 0;
   overflow-y: auto; flex: 1; min-height: 0;
@@ -990,3 +1065,122 @@ input[type="time"].input { color-scheme: dark; }
    gets the breathing room. */
 .data-table th:nth-last-child(-n+2),
 .data-table td:nth-last-child(-n+2) { white-space: nowrap; }
+
+/* ── Rich/clickable toast (notification poller) ─────────────────────── */
+.toast--clickable { cursor: pointer; }
+.toast--clickable:hover { transform: translateY(-1px); }
+.toast__body { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.toast__title { font-weight: 600; font-size: 0.88rem; line-height: 1.2; }
+.toast__text { font-size: 0.78rem; opacity: 0.85; line-height: 1.3; }
+
+/* ── Compact notification bell variant ────────────────────────────── */
+.notif-bell__panel--compact { padding-bottom: 0; }
+.notif-bell__list--compact { padding: 4px 0; }
+.notif-bell__item--compact {
+  padding: 8px 12px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  cursor: pointer;
+  border-bottom: 1px solid transparent;
+  transition: background-color 120ms ease;
+}
+.notif-bell__item--compact:hover { background: var(--bg-3); }
+.notif-bell__item--compact .notif-bell__subject {
+  font-size: 0.85rem;
+  font-weight: 500;
+  line-height: 1.25;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.notif-bell__item--compact .notif-bell__meta {
+  font-size: 0.72rem;
+  color: var(--text-3);
+  margin: 2px 0 0;
+}
+.notif-bell__item--read .notif-bell__subject { color: var(--text-2); font-weight: 400; }
+.notif-bell__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+.notif-bell__dot--muted { background: var(--bg-4); }
+.notif-bell__foot {
+  border-top: 1px solid var(--border);
+  text-align: center;
+  background: var(--bg-3);
+}
+.notif-bell__view-all {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 0.82rem;
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: center;
+}
+.notif-bell__view-all:hover { background: var(--bg-4); }
+.notif-bell__view-all:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* ── /notifications full page list ────────────────────────────────── */
+.notifications-page__list { list-style: none; margin: 0; padding: 0; }
+.notifications-page__item {
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  align-items: flex-start;
+  transition: background-color 120ms ease;
+}
+.notifications-page__item:last-child { border-bottom: none; }
+.notifications-page__item:hover { background: var(--bg-3); }
+.notifications-page__item .notif-bell__dot { margin-top: 8px; }
+.notifications-page__body { flex: 1; min-width: 0; }
+.notifications-page__subject {
+  font-size: 0.92rem;
+  font-weight: 500;
+  margin: 0 0 4px;
+  line-height: 1.3;
+}
+.notifications-page__item--read .notifications-page__subject {
+  color: var(--text-2);
+  font-weight: 400;
+}
+.notifications-page__meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.76rem;
+  color: var(--text-3);
+  margin: 0;
+}
+.notifications-page__cat {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 500;
+  text-transform: capitalize;
+  font-size: 0.7rem;
+}
+.notifications-page__cat--approvals  { background: var(--amber-bg); color: var(--accent); }
+.notifications-page__cat--purchasing { background: var(--blue-bg);  color: var(--blue); }
+.notifications-page__cat--inventory  { background: var(--green-bg); color: var(--green); }
+.notifications-page__cat--finance    { background: var(--blue-bg);  color: var(--blue); }
+.notifications-page__cat--pos        { background: var(--bg-4);     color: var(--text-2); }
+.notifications-page__cat--shifts     { background: var(--bg-4);     color: var(--text-2); }
+.notifications-page__cat--system     { background: var(--bg-4);     color: var(--text-3); }

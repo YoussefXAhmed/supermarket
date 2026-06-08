@@ -12,69 +12,11 @@
   color: var(--accent);
 }
 
-.ap-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
-  border: 1px solid transparent;
-}
-
-.ap-pill__pct {
-  opacity: 0.85;
-  font-weight: 500;
-}
-
-.ap-pill--unpaid {
-  background: var(--amber-bg);
-  color: var(--amber);
-  border-color: rgba(245, 158, 11, 0.32);
-}
-
-.ap-pill--partial {
-  background: var(--blue-bg);
-  color: var(--blue);
-  border-color: rgba(59, 130, 246, 0.32);
-}
-
-.ap-pill--paid {
-  background: var(--green-bg);
-  color: var(--green);
-  border-color: rgba(34, 197, 94, 0.32);
-}
-
-.ap-pill--overdue {
-  background: var(--red-bg);
-  color: var(--red);
-  border-color: rgba(239, 68, 68, 0.32);
-}
-
-.ap-pill--cancelled,
-.ap-pill--draft {
-  background: var(--bg-4);
-  color: var(--text-2);
-}
-
-.ap-lifecycle-pill {
-  display: inline-block;
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 0.15rem 0.45rem;
-  border-radius: 4px;
-  background: var(--accent-glow);
-  color: var(--accent);
-  margin-right: 0.5rem;
-}
-
-.receipt-matching-card__lifecycle,
-.ap-lifecycle-pill {
-  color: var(--text-2);
-}
+/* Phase 3.5.a: .ap-pill and .ap-lifecycle-pill blocks folded into the
+   canonical .pill / .pill--* system in components.css per decision D6
+   (single status system across the ERP). ApPaymentStatusPill +
+   BillingStatusPill already wrap <Pill>; ReceiptMatchingCard JSX was
+   migrated to <span className="pill pill--{ap_stage}"> in this phase. */
 
 .receipt-matching-card__lifecycle {
   font-size: 0.875rem;
@@ -207,4 +149,138 @@
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
+}
+
+/* ── Supplier Invoice detail modal ───────────────────────────────────── */
+.invoice-detail { display: grid; gap: 1rem; }
+.invoice-detail__header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border); }
+.invoice-detail__header h1 { font-size: 1.1rem; margin: 0 0 0.25rem; }
+.invoice-detail__header dl { display: grid; grid-template-columns: auto 1fr; column-gap: 0.75rem; row-gap: 0.25rem; margin: 0; font-size: 0.85rem; }
+.invoice-detail__header dt { color: var(--text-3); font-weight: 400; }
+.invoice-detail__header dd { margin: 0; font-weight: 500; }
+.invoice-detail__status { flex-shrink: 0; }
+.invoice-detail__due { color: var(--text-2); font-size: 0.78rem; }
+.invoice-detail__due--overdue { color: var(--red); font-weight: 600; }
+.invoice-detail table { width: 100%; border-collapse: collapse; }
+.invoice-detail th { text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-3); padding: 0.5rem 0.5rem; border-bottom: 1px solid var(--border); }
+.invoice-detail td { padding: 0.55rem 0.5rem; border-bottom: 1px solid var(--border); font-size: 0.88rem; }
+.invoice-detail td.num, .invoice-detail th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.invoice-detail tfoot td { border-bottom: none; }
+.invoice-detail .totals { display: flex; justify-content: flex-end; }
+.invoice-detail .totals dl { display: grid; grid-template-columns: auto auto; gap: 0.25rem 1.25rem; margin: 0; font-size: 0.88rem; }
+.invoice-detail .totals dt { color: var(--text-2); }
+.invoice-detail .totals dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.invoice-detail__history-title { font-size: 0.95rem; margin: 1rem 0 0.25rem; }
+.invoice-detail__loading { display: flex; justify-content: center; padding: 1.5rem; }
+
+/* ── Supplier statement (financial summary on SupplierDetailPage) ────── */
+.supplier-statement { display: grid; gap: 0.75rem; }
+.supplier-statement__kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.5rem; }
+.supplier-statement__meta { display: grid; grid-template-columns: auto 1fr; gap: 0.4rem 1rem; margin: 0.5rem 0 0; font-size: 0.85rem; }
+.supplier-statement__meta dt { color: var(--text-2); }
+.supplier-statement__meta dd { margin: 0; }
+
+/* ── Clickable KPI cards on the AP dashboard ──────────────────────────── */
+.kpi-card-link {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  text-align: inherit;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  display: block;
+  width: 100%;
+}
+.kpi-card-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 12px; }
+.kpi-card-link .stat-card { transition: transform 160ms ease, box-shadow 200ms ease; }
+.kpi-card-link:hover .stat-card { transform: translateY(-2px); }
+
+/* ── Payment history filters bar ─────────────────────────────────────── */
+.payment-history-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.5rem;
+  align-items: center;
+}
+.payment-history-filters__exports {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+  grid-column: span 2;
+}
+@media (max-width: 720px) {
+  .payment-history-filters__exports { grid-column: 1 / -1; justify-content: flex-start; }
+}
+
+/* ── Sortable column header button ───────────────────────────────────── */
+.th-sort {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: inherit;
+}
+.th-sort:hover { color: var(--accent); }
+
+/* ── Accountant dashboard ─────────────────────────────────────────── */
+.accountant-recent {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.recent-list { list-style: none; padding: 0; margin: 0; }
+.recent-list__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 140ms ease;
+  border-bottom: 1px solid var(--border);
+}
+.recent-list__item:last-child { border-bottom: none; }
+.recent-list__item:hover { background: var(--bg-3); }
+.recent-list__primary {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.86rem;
+}
+.recent-list__meta {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-size: 0.86rem;
+}
+[dir="rtl"] .recent-list__meta { text-align: left; align-items: flex-start; }
+.recent-list__sub {
+  font-size: 0.72rem;
+  color: var(--text-3);
+}
+.recent-list__rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent-glow);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.74rem;
+  margin-inline-end: 6px;
 }

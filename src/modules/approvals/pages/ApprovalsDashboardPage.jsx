@@ -3,7 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
 import {
   ApiErrorCard,
+  BatchResultToast,
   Btn,
+  BulkActionBar,
+  ConfirmDialog,
   EmptyState,
   PageHeader,
   PageLoading,
@@ -12,16 +15,21 @@ import {
 import { DashboardLayout, LayoutSection } from '../../../components/layout/page-layouts';
 import { useAuth } from '../../../hooks/useAuth';
 import { useNotify } from '../../../context/NotificationContext';
+import { useSelection } from '../../../hooks/useSelection';
 import {
   canExecutePurchaseApproval,
   canExecuteShiftClosingApproval,
 } from '../../../auth/capabilities';
 import PurchaseApprovalCard from '../../../components/approvals/PurchaseApprovalCard';
+import RejectPurchaseModal from '../../../components/approvals/RejectPurchaseModal';
 import ShiftApprovalCard from '../../../components/approvals/ShiftApprovalCard';
+import PurchaseHistoryInline from '../../../components/approvals/PurchaseHistoryInline';
 import { useApprovalQueues } from '../hooks/useApprovalQueues';
 import {
   approvePurchaseReceipt,
   rejectPurchaseReceipt,
+  batchApprovePurchaseReceipts,
+  batchRejectPurchaseReceipts,
 } from '../../../services/purchasingApprovalApi';
 import {
   approveShiftClosing,
@@ -56,10 +64,20 @@ export default function ApprovalsDashboardPage() {
     useApprovalQueues();
   const [notes, setNotes] = useState('');
   const [purchaseBusy, setPurchaseBusy] = useState('');
+  const [purchaseRejectTarget, setPurchaseRejectTarget] = useState(null);
   const [shiftApprove, setShiftApprove] = useState(null);
   const [shiftReject, setShiftReject] = useState(null);
   const [shiftBusy, setShiftBusy] = useState(false);
   const [purchaseErr, setPurchaseErr] = useState('');
+  // Phase 4.b — batch selection state for purchase approvals.
+  // Identity-stable across queue refetches via the receipt name.
+  const purchaseSelection = useSelection({
+    items: purchases,
+    getId: (doc) => doc?.name,
+  });
+  const [batchInFlight, setBatchInFlight] = useState(false);
+  const [batchApproveConfirm, setBatchApproveConfirm] = useState(false);
+  const [batchRejectConfirm, setBatchRejectConfirm] = useState(false);
 
   const kpiCards = useMemo(() => {
     if (workspace === 'manager') {
@@ -96,17 +114,131 @@ export default function ApprovalsDashboardPage() {
     }
   };
 
-  const onPurchaseReject = async (name) => {
+  const onPurchaseReject = (name) => {
     if (!canExecutePurchase) return;
-    if (!window.confirm(t('approvals.rejectPurchaseConfirm', { name }))) return;
+    setPurchaseRejectTarget(name);
+  };
+
+  const onConfirmPurchaseReject = async (reason) => {
+    const name = purchaseRejectTarget;
+    if (!name) return;
     setPurchaseBusy(name);
+    setPurchaseErr('');
     try {
-      await rejectPurchaseReceipt(name, { notes });
+      await rejectPurchaseReceipt(name, { notes: reason });
+      notify.info(t('approvals.receiptRejected', { defaultValue: 'Goods receipt {{name}} rejected.', name }));
+      setPurchaseRejectTarget(null);
       await reload();
     } catch (e) {
-      setPurchaseErr(getUserFriendlyMessage(e));
+      const msg = getUserFriendlyMessage(e);
+      setPurchaseErr(msg);
+      notify.error(msg);
     } finally {
       setPurchaseBusy('');
+    }
+  };
+
+  // ── Phase 4.b — batch handlers (purchase approvals) ──────────────────
+  //
+  // Both flows share the same shape:
+  //   1. Snapshot the selected IDs (so we can render the result toast
+  //      and the audit log even after reload() clears the queue).
+  //   2. Call the batch endpoint with current selection + notes.
+  //   3. Surface result via BatchResultToast — success toast if all
+  //      rows succeeded, warning toast (still informational) if some
+  //      failed. The toast lists per-row errors expanding on demand.
+  //   4. Clear selection + reload queue. Failed rows reappear in the
+  //      queue (the backend left them untouched), so the user can
+  //      retry them individually after fixing the underlying issue.
+  //
+  // We deliberately DO NOT do optimistic UI here because approval has
+  // financial side-effects (Purchase Invoice auto-creation). Wait for
+  // server confirmation — the brief spinner is acceptable cost.
+
+  const reportBatchResult = (result, isApprove) => {
+    if (!result) return;
+    const errors = (result.results || [])
+      .filter((r) => !r.ok)
+      .map((r) => ({ id: r.name, message: r.error || t('common.unknownError', { defaultValue: 'Unknown error' }) }));
+    const headline = isApprove
+      ? t('approvals.batchApproveHeadline', {
+          defaultValue: '{{succeeded}} of {{total}} approved',
+          succeeded: result.succeeded,
+          total: result.total,
+        })
+      : t('approvals.batchRejectHeadline', {
+          defaultValue: '{{succeeded}} of {{total}} rejected',
+          succeeded: result.succeeded,
+          total: result.total,
+        });
+    const toast = (
+      <BatchResultToast
+        total={result.total}
+        succeeded={result.succeeded}
+        failed={result.failed}
+        errors={errors}
+        headline={headline}
+        initiallyOpen={result.failed > 0 && result.failed <= 3}
+      />
+    );
+    if (result.failed > 0) {
+      notify.warning(toast, { duration: 9000 });
+    } else {
+      notify.success(toast, { duration: 5000 });
+    }
+  };
+
+  const onBatchApprove = async () => {
+    setBatchApproveConfirm(false);
+    const ids = purchaseSelection.selectedIds;
+    if (!ids.length || batchInFlight) return;
+    setBatchInFlight(true);
+    setPurchaseErr('');
+    try {
+      const result = await batchApprovePurchaseReceipts(ids, { notes });
+      reportBatchResult(result, true);
+      purchaseSelection.clear();
+      await reload();
+    } catch (e) {
+      // Envelope-level failure (size cap, list shape, role gate) — no
+      // per-row results. Surface a single error toast and leave the
+      // selection intact so the user can adjust and retry.
+      const msg = getUserFriendlyMessage(e);
+      setPurchaseErr(msg);
+      notify.error(msg);
+    } finally {
+      setBatchInFlight(false);
+    }
+  };
+
+  const onBatchReject = async (reason) => {
+    setBatchRejectConfirm(false);
+    const ids = purchaseSelection.selectedIds;
+    if (!ids.length || batchInFlight) return;
+    // The notes field on the page is the canonical reason; the modal
+    // doesn't capture a separate one so the policy lives in one place.
+    const noteText = (reason ?? notes ?? '').trim();
+    if (!noteText) {
+      const msg = t('approvals.rejectReasonRequired', {
+        defaultValue: 'Enter a rejection reason in the Approval notes field above.',
+      });
+      setPurchaseErr(msg);
+      notify.warning(msg);
+      return;
+    }
+    setBatchInFlight(true);
+    setPurchaseErr('');
+    try {
+      const result = await batchRejectPurchaseReceipts(ids, { notes: noteText });
+      reportBatchResult(result, false);
+      purchaseSelection.clear();
+      await reload();
+    } catch (e) {
+      const msg = getUserFriendlyMessage(e);
+      setPurchaseErr(msg);
+      notify.error(msg);
+    } finally {
+      setBatchInFlight(false);
     }
   };
 
@@ -170,14 +302,7 @@ export default function ApprovalsDashboardPage() {
         subtitle={t('approvals.dashboardSubtitle')}
         dense
         actions={(
-          <>
-            {showHistoryLink && (
-              <Link to={historyHref} className="page-header__link">
-                {t('approvals.viewHistory', { defaultValue: 'View approval history' })}
-              </Link>
-            )}
-            <Btn variant="ghost" size="sm" onClick={reload}>{t('common.refresh')}</Btn>
-          </>
+          <Btn variant="ghost" size="sm" onClick={reload}>{t('common.refresh')}</Btn>
         )}
       />
 
@@ -216,26 +341,58 @@ export default function ApprovalsDashboardPage() {
               {purchases.length === 0 ? (
                 <EmptyState icon="✓" title={t('approvals.noPendingPurchases')} desc={t('approvals.noPendingPurchasesDesc')} />
               ) : (
-                <div className="approval-list">
-                  {purchases.map((doc) => (
-                    <PurchaseApprovalCard
-                      key={doc.name}
-                      doc={doc}
-                      capabilities={capabilities}
-                      user={user}
-                      notes={notes}
-                      busy={purchaseBusy === doc.name}
-                      readOnly={!canExecutePurchase}
-                      onApprove={canExecutePurchase ? onPurchaseApprove : undefined}
-                      onReject={canExecutePurchase ? onPurchaseReject : undefined}
-                    />
-                  ))}
-                </div>
+                <>
+                  {canExecutePurchase && purchases.length > 1 && (
+                    <div className="approval-list__select-all">
+                      <label className="approval-list__select-all-label">
+                        <input
+                          type="checkbox"
+                          className="row-checkbox"
+                          checked={purchaseSelection.allSelected}
+                          ref={(el) => { if (el) el.indeterminate = purchaseSelection.someSelected; }}
+                          onChange={purchaseSelection.toggleAll}
+                          aria-label={t('approvals.selectAllReceipts', { defaultValue: 'Select all pending receipts' })}
+                        />
+                        <span>
+                          {purchaseSelection.allSelected
+                            ? t('approvals.deselectAll', { defaultValue: 'Deselect all' })
+                            : t('approvals.selectAll', { defaultValue: 'Select all' })}
+                        </span>
+                      </label>
+                    </div>
+                  )}
+                  <div className="approval-list">
+                    {purchases.map((doc) => (
+                      <PurchaseApprovalCard
+                        key={doc.name}
+                        doc={doc}
+                        capabilities={capabilities}
+                        user={user}
+                        notes={notes}
+                        busy={purchaseBusy === doc.name || batchInFlight}
+                        readOnly={!canExecutePurchase}
+                        onApprove={canExecutePurchase ? onPurchaseApprove : undefined}
+                        onReject={canExecutePurchase ? onPurchaseReject : undefined}
+                        selectable={canExecutePurchase}
+                        selected={purchaseSelection.isSelected(doc.name)}
+                        onToggleSelect={purchaseSelection.toggle}
+                        selectionDisabled={batchInFlight}
+                      />
+                    ))}
+                  </div>
+                </>
               )}
               <p className="approval-section-link">
                 <Link to={purchaseApprovalsPath(capabilities)}>{t('approvals.openPurchaseApprovals')}</Link>
               </p>
             </LayoutSection>
+          )}
+
+          {/* Inline purchase approval history — same page, just below.
+              Gated on `canViewPurchaseApprovals` so it doesn't surface
+              for users who shouldn't see decided receipts. */}
+          {showPurchaseSection && showHistoryLink && (
+            <PurchaseHistoryInline historyHref={historyHref} limit={10} />
           )}
 
           {showShiftSection && (
@@ -326,6 +483,95 @@ export default function ApprovalsDashboardPage() {
           />
         </>
       )}
+      {canExecutePurchase && (
+        <RejectPurchaseModal
+          open={!!purchaseRejectTarget}
+          docName={purchaseRejectTarget}
+          loading={purchaseBusy === purchaseRejectTarget && !!purchaseRejectTarget}
+          onCancel={() => setPurchaseRejectTarget(null)}
+          onSubmit={onConfirmPurchaseReject}
+        />
+      )}
+
+      {/* Phase 4.b — sticky-bottom batch actions. Renders only when at
+          least one receipt is selected; pure CSS collapse otherwise. */}
+      {canExecutePurchase && showPurchaseSection && (
+        <BulkActionBar
+          selectedCount={purchaseSelection.count}
+          onClear={purchaseSelection.clear}
+          countLabel={t('approvals.batchSelected', {
+            defaultValue: '{{count}} receipts selected',
+            count: purchaseSelection.count,
+          })}
+        >
+          <Btn
+            variant="success"
+            size="sm"
+            loading={batchInFlight}
+            disabled={batchInFlight}
+            onClick={() => setBatchApproveConfirm(true)}
+          >
+            {t('approvals.batchApprove', {
+              defaultValue: 'Approve {{count}}',
+              count: purchaseSelection.count,
+            })}
+          </Btn>
+          <Btn
+            variant="danger"
+            size="sm"
+            loading={batchInFlight}
+            disabled={batchInFlight}
+            onClick={() => setBatchRejectConfirm(true)}
+          >
+            {t('approvals.batchReject', {
+              defaultValue: 'Reject {{count}}',
+              count: purchaseSelection.count,
+            })}
+          </Btn>
+        </BulkActionBar>
+      )}
+
+      <ConfirmDialog
+        open={batchApproveConfirm}
+        title={t('approvals.batchApproveConfirmTitle', {
+          defaultValue: 'Approve {{count}} purchase receipts?',
+          count: purchaseSelection.count,
+        })}
+        message={t('approvals.batchApproveConfirmMsg', {
+          defaultValue:
+            'Each receipt will be submitted and a Purchase Invoice will be auto-created. Rows you are not authorised to approve will fail individually — the rest will proceed.',
+        })}
+        confirmLabel={t('approvals.batchApproveConfirmBtn', {
+          defaultValue: 'Approve {{count}}',
+          count: purchaseSelection.count,
+        })}
+        cancelLabel={t('common.cancel', { defaultValue: 'Cancel' })}
+        variant="primary"
+        loading={batchInFlight}
+        onConfirm={onBatchApprove}
+        onCancel={() => setBatchApproveConfirm(false)}
+      />
+
+      <ConfirmDialog
+        open={batchRejectConfirm}
+        title={t('approvals.batchRejectConfirmTitle', {
+          defaultValue: 'Reject {{count}} purchase receipts?',
+          count: purchaseSelection.count,
+        })}
+        message={t('approvals.batchRejectConfirmMsg', {
+          defaultValue:
+            'The reason from the Approval notes field above will be applied to every selected receipt. Rejected receipts can be re-submitted from the source documents.',
+        })}
+        confirmLabel={t('approvals.batchRejectConfirmBtn', {
+          defaultValue: 'Reject {{count}}',
+          count: purchaseSelection.count,
+        })}
+        cancelLabel={t('common.cancel', { defaultValue: 'Cancel' })}
+        variant="danger"
+        loading={batchInFlight}
+        onConfirm={() => onBatchReject(notes)}
+        onCancel={() => setBatchRejectConfirm(false)}
+      />
     </DashboardLayout>
   );
 }

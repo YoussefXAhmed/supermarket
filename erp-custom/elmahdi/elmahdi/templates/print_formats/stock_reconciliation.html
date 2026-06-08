@@ -1,0 +1,88 @@
+{%- from "elmahdi/templates/print_macros/print_master.html" import
+    render_header, render_audit_block, render_signatures, fmt_money
+-%}
+{%- include "elmahdi/templates/print_macros/print_styles.html" -%}
+
+{%- set info = elmahdi.print_helpers.print_context(doc) -%}
+{%- set status =
+    'Submitted' if doc.docstatus == 1 else
+    'Cancelled' if doc.docstatus == 2 else 'Draft'
+-%}
+{%- set tone =
+    'green' if doc.docstatus == 1 else
+    'red'   if doc.docstatus == 2 else 'amber'
+-%}
+
+<div dir="{{ 'rtl' if info.lang == 'ar' else 'ltr' }}" lang="{{ info.lang }}">
+
+  {{ render_header(
+       doc, info,
+       title=('جرد مخزون' if info.lang == 'ar' else 'Stock Reconciliation'),
+       status_text=status, status_tone=tone,
+       date_field=doc.posting_date
+  ) }}
+
+  {{ render_audit_block(doc, info) }}
+
+  <section class="epf-section">
+    <h3 class="epf-section__title">{{ info.labels.warehouse }}</h3>
+    <div>
+      {%- if doc.set_warehouse -%}
+        <strong>{{ doc.set_warehouse }}</strong>
+      {%- elif doc.items -%}
+        <strong>{{ doc.items[0].warehouse }}</strong>
+      {%- endif -%}
+      {%- if doc.purpose %}<span class="epf-muted"> · {{ doc.purpose }}</span>{%- endif -%}
+    </div>
+  </section>
+
+  <section class="epf-section">
+    <table class="epf-table">
+      <thead>
+        <tr>
+          <th>{{ info.labels.item }}</th>
+          <th>{{ info.labels.warehouse }}</th>
+          <th class="num">{{ 'الكمية النظامية' if info.lang == 'ar' else 'System Qty' }}</th>
+          <th class="num">{{ 'الكمية الفعلية' if info.lang == 'ar' else 'Counted Qty' }}</th>
+          <th class="num">{{ 'الفرق' if info.lang == 'ar' else 'Difference' }}</th>
+          <th class="num">{{ info.labels.rate }}</th>
+          <th class="num">{{ info.labels.amount }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {%- for item in doc.items -%}
+          {%- set diff = (item.qty | flt) - (item.current_qty | flt) -%}
+          <tr>
+            <td>
+              <strong>{{ item.item_code }}</strong>
+              {%- if item.item_name and item.item_name != item.item_code -%}
+                <div class="epf-small epf-muted">{{ item.item_name }}</div>
+              {%- endif -%}
+            </td>
+            <td class="epf-small">{{ item.warehouse or '' }}</td>
+            <td class="num">{{ '{:,.2f}'.format(item.current_qty | flt) }}</td>
+            <td class="num">{{ '{:,.2f}'.format(item.qty | flt) }}</td>
+            <td class="num" style="color: {{ 'var(--red)' if diff < 0 else 'inherit' }}">
+              {{ '{:+,.2f}'.format(diff) }}
+            </td>
+            <td class="num">{{ fmt_money(item.valuation_rate, 'EGP') }}</td>
+            <td class="num">{{ fmt_money(item.amount_difference or 0, 'EGP') }}</td>
+          </tr>
+        {%- endfor -%}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="6" class="num">{{ 'إجمالي قيمة الفرق' if info.lang == 'ar' else 'Total Difference Value' }}</td>
+          <td class="num">{{ fmt_money(doc.difference_amount or 0, 'EGP') }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </section>
+
+  {{ render_signatures(
+       info,
+       left_label=('عَدَّ بواسطة' if info.lang == 'ar' else 'Counted by'),
+       right_label=('اعتمد بواسطة' if info.lang == 'ar' else 'Approved by')
+  ) }}
+
+</div>

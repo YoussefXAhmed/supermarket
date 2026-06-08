@@ -285,6 +285,19 @@ def get_purchase_approval_detail(name: str) -> dict:
             "rate": flt(evt.get("rate")) if evt.get("rate") is not None else None,
         })
 
+    taxes = [
+        {
+            "description": (tx.description or tx.account_head or "").strip(),
+            "account_head": tx.account_head,
+            "charge_type": tx.charge_type,
+            "rate": flt(tx.rate),
+            "tax_amount": flt(tx.tax_amount),
+            "add_deduct": (getattr(tx, "add_deduct_tax", None) or "Add"),
+        }
+        for tx in (doc.get("taxes") or [])
+        if flt(tx.tax_amount) != 0
+    ]
+
     return {
         "name": doc.name,
         "supplier": supplier_info,
@@ -293,9 +306,12 @@ def get_purchase_approval_detail(name: str) -> dict:
         "creation": str(doc.creation) if doc.creation else "",
         "modified": str(doc.modified) if doc.modified else "",
         "currency": doc.currency or "EGP",
+        "net_total": flt(doc.net_total),
         "grand_total": flt(doc.grand_total),
         "total_taxes_and_charges": flt(doc.total_taxes_and_charges),
+        "discount_amount": flt(doc.discount_amount),
         "total": flt(doc.total),
+        "taxes": taxes,
         "docstatus": cint(doc.docstatus),
         "approval_status": doc.get("approval_status") or audit.get("approval_status") or "",
         "approval_level": doc.get("purchase_approval_level") or audit.get("approval_level") or "manager",

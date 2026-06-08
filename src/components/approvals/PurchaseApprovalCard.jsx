@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
-import { Btn } from '../ui';
-import { fmtCurrency } from '../../utils/format';
+import { Btn, RowCheckbox } from '../ui';
+import { fmtCurrency, fmtDateTime } from '../../utils/format';
 import { approvalLevelLabel } from '../../utils/purchasingApproval';
 import {
   purchaseReceiptApprovalStatus,
@@ -25,6 +25,14 @@ export default function PurchaseApprovalCard({
   readOnly = false,
   onApprove,
   onReject,
+  // Phase 4.b — optional selection slot. Renders a RowCheckbox in the
+  // card header when `selectable` is true. When unset, the card looks
+  // identical to its pre-4.b form so single-row consumers (history
+  // detail modal, drill-down views) keep working unchanged.
+  selectable = false,
+  selected = false,
+  onToggleSelect,
+  selectionDisabled = false,
 }) {
   const statusDoc = {
     docstatus: doc.docstatus,
@@ -40,15 +48,47 @@ export default function PurchaseApprovalCard({
   const showActions = !readOnly && isPendingPurchaseStatus(status);
   const maxVar = doc.max_variance_pct ?? Math.max(...(doc.lines || []).map((l) => l.variance_pct || 0), 0);
 
+  const lineSubtotal = (doc.lines || []).reduce((s, l) => s + (Number(l.amount) || 0), 0);
+  const netTotal = Number.isFinite(doc.net_total) ? Number(doc.net_total) : lineSubtotal;
+  const taxes = Array.isArray(doc.taxes) ? doc.taxes : [];
+  const totalTaxes = Number.isFinite(doc.total_taxes_and_charges)
+    ? Number(doc.total_taxes_and_charges)
+    : taxes.reduce((s, tx) => s + (Number(tx.tax_amount) || 0), 0);
+  const discount = Number(doc.discount_amount) || 0;
+  const grandTotal = Number(doc.grand_total) || (netTotal + totalTaxes - discount);
+  const hasBreakdown = taxes.length > 0 || totalTaxes !== 0 || discount !== 0;
+
   return (
     <article className="approval-card approval-card--purchase">
       <header className="approval-card__head">
         <div className="approval-card__meta">
+          {selectable && (
+            <RowCheckbox
+              checked={selected}
+              disabled={selectionDisabled || busy}
+              onChange={() => onToggleSelect?.(doc.name)}
+              ariaLabel={t('approvals.selectReceipt', { defaultValue: 'Select {{name}}', name: doc.name })}
+              className="approval-card__select"
+            />
+          )}
           <strong>{doc.name}</strong>
           <StatusPill status={status} label={statusLabel} />
           <span className="approval-card__level">{approvalLevelLabel(doc.approval_level)}</span>
         </div>
-        <span className="approval-card__owner">{t('approvals.requestedBy')} {doc.requested_by || '—'}</span>
+        <div className="approval-card__head-right">
+          <span className="approval-card__owner">
+            {t('approvals.requestedBy')} {doc.requested_by || '—'}
+          </span>
+          {(doc.requested_at || doc.creation) && (
+            <time
+              className="approval-card__time"
+              dateTime={doc.requested_at || doc.creation}
+              title={doc.requested_at || doc.creation}
+            >
+              {fmtDateTime(doc.requested_at || doc.creation)}
+            </time>
+          )}
+        </div>
       </header>
 
       <WarehouseScopeBar warehouse={doc.warehouse} />
@@ -90,8 +130,32 @@ export default function PurchaseApprovalCard({
         reason={doc.reject_notes || notes}
       />
 
+      {hasBreakdown && (
+        <dl className="approval-card__totals">
+          <div className="approval-card__totals-row">
+            <dt>{t('approvals.subtotal', { defaultValue: 'Subtotal' })}</dt>
+            <dd>{fmtCurrency(netTotal)}</dd>
+          </div>
+          {taxes.map((tx, i) => (
+            <div className="approval-card__totals-row" key={`${tx.account_head || tx.description || 'tax'}-${i}`}>
+              <dt>
+                {tx.description || tx.account_head || t('approvals.tax', { defaultValue: 'Tax' })}
+                {tx.rate ? <span className="approval-card__totals-rate"> ({tx.rate}%)</span> : null}
+              </dt>
+              <dd>{tx.add_deduct === 'Deduct' ? '−' : ''}{fmtCurrency(Math.abs(Number(tx.tax_amount) || 0))}</dd>
+            </div>
+          ))}
+          {discount > 0 && (
+            <div className="approval-card__totals-row">
+              <dt>{t('approvals.discount', { defaultValue: 'Discount' })}</dt>
+              <dd>−{fmtCurrency(discount)}</dd>
+            </div>
+          )}
+        </dl>
+      )}
+
       <footer className="approval-card__foot">
-        <span className="approval-card__total">{t('approvals.total')} {fmtCurrency(doc.grand_total)}</span>
+        <span className="approval-card__total">{t('approvals.total')} {fmtCurrency(grandTotal)}</span>
         {showActions && canAct && (
           <div className="approval-card__actions">
             <Btn

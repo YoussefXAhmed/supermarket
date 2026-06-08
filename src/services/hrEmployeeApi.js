@@ -30,14 +30,39 @@ const EMPLOYEE_REST_FIELDS = [
   'company_email',
   'creation',
   'modified',
+  // Elmahdi custom fields surfaced in Batch B.
+  'elmahdi_branch_warehouse',
+  'national_id',
+  'elmahdi_address',
+  'reports_to',
+  'gender',
+  'date_of_birth',
 ];
 
-export async function listEmployees({ limit = 200, start = 0 } = {}) {
+export async function listEmployees({ limit = 200, start = 0, branch, search, status } = {}) {
   const res = await api.get('/api/method/elmahdi.api.hr_workforce.list_employees', {
-    params: { limit, start },
+    params: {
+      limit,
+      start,
+      branch: branch || undefined,
+      search: search || undefined,
+      status: status || undefined,
+    },
   });
   const rows = res.data?.message || [];
   return rows.map(normalizeEmployee).filter(Boolean);
+}
+
+/** Picklist of warehouses usable as the Employee branch. */
+export async function listBranches() {
+  const res = await api.get('/api/method/elmahdi.api.hr_workforce.list_branches');
+  return res.data?.message || [];
+}
+
+/** Picklist for the Reports To field — active employees only. */
+export async function listActiveEmployeesForReportsTo() {
+  const res = await api.get('/api/method/elmahdi.api.hr_workforce.list_active_employees_for_reports_to');
+  return res.data?.message || [];
 }
 
 export async function getEmployee(name) {

@@ -11,3 +11,4 @@ elmahdi.patches.provision_hr_officer
 elmahdi.patches.add_pos_idempotency_field
 elmahdi.patches.backfill_pos_closing_totals
 elmahdi.setup.letterhead
+elmahdi.patches.v4_0.install_user_lifecycle_field

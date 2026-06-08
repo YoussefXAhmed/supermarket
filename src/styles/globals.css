@@ -137,3 +137,90 @@ ul { list-style: none; }
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+
+/* ── Phase 3 settings rail active state ──────────────────────────── */
+.settings-rail__link:hover  { background: var(--bg-3); }
+.settings-rail__link:focus-visible {
+  outline: none;
+  box-shadow: var(--ring-focus);
+}
+.settings-rail__link.is-active {
+  color: var(--accent);
+  background: var(--bg-3);
+}
+
+/* ── Phase 1 — Design System extensions ─────────────────────────────────
+   Additive only. Existing tokens (--space-1..16, --radius, --radius-sm,
+   --radius-lg, --radius-xl, --green/red/blue/amber + -bg variants, --bg/
+   --bg-2/3/4, --text/text-2/3, --accent/-dark/-glow, --shadow*, --font-*,
+   --duration-*, --ring-*) are preserved untouched. New tokens here cover
+   the recurring gaps the Phase 1 audit identified:
+   - Half-step spacing (2/3/6/10/14/18 px)
+   - Pill + medium radius (8px, 9999px)
+   - Semantic color aliases for ERPNext-style readability
+   - Surface elevations beyond bg-1..4
+   - Neutral overlays used by glass / login bg / dividers
+   - Form input sizing
+   - Mono family token
+   - Standard breakpoints
+
+   Naming convention: --space-N is N × 4px. So --space-0-5 = 2px,
+   --space-1-5 = 6px, --space-9 = 36px, etc. */
+:root {
+  /* — Spacing — half-step granularity */
+  --space-0-5:  2px;     /* hairline transforms, micro shifts */
+  --space-0-75: 3px;     /* preset paddings (date-range chips) */
+  --space-1-5:  6px;     /* button-sm vertical padding, badge gap */
+  --space-2-5: 10px;     /* table cell vertical, dense lists */
+  --space-3-5: 14px;     /* sidebar brand padding */
+  --space-4-5: 18px;     /* card-header padding */
+  --space-9:   36px;     /* avatar-lg, input height */
+
+  /* — Radius — pill, medium, circle */
+  --radius-xs:    4px;       /* small chips, tags */
+  --radius-md:    8px;       /* banners, payment-form lists, accountant cards */
+  --radius-pill:  9999px;    /* status pills (consolidates 99px / 999px) */
+  --radius-circle: 50%;      /* avatars, indicator dots */
+
+  /* — Semantic color aliases — prefer these in NEW code over palette names */
+  --success:    var(--green);
+  --success-bg: var(--green-bg);
+  --danger:     var(--red);
+  --danger-bg:  var(--red-bg);
+  --info:       var(--blue);
+  --info-bg:    var(--blue-bg);
+  --warning:    var(--amber);
+  --warning-bg: var(--amber-bg);
+
+  /* — Border tones — used by pills, banners, callouts */
+  --accent-border:  rgba(245, 166, 35, 0.35);
+  --success-border: rgba(34, 197, 94, 0.32);
+  --danger-border:  rgba(239, 68, 68, 0.32);
+  --info-border:    rgba(59, 130, 246, 0.32);
+  --warning-border: rgba(245, 158, 11, 0.32);
+
+  /* — Elevated surfaces — extra steps beyond bg-1..4 */
+  --bg-elevated: #1f2638;   /* POS headers, between bg-3 and bg-4 */
+  --bg-deep:     #07090f;   /* gradient stops (login card) */
+
+  /* — Neutral white overlays — for glass effects, dividers, subtle bg */
+  --overlay-white-04: rgba(255, 255, 255, 0.04);
+  --overlay-white-06: rgba(255, 255, 255, 0.06);
+  --overlay-white-08: rgba(255, 255, 255, 0.08);
+  --overlay-white-12: rgba(255, 255, 255, 0.12);
+
+  /* — Form inputs */
+  --input-height:    36px;
+  --input-padding-x: 12px;
+  --input-padding-y: 8px;
+
+  /* — Mono font family — for IDs, codes, numerics in tables */
+  --font-mono: 'DM Mono', monospace;
+
+  /* — Standard breakpoints — match recurring media-query widths */
+  --bp-xs:  480px;
+  --bp-sm:  640px;
+  --bp-md:  720px;
+  --bp-lg:  960px;
+  --bp-xl: 1280px;
+}

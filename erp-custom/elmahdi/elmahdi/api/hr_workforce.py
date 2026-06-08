@@ -35,6 +35,13 @@ EMPLOYEE_LIST_FIELDS = [
 	"company_email",
 	"creation",
 	"modified",
+	# Elmahdi custom fields (Batch A.1).
+	"elmahdi_branch_warehouse",
+	"national_id",
+	"elmahdi_address",
+	"reports_to",
+	"gender",
+	"date_of_birth",
 ]
 
 USER_SNAPSHOT_FIELDS = [
@@ -58,18 +65,77 @@ def _assert_may_read_employees() -> None:
 
 
 @frappe.whitelist()
-def list_employees(limit=200, start=0):
-	"""List employees for HR workspace (read)."""
+def list_employees(limit=200, start=0, branch=None, search=None, status=None):
+	"""List employees for HR workspace (read).
+
+	Filters:
+	  branch  — match Employee.elmahdi_branch_warehouse exactly (warehouse id)
+	  search  — substring match against employee_name OR national_id OR
+	            cell_number OR employee id; case-insensitive
+	  status  — Active / Inactive / Suspended / Left (Employee.status)
+	"""
 	_assert_may_read_employees()
 	frappe.has_permission("Employee", "read", throw=True)
+
+	filters: list = []
+	if branch:
+		filters.append(["elmahdi_branch_warehouse", "=", branch])
+	if status:
+		filters.append(["status", "=", status])
+
+	or_filters: list = []
+	if search:
+		s = f"%{search.strip()}%"
+		or_filters = [
+			["employee_name", "like", s],
+			["national_id", "like", s],
+			["cell_number", "like", s],
+			["name", "like", s],
+			["employee", "like", s],
+		]
+
 	rows = frappe.get_list(
 		"Employee",
 		fields=EMPLOYEE_LIST_FIELDS,
+		filters=filters,
+		or_filters=or_filters or None,
 		order_by="modified desc",
 		limit_page_length=int(limit or 200),
 		limit_start=int(start or 0),
 	)
 	return rows
+
+
+@frappe.whitelist()
+def list_branches():
+	"""Picklist of warehouses usable as the Employee branch.
+
+	Excludes group warehouses and disabled rows. The Store Manager filter
+	UI on EmployeesPage uses this.
+	"""
+	_assert_may_read_employees()
+	frappe.has_permission("Warehouse", "read", throw=True)
+	return frappe.get_list(
+		"Warehouse",
+		filters={"is_group": 0, "disabled": 0},
+		fields=["name", "warehouse_name"],
+		order_by="warehouse_name asc",
+		limit_page_length=200,
+	)
+
+
+@frappe.whitelist()
+def list_active_employees_for_reports_to():
+	"""Picklist for the 'Reports To' selector — only active employees."""
+	_assert_may_read_employees()
+	frappe.has_permission("Employee", "read", throw=True)
+	return frappe.get_list(
+		"Employee",
+		filters={"status": "Active"},
+		fields=["name", "employee_name", "department"],
+		order_by="employee_name asc",
+		limit_page_length=500,
+	)
 
 
 @frappe.whitelist()

@@ -192,3 +192,70 @@ export async function rejectPurchaseReceipt(name, { notes = '' } = {}) {
   });
   return result;
 }
+
+// ── Phase 4.b — batch endpoints (Purchase Approvals) ─────────────────────
+//
+// Both functions hit the new run_row_batch backend and surface the
+// standard envelope: { audit_id, total, succeeded, failed, results }.
+// The activity log records the COUNT, not per-receipt entries; the
+// per-row audit lives in Elmahdi Batch Audit + each receipt's
+// purchase_rate_audit JSON field (unchanged from the single-doc path).
+
+export async function batchApprovePurchaseReceipts(items, { notes = '' } = {}) {
+  const list = Array.isArray(items) ? items.filter(Boolean) : [];
+  if (!list.length) {
+    return { audit_id: null, total: 0, succeeded: 0, failed: 0, results: [] };
+  }
+  const res = await api.post('/api/method/elmahdi.api.purchasing.batch_approve_purchase_receipts', {
+    items: list,
+    notes: notes || '',
+  });
+  const result = res?.data?.message || { results: [], total: 0, succeeded: 0, failed: 0 };
+  logActivity({
+    type: ActivityType.PURCHASE,
+    action: 'Purchase receipts batch approved',
+    detail: {
+      total: result.total,
+      succeeded: result.succeeded,
+      failed: result.failed,
+      audit_id: result.audit_id,
+    },
+  });
+  // One stock-cache invalidation + one operational-refresh dispatch is
+  // enough — subscribers (approval queues, dashboards) re-fetch in full
+  // and don't need per-row signals.
+  invalidateStockCache({ source: 'purchase_approval_batch', count: result.succeeded });
+  dispatchOperationalRefresh(OperationalRefreshReason.PURCHASE_RECEIPT, {
+    action: 'batch_approve',
+    succeeded: result.succeeded,
+    failed: result.failed,
+  });
+  dispatchOperationalRefresh(OperationalRefreshReason.PURCHASE_INVOICE, {
+    action: 'auto_after_batch_approval',
+    succeeded: result.succeeded,
+  });
+  return result;
+}
+
+export async function batchRejectPurchaseReceipts(items, { notes = '' } = {}) {
+  const list = Array.isArray(items) ? items.filter(Boolean) : [];
+  if (!list.length) {
+    return { audit_id: null, total: 0, succeeded: 0, failed: 0, results: [] };
+  }
+  const res = await api.post('/api/method/elmahdi.api.purchasing.batch_reject_purchase_receipts', {
+    items: list,
+    notes: notes || '',
+  });
+  const result = res?.data?.message || { results: [], total: 0, succeeded: 0, failed: 0 };
+  logActivity({
+    type: ActivityType.PURCHASE,
+    action: 'Purchase receipts batch rejected',
+    detail: {
+      total: result.total,
+      succeeded: result.succeeded,
+      failed: result.failed,
+      audit_id: result.audit_id,
+    },
+  });
+  return result;
+}

@@ -5,6 +5,7 @@ import {
   createSupplierPayment,
   fetchSupplierApSummary,
   listApInvoices,
+  listModesOfPayment,
   listPaymentAccounts,
 } from '../../services/accountsPayableService';
 import { listSuppliers } from '../../services/purchasingApi';
@@ -21,6 +22,11 @@ export default function CreateSupplierPaymentPanel({ onSuccess, onCancel, presel
   const [suppliers, setSuppliers] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [paidFrom, setPaidFrom] = useState('');
+  const [modes, setModes] = useState([]);
+  // ERPNext Mode of Payment — Cash / Bank Transfer / Cheque / Card / Mobile
+  // Wallet etc. The list comes from the doctype so it stays in sync with
+  // whatever the accountant has configured in ERP.
+  const [modeOfPayment, setModeOfPayment] = useState('');
   const [postingDate, setPostingDate] = useState(new Date().toISOString().slice(0, 10));
   const [referenceNo, setReferenceNo] = useState('');
   const [referenceDate, setReferenceDate] = useState(new Date().toISOString().slice(0, 10));
@@ -41,6 +47,15 @@ export default function CreateSupplierPaymentPanel({ onSuccess, onCancel, presel
   useEffect(() => {
     getCompanies({ limit: 1 }).then((r) => setCompany(r?.data?.data?.[0]?.name || ''));
     listSuppliers({ limit: 300 }).then((r) => setSuppliers(r?.data?.data || []));
+    listModesOfPayment()
+      .then((rows) => {
+        setModes(rows || []);
+        // Sensible default: prefer "Cash" if present, otherwise the first
+        // entry; the user can change it before submitting.
+        const cash = (rows || []).find((m) => m.name.toLowerCase() === 'cash');
+        setModeOfPayment(cash?.name || rows?.[0]?.name || '');
+      })
+      .catch(() => setModes([]));
   }, []);
 
   useEffect(() => {
@@ -137,6 +152,7 @@ export default function CreateSupplierPaymentPanel({ onSuccess, onCancel, presel
         reference_date: isBankPayment ? referenceDate : undefined,
         remarks,
         allocations,
+        mode_of_payment: modeOfPayment || undefined,
       });
       onSuccess?.(result);
     } catch (e2) {
@@ -187,6 +203,20 @@ export default function CreateSupplierPaymentPanel({ onSuccess, onCancel, presel
           {isBankPayment && (
             <span className="inv-hint">Bank payments require transfer/cheque reference and date.</span>
           )}
+        </label>
+        <label>
+          Payment method
+          <select
+            className="input"
+            value={modeOfPayment}
+            onChange={(e) => setModeOfPayment(e.target.value)}
+            required
+          >
+            {modes.length === 0 && <option value="">—</option>}
+            {modes.map((m) => (
+              <option key={m.name} value={m.name}>{m.name}</option>
+            ))}
+          </select>
         </label>
         <label>
           Posting date
@@ -244,9 +274,9 @@ export default function CreateSupplierPaymentPanel({ onSuccess, onCancel, presel
           </p>
           {allocationHint?.awaiting_payable_count > 0 && (
             <p className="page-header__sub">
-              {allocationHint.awaiting_payable_count} approved receipt(s) are waiting for a
-              submitted payable (auto-created on manager approval). Check{' '}
-              <a href={matchingTo}>Invoice matching</a> and use <strong>Retry create payable</strong>{' '}
+              {allocationHint.awaiting_payable_count} approved receipt(s) are <strong>Awaiting Invoice</strong>{' '}
+              (auto-created on manager approval). Open{' '}
+              <a href={matchingTo}>Supplier Invoices</a> and use <strong>Create Supplier Invoice</strong>{' '}
               if needed.
             </p>
           )}

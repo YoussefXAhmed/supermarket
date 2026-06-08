@@ -1,0 +1,224 @@
+{#
+  Generic Elmahdi report Print Format.
+
+  Renders any report that follows the unified envelope shape:
+      {columns: [{key, label, type, align}, ...],
+       rows:    [{key: value, ...}],
+       summary: {label: value, ...},
+       warnings: [...]}
+
+  Column `type` drives cell formatting:
+      - "date"     → frappe.utils.formatdate
+      - "datetime" → frappe.utils.format_datetime
+      - "currency" → fmt_money
+      - "number"   → 2dp + thousands separator
+      - "percent"  → "x.xx%"
+      - "mono"     → monospaced font
+      - "status"   → coloured pill
+      - "text" (default) → as-is
+
+  Column `align` ("right" / "center") only matters for numeric / status
+  cells. We default numbers to right-align via the `.num` class.
+
+  Page orientation is landscape so wide reports (sales register, GL, item-
+  wise) stay readable without column truncation.
+#}
+{%- from "elmahdi/templates/print_macros/print_master.html" import fmt_money -%}
+{%- include "elmahdi/templates/print_macros/print_styles.html" -%}
+
+<style>
+@page { size: A4 landscape; margin: 12mm 10mm 16mm 10mm; }
+.epf-table tbody td { font-size: 9pt; padding: 1.6mm 2mm; }
+.epf-table thead th { font-size: 8.5pt; padding: 2mm 2mm; }
+.epf-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3mm 12mm;
+  margin: 0 0 4mm;
+  font-size: 9.5pt;
+}
+.epf-summary__item { display: flex; flex-direction: column; gap: 1px; }
+.epf-summary__label { color: #888; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.05em; }
+.epf-summary__value { font-weight: 600; color: #111; font-variant-numeric: tabular-nums; }
+</style>
+
+<div dir="{{ 'rtl' if info.lang == 'ar' else 'ltr' }}" lang="{{ info.lang }}">
+
+  {# Branded header (logo + company + branch + report title + date range) #}
+  <header class="epf-header">
+    <div class="epf-header__brand">
+      {%- if info.logo_url -%}
+        <img class="epf-header__logo" src="{{ info.logo_url }}" alt="{{ info.company_name }}">
+      {%- endif -%}
+      <div class="epf-header__company">
+        <h1 class="epf-header__company-name">{{ info.company_name }}</h1>
+        {%- if info.branch_name -%}
+          <p class="epf-header__branch">{{ info.labels.branch }}: <strong>{{ info.branch_name }}</strong></p>
+        {%- endif -%}
+        {%- if info.branch_address -%}
+          <p class="epf-header__addr">{{ info.branch_address }}</p>
+        {%- endif -%}
+        {%- if info.branch_phone -%}
+          <p class="epf-header__phone">{{ info.labels.phone }}: {{ info.branch_phone }}</p>
+        {%- endif -%}
+      </div>
+    </div>
+    <div class="epf-header__meta">
+      <h2 class="epf-header__title">{{ report_title or report.title or 'Report' }}</h2>
+      {%- if report.summary and report.summary.fromDate and report.summary.toDate -%}
+        <p class="epf-header__date">
+          {{ frappe.utils.formatdate(report.summary.fromDate) }}
+          &nbsp;—&nbsp;
+          {{ frappe.utils.formatdate(report.summary.toDate) }}
+        </p>
+      {%- endif -%}
+      <p class="epf-header__date">
+        {{ info.labels.printed_at }}: {{ info.printed_at }}
+      </p>
+    </div>
+  </header>
+
+  {# Audit strip — minimal: printed_by + row count #}
+  <dl class="epf-audit">
+    <div class="epf-audit__col">
+      <dt>{{ info.labels.printed_by }}</dt>
+      <dd>{{ info.printed_by }}</dd>
+    </div>
+    <div class="epf-audit__col">
+      <dt>{{ 'عدد الصفوف' if info.lang == 'ar' else 'Rows' }}</dt>
+      <dd>{{ report.rows | length }}</dd>
+    </div>
+    <div class="epf-audit__col">
+      <dt>{{ 'العملة' if info.lang == 'ar' else 'Currency' }}</dt>
+      <dd>{{ info.currency }}</dd>
+    </div>
+  </dl>
+
+  {# Summary chips — if the report ships a summary block render its top-line stats #}
+  {%- if report.summary -%}
+    <div class="epf-summary">
+      {%- if report.summary.totalRevenue is defined -%}
+        <div class="epf-summary__item">
+          <span class="epf-summary__label">{{ 'إجمالي الإيراد' if info.lang == 'ar' else 'Total revenue' }}</span>
+          <span class="epf-summary__value">{{ fmt_money(report.summary.totalRevenue, info.currency) }}</span>
+        </div>
+      {%- endif -%}
+      {%- if report.summary.totalTax is defined -%}
+        <div class="epf-summary__item">
+          <span class="epf-summary__label">{{ info.labels.tax }}</span>
+          <span class="epf-summary__value">{{ fmt_money(report.summary.totalTax, info.currency) }}</span>
+        </div>
+      {%- endif -%}
+      {%- if report.summary.ticketCount is defined -%}
+        <div class="epf-summary__item">
+          <span class="epf-summary__label">{{ 'عدد الفواتير' if info.lang == 'ar' else 'Invoices' }}</span>
+          <span class="epf-summary__value">{{ report.summary.ticketCount }}</span>
+        </div>
+      {%- endif -%}
+      {%- if report.summary.avgTicket is defined -%}
+        <div class="epf-summary__item">
+          <span class="epf-summary__label">{{ 'متوسط الفاتورة' if info.lang == 'ar' else 'Avg ticket' }}</span>
+          <span class="epf-summary__value">{{ fmt_money(report.summary.avgTicket, info.currency) }}</span>
+        </div>
+      {%- endif -%}
+      {%- if report.summary.totalCash is defined -%}
+        <div class="epf-summary__item">
+          <span class="epf-summary__label">{{ 'نقدية' if info.lang == 'ar' else 'Cash' }}</span>
+          <span class="epf-summary__value">{{ fmt_money(report.summary.totalCash, info.currency) }}</span>
+        </div>
+      {%- endif -%}
+      {%- if report.summary.totalSales is defined -%}
+        <div class="epf-summary__item">
+          <span class="epf-summary__label">{{ 'إجمالي المبيعات' if info.lang == 'ar' else 'Total sales' }}</span>
+          <span class="epf-summary__value">{{ fmt_money(report.summary.totalSales, info.currency) }}</span>
+        </div>
+      {%- endif -%}
+      {%- if report.summary.totalProfit is defined -%}
+        <div class="epf-summary__item">
+          <span class="epf-summary__label">{{ 'صافي الربح' if info.lang == 'ar' else 'Net profit' }}</span>
+          <span class="epf-summary__value">{{ fmt_money(report.summary.totalProfit, info.currency) }}</span>
+        </div>
+      {%- endif -%}
+      {%- if report.summary.totalCost is defined -%}
+        <div class="epf-summary__item">
+          <span class="epf-summary__label">{{ 'إجمالي التكلفة' if info.lang == 'ar' else 'Total cost' }}</span>
+          <span class="epf-summary__value">{{ fmt_money(report.summary.totalCost, info.currency) }}</span>
+        </div>
+      {%- endif -%}
+      {%- if report.summary.totalQty is defined -%}
+        <div class="epf-summary__item">
+          <span class="epf-summary__label">{{ 'إجمالي الكمية' if info.lang == 'ar' else 'Total qty' }}</span>
+          <span class="epf-summary__value">{{ '{:,.2f}'.format(report.summary.totalQty | flt) }}</span>
+        </div>
+      {%- endif -%}
+      {%- if report.summary.totalStockValue is defined -%}
+        <div class="epf-summary__item">
+          <span class="epf-summary__label">{{ 'قيمة المخزون' if info.lang == 'ar' else 'Stock value' }}</span>
+          <span class="epf-summary__value">{{ fmt_money(report.summary.totalStockValue, info.currency) }}</span>
+        </div>
+      {%- endif -%}
+    </div>
+  {%- endif -%}
+
+  {# Body table — generic column dispatcher #}
+  {%- if report.rows and report.rows | length > 0 -%}
+    <table class="epf-table">
+      <thead>
+        <tr>
+          {%- for col in report.columns -%}
+            {%- set is_num = col.type in ('currency', 'number', 'percent') or col.align == 'right' -%}
+            <th class="{{ 'num' if is_num else '' }}">{{ col.label }}</th>
+          {%- endfor -%}
+        </tr>
+      </thead>
+      <tbody>
+        {%- for row in report.rows -%}
+          <tr>
+            {%- for col in report.columns -%}
+              {%- set v = row.get(col.key) -%}
+              {%- set is_num = col.type in ('currency', 'number', 'percent') or col.align == 'right' -%}
+              <td class="{{ 'num' if is_num else '' }}{{ ' epf-monospace' if col.type == 'mono' else '' }}">
+                {%- if v is none or v == '' -%}
+                  —
+                {%- elif col.type == 'currency' -%}
+                  {{ fmt_money(v, info.currency) }}
+                {%- elif col.type == 'number' -%}
+                  {{ '{:,.2f}'.format(v | flt) }}
+                {%- elif col.type == 'percent' -%}
+                  {{ '{:,.2f}%'.format(v | flt) }}
+                {%- elif col.type == 'date' -%}
+                  {{ frappe.utils.formatdate(v) if v else '—' }}
+                {%- elif col.type == 'datetime' -%}
+                  {{ frappe.utils.format_datetime(v) if v else '—' }}
+                {%- elif col.type == 'status' -%}
+                  {%- set tone = 'green' if v in ('paid','submitted','approved','completed','consolidated') else
+                                  'red'   if v in ('rejected','overdue','cancelled','failed') else
+                                  'amber' if v in ('pending','unpaid','partial') else 'grey' -%}
+                  <span class="epf-pill epf-pill--{{ tone }}">{{ v }}</span>
+                {%- else -%}
+                  {{ v }}
+                {%- endif -%}
+              </td>
+            {%- endfor -%}
+          </tr>
+        {%- endfor -%}
+      </tbody>
+    </table>
+  {%- else -%}
+    <p style="text-align:center; margin:10mm 0; color:#888;">
+      {{ 'لا توجد بيانات في هذا النطاق' if info.lang == 'ar' else 'No data in the selected range.' }}
+    </p>
+  {%- endif -%}
+
+  {%- if report.warnings -%}
+    <div class="epf-section" style="margin-top: 6mm; padding: 3mm; background: #fef4e0; border: 1px solid #f5d99a; border-radius: 4px;">
+      <strong>{{ 'تنبيهات' if info.lang == 'ar' else 'Warnings' }}:</strong>
+      <ul style="margin: 1mm 0 0 0; padding-inline-start: 5mm;">
+        {%- for w in report.warnings -%}
+          <li>{{ w }}</li>
+        {%- endfor -%}
+      </ul>
+    </div>
+  {%- endif -%}
+
+</div>

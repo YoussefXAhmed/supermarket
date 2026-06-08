@@ -13,49 +13,11 @@
   overscroll-behavior: none;
 }
 
-/* ── Top Bar ── */
-.pos-header {
-  display: flex; align-items: center; gap: 20px;
-  min-height: 68px; padding: 10px 20px;
-  background: var(--bg-2); border-bottom: 1px solid var(--border);
-  flex-shrink: 0; z-index: 10;
-}
-.pos-header__brand   { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--text); font-size: 1rem; flex-shrink: 0; }
-.pos-header__logo    { width: 28px; height: 20px; object-fit: contain; display: block; }
-.pos-header__center  { flex: 0 1 480px; max-width: 480px; min-width: 220px; }
-.pos-header__actions { display: flex; align-items: center; gap: 12px; margin-inline-start: auto; }
-.pos-header__user    { font-size: 0.8rem; color: var(--text-2); }
-.pos-header__link    { font-size: 0.8rem; color: var(--accent); font-weight: 600; cursor: pointer; background: none; border: none; }
-.pos-header__link--danger { color: var(--text-3); }
-.pos-header__link--danger:hover { color: var(--red); }
-.pos-header__tools {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 100%;
-}
-.pos-header__tools .search-wrap,
-.pos-header__tools .search-input-wrap {
-  width: 100%;
-}
-.pos-header__tools .search-wrap .input,
-.pos-header__tools .search-wrap input,
-.pos-header__tools .search-input {
-  width: 100%;
-  background: var(--bg-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  min-height: 46px;
-  font-size: 0.95rem;
-  touch-action: manipulation;
-}
-.pos-header__tools .search-wrap .input:focus-visible,
-.pos-header__tools .search-wrap input:focus-visible,
-.pos-header__tools .search-input:focus-visible {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(245,166,35,0.15);
-  outline: none;
-}
+/* ── Top Bar ──
+   Phase 3.5.a: deleted the legacy .pos-header* block. POS now uses
+   .pos-topbar (defined further down) exclusively; the old .pos-header
+   DOM is no longer rendered by POSPage. .pos-view-toggle remains —
+   still used by the topbar's view switcher. */
 .pos-view-toggle {
   display: inline-flex;
   border: 1px solid var(--border);
@@ -214,47 +176,12 @@
   transform: scale(1.08);
 }
 
-/* ── Cart ── */
-.pos-cart {
-  background: var(--bg-2); border-left: 1px solid var(--border);
-  display: flex; flex-direction: column; overflow: hidden;
-  position: relative;
-  min-height: 0;
-}
-
-.pos-cart__header {
-  display: flex; align-items: center; gap: 10px;
-  padding: 16px 18px; border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-.pos-cart__title  { font-size: 1rem; font-weight: 700; color: var(--text); }
-.pos-cart__count  {
-  background: var(--accent-glow); color: var(--accent);
-  border-radius: 99px; font-size: 0.72rem; font-weight: 700;
-  padding: 2px 8px;
-}
-.pos-cart__clear  { margin-inline-start: auto; font-size: 0.75rem; color: var(--text-3); cursor: pointer; background: none; border: none; min-height: 34px; padding: 6px 8px; touch-action: manipulation; }
-.pos-cart__clear:hover { color: var(--red); }
-
-.pos-cart__customer { padding: 12px 18px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-.pos-cart__customer-label { font-size: 0.72rem; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; display: block; }
-.pos-cart__customer-input {
-  width: 100%; background: var(--bg-3); border: 1px solid var(--border);
-  border-radius: var(--radius-sm); padding: 7px 10px;
-  color: var(--text); font-size: 0.9rem; outline: none;
-  min-height: 42px;
-  transition: border-color var(--transition);
-}
-.pos-cart__customer-input:focus-visible { border-color: var(--accent); outline: none; }
-
-.pos-cart__items  {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px 0;
-  min-height: 0;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
-}
+/* ── Cart ──
+   Phase 3.5.a: legacy .pos-cart container + header + customer + items
+   blocks deleted. POS now uses .pos-bill exclusively (defined below);
+   the .pos-cart DOM is no longer rendered by POSPage. The
+   .pos-cart__history-* rules below are still used by the invoices-view
+   panel, so they remain. */
 .pos-cart__history {
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
@@ -355,59 +282,10 @@
 }
 .cart-row__remove:hover { color: var(--red); }
 
-/* ── Cart Footer ──
-   Sticky bottom panel: clear hierarchy with subtotal (muted) > grand total
-   (prominent) > checkout button. Tabular numerics keep amounts aligned. */
-.pos-cart__footer {
-  border-top: 1px solid var(--border);
-  padding: var(--space-4) var(--space-4) var(--space-5);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  flex-shrink: 0;
-  position: sticky;
-  bottom: 0;
-  background: linear-gradient(180deg, var(--bg-2) 0%, var(--bg-2) 100%);
-  z-index: var(--z-sticky);
-  box-shadow: 0 -12px 28px rgba(0,0,0,0.28);
-}
-.pos-cart__subtotal, .pos-cart__total {
-  display: flex; justify-content: space-between;
-  font-size: var(--font-sm); color: var(--text-2);
-  font-variant-numeric: tabular-nums;
-}
-.pos-cart__total {
-  font-size: var(--font-base);
-  font-weight: 600;
-  color: var(--text);
-  align-items: baseline;
-  padding-top: var(--space-2);
-  margin-top: var(--space-1);
-  border-top: 1px dashed var(--border);
-}
-.pos-cart__total-amount {
-  font-size: 1.55rem;
-  font-weight: 700;
-  color: var(--accent);
-  font-family: 'DM Mono', monospace;
-  letter-spacing: -0.01em;
-  font-variant-numeric: tabular-nums;
-}
-.pos-cart__error {
-  background: var(--red-bg); color: var(--red); border: 1px solid rgba(239,68,68,0.3);
-  border-radius: var(--radius-sm); padding: 8px 12px; font-size: 0.8rem;
-}
-.pos-cart__items .empty-state,
-.pos-cart__items .empty {
-  min-height: 180px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 12px;
-  border: 1px dashed var(--border);
-  border-radius: var(--radius);
-  background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0));
-}
+/* ── Cart Footer / totals / error / empty-state ──
+   Phase 3.5.a: deleted. Equivalent styling lives in .pos-bill__totals,
+   .pos-bill__cta-wrap, .pos-bill__error (defined further down). The
+   legacy .pos-cart DOM is no longer rendered. */
 
 /* ── Receipt Modal ── */
 .modal-overlay {
@@ -838,20 +716,9 @@
 
 @media (max-width: 640px) {
   .pos-page { min-height: 100dvh; }
-  .pos-header { align-items: stretch; }
-  .pos-header__brand { width: 100%; }
-  .pos-header__actions {
-    width: 100%;
-    margin-inline-start: 0;
-  }
-  .pos-header__actions .session-actions,
-  .pos-header__actions .session-actions__buttons {
-    width: 100%;
-  }
-  .pos-header__tools {
-    flex-direction: column;
-    align-items: stretch;
-  }
+  /* Phase 3.5.a deleted .pos-header* and .pos-header__actions selectors
+     (POS uses .pos-topbar now). Phase 3.5.c removed the related
+     .session-actions full-width override here. */
   .pos-view-toggle,
   .pos-view-toggle__btn {
     width: 100%;
@@ -1094,107 +961,11 @@
 }
 
 /* ══════════════════════════════════════════════════════════════
-   Shift CTA banner — prominent when no shift is open.
+   Shift CTA — Phase 3.5.a: deleted the legacy .pos-shift-cta block.
+   POS now uses the compact .pos-shift-strip (defined earlier in this
+   file) for the "no shift open" state. The big-hero CTA was orphaned
+   by an earlier redesign and never rendered by current JSX.
 ══════════════════════════════════════════════════════════════ */
-.pos-shift-cta {
-  margin: 12px 16px;
-  background: linear-gradient(135deg, rgba(245,166,35,0.12), rgba(245,166,35,0.04));
-  border: 1px solid rgba(245,166,35,0.35);
-  border-radius: var(--radius-lg);
-  padding: 18px 22px;
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 18px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.25);
-  position: relative;
-}
-.pos-shift-cta__icon {
-  width: 48px; height: 48px;
-  display: grid; place-items: center;
-  background: rgba(245,166,35,0.18);
-  border-radius: 50%;
-  font-size: 1.6rem;
-  color: var(--accent);
-}
-.pos-shift-cta__body { min-width: 0; }
-.pos-shift-cta__title {
-  margin: 0 0 4px;
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--text);
-}
-.pos-shift-cta__desc {
-  margin: 0 0 6px;
-  font-size: 0.85rem;
-  color: var(--text-2);
-  line-height: 1.45;
-  max-width: 64ch;
-}
-.pos-shift-cta__meta {
-  margin: 0;
-  font-size: 0.78rem;
-  color: var(--text-3);
-}
-.pos-shift-cta__meta strong { color: var(--text); }
-.pos-shift-cta__error {
-  margin: 6px 0 0;
-  font-size: 0.78rem;
-  color: var(--red);
-}
-.pos-shift-cta__actions {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: stretch;
-  min-width: 160px;
-}
-.pos-shift-cta__form {
-  grid-column: 1 / -1;
-  margin-top: 6px;
-  padding-top: 14px;
-  border-top: 1px dashed rgba(245,166,35,0.35);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.pos-shift-cta__form-title {
-  margin: 0;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--text-2);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-.pos-shift-cta__form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-.pos-shift-cta__form-row label {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 0.8rem;
-  color: var(--text-2);
-}
-.pos-shift-cta__form-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-}
-
-@media (max-width: 640px) {
-  .pos-shift-cta {
-    grid-template-columns: auto 1fr;
-  }
-  .pos-shift-cta__actions {
-    grid-column: 1 / -1;
-    flex-direction: row;
-    min-width: 0;
-  }
-  .pos-shift-cta__form-row { grid-template-columns: 1fr; }
-}
 
 /* ══════════════════════════════════════════════════════════════
    Sticky bill CTA — make sure "Process Transaction" is always visible
@@ -1611,9 +1382,9 @@
   letter-spacing: 0.04em;
 }
 
-/* ── Hide the legacy view-toggle when topbar is present ────────────── */
-.pos-topbar + .pos-header,
-.pos-page > .pos-header { display: none; }
+/* Phase 3.5.a: removed CSS gate that hid the legacy .pos-header when
+   .pos-topbar was present. With the .pos-header* block deleted above,
+   the gate is no longer needed. */
 
 /* ══════════════════════════════════════════════════════════════
    LAYOUT REFINEMENT — cashier-screen pass

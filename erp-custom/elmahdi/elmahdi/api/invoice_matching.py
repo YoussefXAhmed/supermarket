@@ -841,6 +841,24 @@ def auto_create_and_submit_purchase_invoice_for_receipt(
 		pr.reload()
 		workspace = _build_receipt_workspace_row(pr)
 
+		# Notify Finance/Accountant users that a new Supplier Invoice is
+		# ready for payment. Best-effort — failure must not roll back the
+		# already-committed invoice.
+		try:
+			from elmahdi.api.notifications import notify_finance_invoice_pending
+
+			notify_finance_invoice_pending(
+				invoice_name=invoice_name,
+				supplier=pr.supplier,
+				amount=flt(pi.grand_total),
+				receipt_name=receipt_name,
+			)
+		except Exception:
+			frappe.log_error(
+				title="notify_finance_invoice_pending failed",
+				message=frappe.get_traceback(),
+			)
+
 		return {
 			"skipped": False,
 			"name": invoice_name,

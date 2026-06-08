@@ -14,6 +14,7 @@ import { TablePageLayout, LayoutSection } from '../../components/layout/page-lay
 import { useAuth } from '../../hooks/useAuth';
 import { canExecutePurchaseApproval } from '../../auth/capabilities';
 import PurchaseApprovalCard from '../../components/approvals/PurchaseApprovalCard';
+import RejectPurchaseModal from '../../components/approvals/RejectPurchaseModal';
 import {
   approvePurchaseReceipt,
   listPendingPurchaseApprovals,
@@ -33,13 +34,22 @@ export default function PurchaseApprovalsPage() {
   const [actionId, setActionId] = useState('');
   const [actionError, setActionError] = useState('');
   const [notes, setNotes] = useState('');
+  const [rejectTarget, setRejectTarget] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
       const data = await listPendingPurchaseApprovals();
-      setRows(data);
+      // Defensive sort — backend already orders by creation desc, but this
+      // guarantees newest-first even if the response is reordered upstream
+      // or comes from a different source.
+      const sorted = [...(data || [])].sort((a, b) => {
+        const ta = new Date(a.requested_at || a.creation || 0).getTime();
+        const tb = new Date(b.requested_at || b.creation || 0).getTime();
+        return tb - ta;
+      });
+      setRows(sorted);
     } catch (e) {
       setRows([]);
       setError(getUserFriendlyMessage(e));
@@ -83,15 +93,21 @@ export default function PurchaseApprovalsPage() {
     }
   };
 
-  const onReject = async (name) => {
+  const onReject = (name) => {
     if (!canExecutePurchase) return;
-    if (!window.confirm(t('approvals.rejectPurchaseConfirm', { name }))) return;
+    setRejectTarget(name);
+  };
+
+  const onConfirmReject = async (reason) => {
+    const name = rejectTarget;
+    if (!name) return;
     setActionId(name);
     setActionError('');
     try {
-      await rejectPurchaseReceipt(name, { notes });
-      notify.info(`Goods receipt ${name} rejected.`);
+      await rejectPurchaseReceipt(name, { notes: reason });
+      notify.info(t('approvals.receiptRejected', { defaultValue: 'Goods receipt {{name}} rejected.', name }));
       setNotes('');
+      setRejectTarget(null);
       await load();
     } catch (e) {
       const msg = getUserFriendlyMessage(e);
@@ -154,6 +170,13 @@ export default function PurchaseApprovalsPage() {
           </div>
         )}
       </LayoutSection>
+      <RejectPurchaseModal
+        open={!!rejectTarget}
+        docName={rejectTarget}
+        loading={actionId === rejectTarget && !!rejectTarget}
+        onCancel={() => setRejectTarget(null)}
+        onSubmit={onConfirmReject}
+      />
     </TablePageLayout>
   );
 }
